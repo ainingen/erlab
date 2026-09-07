@@ -41,6 +41,7 @@ data/
   messages/         申し送り・ナビ・医師からの返信の文面
 docs/
   design.md         設計メモ
+  characters.md     登場人物・立ち絵の使い分け・引き継ぎメモ
   sources.md        数値の出典と確認状況
 test/
   index.html        テストを開くページ
