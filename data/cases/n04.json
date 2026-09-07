@@ -62,7 +62,27 @@
     {
       "when": {
         "report": "emergency",
-        "recheck": false
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "報告は正しい。ただしこの検体に再検の理由はありません",
+      "reply": null,
+      "doctor": "msg_n04_ok"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "marks": {
+          "must": [
+            "K"
+          ],
+          "max": 1
+        },
+        "suspects": {
+          "K": [
+            "real"
+          ]
+        }
       },
       "score": "best",
       "headline": "適切な報告です",
@@ -75,10 +95,41 @@
     {
       "when": {
         "report": "emergency",
-        "recheck": true
+        "marks": {
+          "must": [
+            "K"
+          ],
+          "max": 1
+        }
       },
       "score": "ok",
-      "headline": "報告は正しい。ただしこの検体に再検の理由はありません",
+      "headline": "Kを抜き出せています。ただし本物かどうかの見立てが残っていません",
+      "reply": null,
+      "doctor": "msg_n04_ok"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "marks": {
+          "must": [
+            "K"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "緊急報告に項目を並べすぎです",
+      "reply": [
+        "msg_n04_many_kanae",
+        "msg_n04_many_yusuke"
+      ],
+      "doctor": "msg_n04_ok"
+    },
+    {
+      "when": {
+        "report": "emergency"
+      },
+      "score": "ok",
+      "headline": "緊急報告は正しい。ただしどれが急ぎなのかが残っていません",
       "reply": null,
       "doctor": "msg_n04_ok"
     },

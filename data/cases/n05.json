@@ -54,7 +54,17 @@
     },
     {
       "when": {
-        "recheck": true
+        "recheck": true,
+        "marks": {
+          "must": [
+            "K"
+          ]
+        },
+        "suspects": {
+          "K": [
+            "hemolysis"
+          ]
+        }
       },
       "score": "best",
       "headline": "再採血の依頼が最善です",
@@ -62,6 +72,15 @@
         "msg_n05_ok_kanae",
         "msg_n05_ok_yusuke"
       ],
+      "doctor": "msg_n05_ok"
+    },
+    {
+      "when": {
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "再採血の判断は正しい。ただし何を疑ったのかが残っていません",
+      "reply": null,
       "doctor": "msg_n05_ok"
     },
     {

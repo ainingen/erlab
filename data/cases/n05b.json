@@ -73,7 +73,18 @@
       "when": {
         "report": "emergency",
         "comment": true,
-        "recheck": true
+        "recheck": true,
+        "marks": {
+          "must": [
+            "K"
+          ]
+        },
+        "suspects": {
+          "K": [
+            "real",
+            "hemolysis"
+          ]
+        }
       },
       "score": "best",
       "headline": "溶血を付記したうえで緊急報告し、再採血まで出せています",
@@ -81,6 +92,17 @@
         "msg_n05b_ok_kanae",
         "msg_n05b_ok_yusuke"
       ],
+      "doctor": "msg_n05b_emergency_recheck"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "comment": true,
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "手順は合っています。ただし本物か溶血かの見立てが残っていません",
+      "reply": null,
       "doctor": "msg_n05b_emergency_recheck"
     },
     {

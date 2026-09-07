@@ -44,7 +44,10 @@
     },
     {
       "when": {
-        "report": "routine"
+        "report": "routine",
+        "marks": {
+          "max": 0
+        }
       },
       "score": "best",
       "headline": "適切な報告です",
@@ -52,6 +55,15 @@
         "msg_n01_ok_kanae",
         "msg_n01_ok_yusuke"
       ],
+      "doctor": "msg_n01_ok"
+    },
+    {
+      "when": {
+        "report": "routine"
+      },
+      "score": "ok",
+      "headline": "報告レベルは適切。ただし異常のない項目をマークしています",
+      "reply": null,
       "doctor": "msg_n01_ok"
     },
     {

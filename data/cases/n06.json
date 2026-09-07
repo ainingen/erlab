@@ -70,7 +70,17 @@
     {
       "when": {
         "report": "urgent",
-        "comment": true
+        "comment": true,
+        "marks": {
+          "must": [
+            "Hb"
+          ]
+        },
+        "suspects": {
+          "Hb": [
+            "delta"
+          ]
+        }
       },
       "score": "best",
       "headline": "変化の速さを理由に至急報告できています",
@@ -78,6 +88,16 @@
         "msg_n06_ok_kanae",
         "msg_n06_ok_yusuke"
       ],
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {
+        "report": "urgent",
+        "comment": true
+      },
+      "score": "ok",
+      "headline": "至急報告は適切。ただし何が変わったのかが残っていません",
+      "reply": null,
       "doctor": "msg_n06_doctor_ok"
     },
     {
@@ -95,7 +115,12 @@
     },
     {
       "when": {
-        "recheck": true
+        "recheck": true,
+        "suspects": {
+          "Hb": [
+            "mismatch"
+          ]
+        }
       },
       "score": "ok",
       "headline": "取り違えを疑う姿勢は正しい。ただし報告が先です",
@@ -103,6 +128,15 @@
         "msg_n06_recheck_kanae",
         "msg_n06_recheck_yusuke"
       ],
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "再採血の判断は分かります。ただし報告が先です",
+      "reply": null,
       "doctor": "msg_n06_doctor_ok"
     },
     {

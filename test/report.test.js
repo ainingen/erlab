@@ -117,93 +117,159 @@ export function suite(data) {
     eq(res.messageId, null);
   });
 
-  // ---- 症例ごとの判定 ----
-  test('症例n01: 通常報告が最善、上げすぎも再検も要改善', () => {
+  // ---- 症例ごとの判定（mechanics.md 3 の表） ----
+  test('症例n01: 通常報告＋マーク0が最善。何かマークすると許容に落ちる', () => {
     eq(evaluate(caseById.n01, pick('routine')).score, 'best');
     eq(ids(evaluate(caseById.n01, pick('routine')).messageId).join(','),
        'msg_n01_ok_kanae,msg_n01_ok_yusuke');
+    const marked = evaluate(caseById.n01, pick('routine', { marks: ['CRP'] }));
+    eq(marked.score, 'ok', '異常のない項目をマークした通常報告');
+    eq(marked.messageId, null, '講評は付けず医師の返信だけで閉じる');
     eq(evaluate(caseById.n01, pick('urgent')).score, 'poor');
     eq(evaluate(caseById.n01, pick('emergency')).score, 'poor');
     eq(evaluate(caseById.n01, pick('routine', { recheck: true })).score, 'poor');
   });
 
-  test('症例n02: 軽度のHは通常報告が最善、電話すると要改善', () => {
-    eq(evaluate(caseById.n02, pick('routine')).score, 'best');
-    eq(evaluate(caseById.n02, pick('emergency')).score, 'poor');
-    eq(ids(evaluate(caseById.n02, pick('emergency')).messageId).join(','),
+  test('症例n02: マーク0でもCRPだけでも最善。CRPに本物の異常を付けてもよい', () => {
+    const c = caseById.n02;
+    eq(evaluate(c, pick('routine')).score, 'best', 'マーク0');
+    eq(evaluate(c, pick('routine', { marks: ['CRP'] })).score, 'best', 'CRPのみ');
+    eq(evaluate(c, pick('routine', { marks: ['CRP'], suspects: { CRP: ['real'] } })).score,
+       'best', 'CRPに本物の異常');
+    eq(evaluate(c, pick('routine', { marks: ['CRP', 'WBC'] })).score, 'ok', '基準内まで拾った');
+    eq(evaluate(c, pick('emergency')).score, 'poor');
+    eq(ids(evaluate(c, pick('emergency')).messageId).join(','),
        'msg_n02_over_kanae,msg_n02_over_yusuke');
   });
 
-  test('症例n03: コメントの有無で best と ok が分かれる', () => {
-    eq(evaluate(caseById.n03, pick('routine', { comment: '小球性低色素性。' })).score, 'best');
-    const thin = evaluate(caseById.n03, pick('routine'));
+  test('症例n03: Hbをマークして本物の異常を付け、コメント付きで通常報告が最善', () => {
+    const c = caseById.n03;
+    const full = { comment: '小球性低色素性。', marks: ['Hb'], suspects: { Hb: ['real'] } };
+    eq(evaluate(c, pick('routine', full)).score, 'best');
+    eq(ids(evaluate(c, pick('routine', full)).messageId).join(','),
+       'msg_n03_ok_kanae,msg_n03_ok_yusuke');
+    eq(evaluate(c, pick('routine', { ...full, marks: ['Hb', 'MCV', 'MCH'] })).score,
+       'best', 'MCV・MCHまでは一緒にマークしてよい');
+    eq(evaluate(c, pick('routine', { ...full, marks: ['Hb', 'MCV', 'MCH', 'RBC'] })).score,
+       'ok', '4つ目からは絞れていない');
+    eq(evaluate(c, pick('routine', { comment: '小球性低色素性。' })).score, 'ok', 'マークなし');
+
+    const thin = evaluate(c, pick('routine', { marks: ['Hb'], suspects: { Hb: ['real'] } }));
     eq(thin.score, 'ok');
     eq(ids(thin.messageId).join(','), 'msg_n03_ok_nocomment_kanae,msg_n03_ok_nocomment_yusuke');
-    eq(evaluate(caseById.n03, pick('urgent')).score, 'poor');
+    eq(evaluate(c, pick('urgent')).score, 'poor');
   });
 
-  test('症例n04: 緊急報告が最善、至急どまりと不要な再検は許容、通常報告は要改善', () => {
-    const best = evaluate(caseById.n04, pick('emergency'));
+  test('症例n04: Kだけをマークして本物の異常を付け、緊急報告が最善', () => {
+    const c = caseById.n04;
+    const best = evaluate(c, pick('emergency', { marks: ['K'], suspects: { K: ['real'] } }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n04_ok_kanae,msg_n04_ok_yusuke');
-    eq(evaluate(caseById.n04, pick('emergency', { recheck: true })).score, 'ok');
-    eq(evaluate(caseById.n04, pick('urgent')).score, 'ok');
-    eq(evaluate(caseById.n04, pick('routine')).score, 'poor');
+
+    const many = evaluate(c, pick('emergency', {
+      marks: ['K', 'BUN', 'Cre', 'HCO3', 'Hb'],
+      suspects: { K: ['real'] },
+    }));
+    eq(many.score, 'ok', 'K以外も一緒にマークした緊急報告');
+    eq(ids(many.messageId).join(','), 'msg_n04_many_kanae,msg_n04_many_yusuke');
+
+    eq(evaluate(c, pick('emergency', { marks: ['K'] })).score, 'ok', '疑いを選んでいない');
+    eq(evaluate(c, pick('emergency')).score, 'ok', 'マークなしの緊急報告');
+    eq(evaluate(c, pick('emergency', { recheck: true, marks: ['K'], suspects: { K: ['real'] } })).score,
+       'ok', '不要な再検');
+    eq(evaluate(c, pick('urgent', { marks: ['K'], suspects: { K: ['real'] } })).score, 'ok');
+    eq(evaluate(c, pick('routine', { marks: ['K'], suspects: { K: ['real'] } })).score, 'poor');
   });
 
-  test('症例n05: 再採血が最善、溶血した値での電話は要改善', () => {
-    const best = evaluate(caseById.n05, pick('routine', { recheck: true }));
+  test('症例n05: Kをマークして溶血を疑い、再採血を出すのが最善', () => {
+    const c = caseById.n05;
+    const hemolysis = { marks: ['K'], suspects: { K: ['hemolysis'] } };
+    const best = evaluate(c, pick('routine', { recheck: true, ...hemolysis }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n05_ok_kanae,msg_n05_ok_yusuke');
-    eq(evaluate(caseById.n05, pick('emergency', { recheck: true })).score, 'ok');
-    eq(evaluate(caseById.n05, pick('urgent', { comment: '溶血3+のため参考値' })).score, 'ok');
-    eq(evaluate(caseById.n05, pick('emergency')).score, 'poor');
-    eq(evaluate(caseById.n05, pick('routine')).score, 'poor');
-    eq(evaluate(caseById.n05, pick('urgent')).score, 'poor', '溶血に触れない至急報告');
+
+    eq(evaluate(c, pick('routine', { recheck: true })).score, 'ok', '疑いを選ばない再採血');
+    eq(evaluate(c, pick('emergency', { recheck: true, ...hemolysis })).score, 'ok');
+    eq(evaluate(c, pick('urgent', { comment: '溶血3+のため参考値', ...hemolysis })).score, 'ok');
+
+    const real = evaluate(c, pick('emergency', { marks: ['K'], suspects: { K: ['real'] } }));
+    eq(real.score, 'poor', '本物の異常と決めて電話をかけた');
+    eq(ids(real.messageId).join(','), 'msg_n05_over_kanae,msg_n05_over_yusuke');
+    eq(evaluate(c, pick('routine')).score, 'poor');
+    eq(evaluate(c, pick('urgent')).score, 'poor', '溶血に触れない至急報告');
   });
 
-  test('症例n05b: 最善は「緊急報告＋コメント＋再採血」の一本だけ', () => {
+  test('症例n05b: 最善は「緊急報告＋コメント＋再採血＋Kに本物の異常と溶血」の一本だけ', () => {
     const c = caseById.n05b;
     const note = '溶血2+。前回K 5.8、Cre 3.2。';
+    const both = { marks: ['K'], suspects: { K: ['real', 'hemolysis'] } };
     eq(c.choices.filter((b) => b.score === 'best').length, 1, '最善の枝の数');
 
-    const best = evaluate(c, pick('emergency', { recheck: true, comment: note }));
+    const best = evaluate(c, pick('emergency', { recheck: true, comment: note, ...both }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n05b_ok_kanae,msg_n05b_ok_yusuke');
 
-    eq(evaluate(c, pick('urgent', { recheck: true, comment: note })).score, 'ok', 'HHを至急に落とした');
-    eq(evaluate(c, pick('emergency')).score, 'ok', '緊急報告のみ');
-    eq(evaluate(c, pick('routine', { recheck: true })).score, 'poor', '再採血のみで報告なし');
+    eq(evaluate(c, pick('emergency', { recheck: true, comment: note })).score,
+       'ok', '見立てを残していない');
+    eq(evaluate(c, pick('emergency', {
+      recheck: true, comment: note, marks: ['K'], suspects: { K: ['hemolysis'] },
+    })).score, 'ok', '溶血だけで本物を選んでいない');
+
+    eq(evaluate(c, pick('urgent', { recheck: true, comment: note, ...both })).score,
+       'ok', 'HHを至急に落とした');
+    eq(evaluate(c, pick('emergency', both)).score, 'ok', '緊急報告のみ');
+    eq(evaluate(c, pick('routine', { recheck: true, ...both })).score, 'poor', '再採血のみで報告なし');
     eq(evaluate(c, pick('routine')).score, 'poor');
   });
 
+  test('症例n05b: 溶血だけを疑って再採血で止めると要改善', () => {
+    const res = evaluate(caseById.n05b, pick('routine', {
+      recheck: true, marks: ['K'], suspects: { K: ['hemolysis'] },
+    }));
+    eq(res.score, 'poor');
+    eq(ids(res.messageId).join(','),
+       'msg_n05b_recheck_only_kanae,msg_n05b_recheck_only_yusuke');
+  });
+
   test('症例n05b: 至急＋再採血の講評は症例4の至急報告ぶんを流用する', () => {
-    const res = evaluate(caseById.n05b, pick('urgent', { recheck: true, comment: '溶血2+' }));
+    const res = evaluate(caseById.n05b, pick('urgent', {
+      recheck: true, comment: '溶血2+', marks: ['K'], suspects: { K: ['real', 'hemolysis'] },
+    }));
     eq(ids(res.messageId).join(','), 'msg_n04_urgent_kanae,msg_n04_urgent_yusuke');
     eq(res.doctorId, 'msg_n05b_urgent_only');
   });
 
-  test('症例n06: 至急＋コメントが最善、Δを見落とした通常報告は要改善', () => {
+  test('症例n06: Hbをマークして乖離を疑い、コメント付きの至急報告が最善', () => {
     const c = caseById.n06;
     const note = '前回13.5から急激な低下、黒色便あり';
-    const best = evaluate(c, pick('urgent', { comment: note }));
+    const delta = { marks: ['Hb'], suspects: { Hb: ['delta'] } };
+    const best = evaluate(c, pick('urgent', { comment: note, ...delta }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n06_ok_kanae,msg_n06_ok_yusuke');
     eq(best.doctorId, 'msg_n06_doctor_ok');
 
-    eq(evaluate(c, pick('emergency', { comment: note })).score, 'ok', 'HHでない値に緊急回線');
-    eq(evaluate(c, pick('routine', { recheck: true })).score, 'ok', '再採血のみ');
+    eq(evaluate(c, pick('urgent', {
+      comment: note, marks: ['Hb'], suspects: { Hb: ['real', 'delta'] },
+    })).score, 'best', '本物の異常を一緒に付けてもよい');
+    eq(evaluate(c, pick('urgent', { comment: note })).score, 'ok', 'マークなし');
+    eq(evaluate(c, pick('emergency', { comment: note, ...delta })).score, 'ok', 'HHでない値に緊急回線');
 
-    const bad = evaluate(c, pick('routine'));
+    const mismatch = evaluate(c, pick('routine', {
+      recheck: true, marks: ['Hb'], suspects: { Hb: ['mismatch'] },
+    }));
+    eq(mismatch.score, 'ok', '取り違えを疑って再採血');
+    eq(ids(mismatch.messageId).join(','), 'msg_n06_recheck_kanae,msg_n06_recheck_yusuke');
+
+    const bad = evaluate(c, pick('routine', delta));
     eq(bad.score, 'poor');
     eq(ids(bad.messageId).join(','), 'msg_n06_routine_kanae,msg_n06_routine_yusuke');
     eq(bad.doctorId, 'msg_n06_doctor_poor');
   });
 
   test('症例5と5-b: 同じ「溶血」でも最善の手が変わる', () => {
-    const recheckOnly = pick('routine', { recheck: true });
-    eq(evaluate(caseById.n05, recheckOnly).score, 'best', 'n05は再採血だけで足りる');
-    eq(evaluate(caseById.n05b, recheckOnly).score, 'poor', 'n05bは黙って待たせない');
+    const hemolysis = { recheck: true, marks: ['K'], suspects: { K: ['hemolysis'] } };
+    eq(evaluate(caseById.n05, pick('routine', hemolysis)).score, 'best', 'n05は再採血だけで足りる');
+    eq(evaluate(caseById.n05b, pick('routine', hemolysis)).score, 'poor', 'n05bは黙って待たせない');
   });
 
   // ---- 症例JSONの形 ----
