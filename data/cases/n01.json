@@ -11,12 +11,25 @@
   "seed": { "condition": "normal", "severity": 0 },
   "artifact": null,
   "previous": null,
-  "correct": { "report": "routine", "recheck": false, "comment": "none" },
   "nav": "msg_n01_nav",
-  "outcome": {
-    "routine": "msg_n01_ok",
-    "urgent": "msg_n01_over",
-    "emergency": "msg_n01_over",
-    "recheck": "msg_n01_recheck"
-  }
+  "choices": [
+    {
+      "when": { "recheck": true },
+      "score": "poor",
+      "headline": "再検の理由がありません",
+      "reply": "msg_n01_recheck"
+    },
+    {
+      "when": { "report": "routine" },
+      "score": "best",
+      "headline": "適切な報告です",
+      "reply": "msg_n01_ok"
+    },
+    {
+      "when": {},
+      "score": "poor",
+      "headline": "過剰報告です",
+      "reply": "msg_n01_over"
+    }
+  ]
 }

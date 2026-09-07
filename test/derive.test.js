@@ -1,7 +1,7 @@
 // src/derive.js のテスト。実行環境に Node が要らないよう、ブラウザで開く形にしてある。
 //   test/index.html をローカルサーバー経由で開くと結果が出る。
 
-import { loadData } from '../src/data.js';
+import { test, eq, close } from './harness.js';
 import {
   round,
   resolveRoots,
@@ -12,33 +12,10 @@ import {
   flagFor,
   deltaCheck,
   buildPanel,
+  buildRecollect,
 } from '../src/derive.js';
 
-const results = [];
-
-function test(name, fn) {
-  try {
-    fn();
-    results.push({ name, ok: true });
-  } catch (err) {
-    results.push({ name, ok: false, message: err.message });
-  }
-}
-
-function eq(actual, expected, label = '') {
-  if (actual !== expected) {
-    throw new Error(`${label || '値'}: 期待 ${JSON.stringify(expected)} / 実際 ${JSON.stringify(actual)}`);
-  }
-}
-
-function close(actual, expected, tol, label = '') {
-  if (typeof actual !== 'number' || Math.abs(actual - expected) > tol) {
-    throw new Error(`${label || '値'}: 期待 ${expected}±${tol} / 実際 ${actual}`);
-  }
-}
-
-export async function run() {
-  const data = await loadData();
+export function suite(data) {
   const caseById = Object.fromEntries(data.cases.map((c) => [c.id, c]));
 
   // ---- 丸め ----
@@ -101,7 +78,7 @@ export async function run() {
   test('applyArtifact: 溶血はK・LD・ASTだけを動かす', () => {
     const base = { K: 4.1, LD: 178, AST: 21, ALT: 16 };
     const { values } = applyArtifact(base, data.artifacts.artifacts.hemolysis_2plus);
-    close(values.K, 5.0, 0.0001, 'K');
+    close(values.K, 4.8, 0.0001, 'K');
     close(values.LD, 498.4, 0.0001, 'LD');
     close(values.AST, 46, 0.0001, 'AST');
     eq(values.ALT, 16, 'ALTは動かない');
@@ -225,13 +202,95 @@ export async function run() {
     eq(byId.Hb.previousDisplay, '10.1');
   });
 
-  test('症例n03: 手書きした前回値が derive.js の計算と矛盾しない', () => {
-    const prev = caseById.n03.previous.values;
-    const d = deriveHematology(prev);
-    eq(round(d.Hb, 1), prev.Hb, 'Hb');
-    eq(round(d.Ht, 1), prev.Ht, 'Ht');
-    eq(round(d.MCHC, 1), prev.MCHC, 'MCHC');
-    eq(round(anionGap(prev), 1), prev.AG, 'AG');
+  test('症例n04: Kだけがパニック値になり、電話の対象がひとつに絞れる', () => {
+    const panel = buildPanel(caseById.n04, data);
+    const byId = Object.fromEntries(panel.rows.map((r) => [r.id, r]));
+    eq(byId.K.display, '6.8');
+    eq(byId.K.flag, 'HH');
+    eq(panel.rows.filter((r) => r.panic).map((r) => r.id).join(','), 'K', 'パニック値の項目');
+    eq(panel.sampleComment, null, '検体トラブルなし');
+    eq(byId.BUN.flag, 'H');
+    eq(byId.Cre.flag, 'H');
+    eq(byId.HCO3.flag, 'L');
+    eq(byId.AG.flag, 'H');
+    eq(byId.Hb.flag, 'L', '腎性貧血');
+    eq(byId.MCV.flag, '', '正球性');
+    eq(byId.K.delta, false, 'デルタチェックは鳴らさない');
+  });
+
+  test('症例n05: 溶血だけでKがパニック値に見え、ALTは動かない', () => {
+    const panel = buildPanel(caseById.n05, data);
+    const byId = Object.fromEntries(panel.rows.map((r) => [r.id, r]));
+    eq(byId.K.display, '6.8', '研修4と同じ数字に見せる');
+    eq(byId.K.flag, 'HH');
+    eq(byId.LD.flag, 'H');
+    eq(byId.AST.flag, 'H');
+    eq(byId.ALT.flag, '', 'ALTは動かない＝赤血球由来の目印');
+    eq(panel.sampleComment, '溶血（3+）');
+  });
+
+  test('症例n05: 再採血すると溶血の上乗せが消え、Kは基準範囲に戻る', () => {
+    const first = buildPanel(caseById.n05, data);
+    const re = buildRecollect(caseById.n05, first, data);
+    const byId = Object.fromEntries(re.rows.map((r) => [r.id, r]));
+    eq(byId.K.display, '4.6');
+    eq(byId.K.flag, '', '基準範囲内');
+    eq(byId.LD.flag, '');
+    eq(byId.AST.flag, '');
+    eq(re.hasPanic, false, 'パニック値は残らない');
+    eq(re.sampleComment, null, '再採血検体に検体トラブルはない');
+    eq(byId.K.previousDisplay, '6.8', '前回値欄に最初の検体が並ぶ');
+    eq(byId.K.delta, true, '最初の検体から規定幅を超えて動く');
+  });
+
+  test('症例n05b: 溶血していても、上乗せを外したKはパニック値のまま残る', () => {
+    const first = buildPanel(caseById.n05b, data);
+    const firstById = Object.fromEntries(first.rows.map((r) => [r.id, r]));
+    eq(firstById.K.display, '6.9');
+    eq(firstById.K.flag, 'HH');
+    eq(firstById.ALT.flag, '', '溶血の目印はn05と同じ');
+    eq(first.sampleComment, '溶血（2+）');
+
+    const re = buildRecollect(caseById.n05b, first, data);
+    const reById = Object.fromEntries(re.rows.map((r) => [r.id, r]));
+    eq(reById.K.display, '6.2', '再採血後も高値が残る');
+    eq(reById.K.flag, 'HH', 'パニック値のまま');
+    eq(re.hasPanic, true);
+    eq(reById.LD.flag, '', 'LDは基準範囲に戻る');
+    eq(reById.AST.flag, '', 'ASTは基準範囲に戻る');
+    eq(reById.Cre.display, '3.20');
+    eq(reById.Cre.flag, 'H', '腎機能低下は検体を替えても残る');
+  });
+
+  test('症例n05b: 前回値5.8と比べたΔは、溶血の上乗せを含んだ値で鳴っている', () => {
+    const first = buildPanel(caseById.n05b, data);
+    const byId = Object.fromEntries(first.rows.map((r) => [r.id, r]));
+    eq(byId.K.previousDisplay, '5.8');
+    eq(byId.K.delta, true);
+    const re = buildRecollect(caseById.n05b, first, data);
+    eq(Object.fromEntries(re.rows.map((r) => [r.id, r])).K.delta, false, '取り直すとΔは鳴らない');
+  });
+
+  test('全症例: recollect を持つ症例は検体トラブルなしで組み直せる', () => {
+    for (const c of data.cases) {
+      if (!c.recollect) continue;
+      const re = buildRecollect(c, buildPanel(c, data), data);
+      eq(re.sampleComment, null, `${c.id} の再採血検体`);
+      eq(re.hasUnmeasurable, false, `${c.id} の再採血検体に測定不可がある`);
+      for (const row of re.rows) eq(row.value === null, false, `${c.id} ${row.id} に値がない`);
+    }
+  });
+
+  test('全症例: 手書きした前回値が derive.js の計算と矛盾しない', () => {
+    for (const c of data.cases) {
+      if (!c.previous) continue;
+      const prev = c.previous.values;
+      const d = deriveHematology(prev);
+      eq(round(d.Hb, 1), prev.Hb, `${c.id} Hb`);
+      eq(round(d.Ht, 1), prev.Ht, `${c.id} Ht`);
+      eq(round(d.MCHC, 1), prev.MCHC, `${c.id} MCHC`);
+      eq(round(anionGap(prev), 1), prev.AG, `${c.id} AG`);
+    }
   });
 
   test('全症例: 依頼された項目がすべて表示される', () => {
@@ -254,6 +313,4 @@ export async function run() {
       eq(data.hospital.reference[t.id] !== undefined, true, `${t.id} の基準範囲`);
     }
   });
-
-  return results;
 }

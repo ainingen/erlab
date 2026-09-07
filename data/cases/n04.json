@@ -1,0 +1,67 @@
+{
+  "id": "n04",
+  "mode": "rookie",
+  "title": "4. はじめてのパニック値",
+  "goal": "HHを見つけたら、電話をかけて読み返しを取るところまでやる",
+  "accession": "26-0907-041",
+  "received_at": "09:38",
+  "patient": { "id": "P-0004", "label": "患者D", "age": 67, "sex": "M", "from": "ER" },
+  "handover": "msg_n04_intro",
+  "order": ["CBC", "CHEM_BASIC"],
+  "seed": { "condition": "hyperkalemia_renal", "severity": 2 },
+  "artifact": null,
+  "previous": {
+    "date": "2026-08-24",
+    "note": "2週間前・同院腎臓内科",
+    "values": {
+      "WBC": 6.4,
+      "RBC": 3.81,
+      "Hb": 11.6,
+      "Ht": 34.4,
+      "MCV": 90.2,
+      "MCH": 30.4,
+      "MCHC": 33.7,
+      "PLT": 238,
+      "Na": 139,
+      "K": 5.9,
+      "Cl": 103,
+      "HCO3": 18.5,
+      "BUN": 44,
+      "Cre": 3.38,
+      "Glu": 96,
+      "AST": 19,
+      "ALT": 22,
+      "LD": 182,
+      "CRP": 0.09,
+      "Ca": 8.6,
+      "AG": 17.5
+    }
+  },
+  "nav": "msg_n04_nav",
+  "choices": [
+    {
+      "when": { "report": "emergency", "recheck": false },
+      "score": "best",
+      "headline": "適切な報告です",
+      "reply": "msg_n04_ok"
+    },
+    {
+      "when": { "report": "emergency", "recheck": true },
+      "score": "ok",
+      "headline": "報告は正しい。ただしこの検体に再検の理由はありません",
+      "reply": "msg_n04_recheck"
+    },
+    {
+      "when": { "report": "urgent" },
+      "score": "ok",
+      "headline": "届いてはいます。ただしパニック値は電話で読み返しまで取る決まりです",
+      "reply": "msg_n04_urgent"
+    },
+    {
+      "when": {},
+      "score": "poor",
+      "headline": "パニック値を通常報告にしています",
+      "reply": "msg_n04_routine"
+    }
+  ]
+}

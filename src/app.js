@@ -1,10 +1,10 @@
 // 画面の組み立てとイベント処理。ロジックは derive.js / report.js 側に置く。
 
 import { loadData } from './data.js';
-import { buildPanel } from './derive.js';
-import { renderWorklist, renderResults, renderGlossary, esc } from './lis.js';
+import { buildPanel, buildRecollect } from './derive.js';
+import { renderWorklist, renderResults, renderRecollect, renderGlossary, esc } from './lis.js';
 import { renderMessages, messageById } from './messages.js';
-import { renderReportDialog, renderPhone, evaluate, renderVerdict } from './report.js';
+import { renderReportDialog, renderPhone, evaluate, renderVerdict, SCORE_LABEL } from './report.js';
 
 const state = {
   data: null,
@@ -12,6 +12,7 @@ const state = {
   panels: new Map(),
   status: {},
   results: {},
+  recollected: {},
   messages: [],
   currentCaseId: null,
   pendingChoice: null,
@@ -73,10 +74,14 @@ function renderAll() {
 
   $('#pane-worklist').innerHTML = renderWorklist(state.cases, {
     status: state.status,
+    results: state.results,
+    scoreLabel: SCORE_LABEL,
     currentCaseId: state.currentCaseId,
   });
 
-  $('#pane-lis').innerHTML = renderResults(caseDef, panel, state.data);
+  const re = state.recollected[caseDef.id];
+  $('#pane-lis').innerHTML =
+    renderResults(caseDef, panel, state.data) + (re ? renderRecollect(caseDef, re) : '');
 
   const msgPane = $('#pane-messages');
   msgPane.innerHTML = renderMessages(state.messages);
@@ -93,9 +98,12 @@ function renderAll() {
   nextBtn.hidden = !(done && next);
   if (next) nextBtn.dataset.case = next.id;
 
+  const tally = { best: 0, ok: 0, poor: 0 };
+  for (const r of Object.values(state.results)) tally[r.score] = (tally[r.score] || 0) + 1;
   const total = Object.keys(state.results).length;
-  const ok = Object.values(state.results).filter((r) => r.ok).length;
-  $('#score').textContent = total ? `報告 ${total}件 / 適切 ${ok}件` : '報告 0件';
+  $('#score').textContent = total
+    ? `報告 ${total}件 ／ 最善 ${tally.best}・許容 ${tally.ok}・要改善 ${tally.poor}`
+    : '報告 0件';
   $('#case-title').textContent = caseDef.title;
 }
 
@@ -175,6 +183,11 @@ function finishReport(choice) {
   state.results[caseDef.id] = res;
   state.status[caseDef.id] = 'done';
   if (res.messageId) pushMessage(res.messageId);
+
+  if (choice.recheck && caseDef.recollect) {
+    state.recollected[caseDef.id] = buildRecollect(caseDef, currentPanel(), state.data);
+    if (caseDef.recollect.reply) pushMessage(caseDef.recollect.reply);
+  }
   state.pendingChoice = null;
   $('#report-body').innerHTML = renderVerdict(res, choice, state.data);
   renderAll();

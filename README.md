@@ -15,7 +15,7 @@ python -m http.server 5173
 ```
 
 - 本体: <http://localhost:5173/index.html>
-- テスト: <http://localhost:5173/test/> （`src/derive.js` のテスト。ブラウザで開くと結果が出る）
+- テスト: <http://localhost:5173/test/> （`src/derive.js` と判定構造のテスト。ブラウザで開くと結果が出る）
 
 依存ライブラリはなし。ビルド手順もなし。
 
@@ -42,14 +42,17 @@ docs/
   sources.md        数値の出典と確認状況
 test/
   index.html        テストを開くページ
+  harness.js        テスト用の最小の道具
   derive.test.js    derive.js のテスト
+  report.test.js    判定構造（症例の choices）のテスト
 ```
 
 ## 決めごと
 
 - 基準範囲・パニック値は `data/hospital.json` の1セットのみ。ほかの場所に数値を書かない
 - 派生値（Hb・Ht・MCHC・AG）は `src/derive.js` が計算する。症例JSONに直書きしない
-- 異常表示は色ではなくフラグ記号（H, L, HH, LL）
+- 異常表示の主はフラグ記号（H, L, HH, LL）。色は該当セルだけに付ける補助で、色がなくても判断できること
+- 症例に単一の正解は置かない。`choices` に選択肢ごとの評価（最善／許容／要改善）と医師返信を並べる
 - 索引は5枠固定
 - 医師パート・病名確定・治療選択は作らない
 

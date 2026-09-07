@@ -1,0 +1,53 @@
+{
+  "id": "n05",
+  "mode": "rookie",
+  "title": "5. 同じ6.8、ただし検体が壊れている",
+  "goal": "即報告が正解とはかぎらない。まず検体を疑えるようになる",
+  "accession": "26-0907-052",
+  "received_at": "10:26",
+  "patient": { "id": "P-0005", "label": "患者E", "age": 45, "sex": "F", "from": "ER" },
+  "handover": "msg_n05_intro",
+  "order": ["CBC", "CHEM_BASIC"],
+  "seed": { "condition": "normal", "severity": 0, "overrides": { "K": 4.6 } },
+  "artifact": "hemolysis_3plus",
+  "previous": null,
+  "nav": "msg_n05_nav",
+  "recollect": {
+    "accession": "26-0907-052R",
+    "received_at": "10:58",
+    "artifact": null,
+    "reply": "msg_n05_recollect"
+  },
+  "choices": [
+    {
+      "when": { "report": "emergency", "recheck": true },
+      "score": "ok",
+      "headline": "再採血の判断は正しい。ただし信用していない値で電話はかけません",
+      "reply": "msg_n05_call_and_recheck"
+    },
+    {
+      "when": { "recheck": true },
+      "score": "best",
+      "headline": "再採血の依頼が最善です",
+      "reply": "msg_n05_ok"
+    },
+    {
+      "when": { "report": "urgent", "comment": true },
+      "score": "ok",
+      "headline": "溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません",
+      "reply": "msg_n05_urgent"
+    },
+    {
+      "when": { "report": "emergency" },
+      "score": "poor",
+      "headline": "溶血した検体の値で電話をかけています",
+      "reply": "msg_n05_over"
+    },
+    {
+      "when": {},
+      "score": "poor",
+      "headline": "検体状態に触れないまま報告しています",
+      "reply": "msg_n05_silent"
+    }
+  ]
+}

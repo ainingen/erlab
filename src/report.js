@@ -3,7 +3,7 @@
 
 import { esc } from './lis.js';
 
-const LEVEL_ORDER = { routine: 0, urgent: 1, emergency: 2 };
+export const SCORE_LABEL = { best: '最善', ok: '許容', poor: '要改善' };
 
 export function renderReportDialog(caseDef, data) {
   const levels = data.hospital.report_levels
@@ -63,43 +63,41 @@ export function renderPhone(caseDef, panel) {
 }
 
 /**
- * 判定。choice = { level, comment, recheck, readback }
- * 戻り値の messageId を院内メッセージに流す。
+ * 判定。単一の正解を置かず、症例の choices を上から順に見て、
+ * 最初に条件の合った枝の score（best / ok / poor）と医師返信を返す。
+ *
+ * choice = { level, comment, recheck, readback }
+ * when に書かれた項目だけを見る（書かれていない項目は不問）。
+ *   report   … 報告レベル（routine / urgent / emergency）
+ *   recheck  … 再検・再採血を依頼したか
+ *   comment  … コメントを書いたか（真偽値。中身は見ない）
+ *   readback … 読み返し確認をとったか
+ * 最後の枝は when を空にして、必ずどれかに当たるようにしておく。
  */
 export function evaluate(caseDef, choice) {
-  const correct = caseDef.correct;
-  const outcome = caseDef.outcome || {};
-  const commentGiven = Boolean(choice.comment && choice.comment.trim());
-
-  if (choice.recheck && !correct.recheck) {
-    return result('recheck_unneeded', '再検は不要でした', outcome.recheck || outcome[choice.level]);
+  const branch = (caseDef.choices || []).find((c) => matches(c.when || {}, choice));
+  if (!branch) {
+    return {
+      score: 'poor',
+      headline: '判定できませんでした',
+      messageId: null,
+      matched: null,
+    };
   }
-  if (!choice.recheck && correct.recheck) {
-    return result('recheck_missing', '再検・再採血が必要な検体でした', outcome[choice.level]);
-  }
-
-  const diff = LEVEL_ORDER[choice.level] - LEVEL_ORDER[correct.report];
-  if (diff > 0) {
-    return result('over', '過剰報告です', outcome[choice.level]);
-  }
-  if (diff < 0) {
-    return result('under', '報告レベルが足りません', outcome[choice.level]);
-  }
-
-  if (!commentGiven && (correct.comment === 'required' || correct.comment === 'recommended')) {
-    const key = `${choice.level}_nocomment`;
-    return result(
-      'ok_thin',
-      '報告レベルは適切。ただしコメントを付けたい場面でした',
-      outcome[key] || outcome[choice.level],
-    );
-  }
-
-  return result('ok', '適切な報告です', outcome[choice.level]);
+  return {
+    score: branch.score,
+    headline: branch.headline,
+    messageId: branch.reply || null,
+    matched: branch,
+  };
 }
 
-function result(verdict, headline, messageId) {
-  return { verdict, headline, messageId: messageId || null, ok: verdict === 'ok' };
+function matches(when, choice) {
+  return Object.entries(when).every(([key, expected]) => {
+    if (key === 'report') return choice.level === expected;
+    if (key === 'comment') return Boolean(choice.comment && choice.comment.trim()) === expected;
+    return Boolean(choice[key]) === expected;
+  });
 }
 
 export function renderVerdict(res, choice, data) {
@@ -110,7 +108,10 @@ export function renderVerdict(res, choice, data) {
   if (choice.readback) bits.push('読み返し確認あり');
 
   return `
-    <h2 class="verdict-${esc(res.verdict)}">${esc(res.headline)}</h2>
+    <h2 class="verdict">
+      <span class="score-badge score-${esc(res.score)}">${esc(SCORE_LABEL[res.score] || res.score)}</span>
+      ${esc(res.headline)}
+    </h2>
     <p class="verdict-choice">${esc(bits.join(' ／ '))}</p>
     <p class="verdict-note">院内メッセージに返信が届いています。</p>
     <div class="dlg-actions">

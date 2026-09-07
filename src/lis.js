@@ -15,7 +15,10 @@ const SEX_LABEL = { M: '男', F: '女' };
 export function renderWorklist(cases, state) {
   const rows = cases.map((c) => {
     const status = state.status[c.id] || 'ready';
-    const statusLabel = { ready: '測定完了', done: '報告済', current: '確認中' }[status] || status;
+    const scored = state.results[c.id];
+    const statusLabel = scored
+      ? `報告済 ${state.scoreLabel[scored.score] || ''}`
+      : { ready: '測定完了', current: '確認中' }[status] || status;
     const urgent = c.patient.from === 'ER';
     const selected = c.id === state.currentCaseId;
     return `
@@ -73,6 +76,8 @@ export function renderResults(caseDef, panel, data) {
 function renderPanelTable(pn) {
   const rows = pn.rows.map((r) => {
     const flagClass = r.flag ? (r.panic ? 'flag flag-panic' : 'flag') : 'flag';
+    // 色はフラグ記号の補助。記号を消して色だけにしてはいけない。
+    const cellClass = r.panic ? ' class="is-panic"' : r.flag ? ' class="is-warn"' : '';
     const deltaMark = r.delta ? '<span class="delta" title="前回値から規定幅を超えて変動">Δ</span>' : '';
     return `
       <tr${r.flag ? ' class="is-flagged"' : ''}>
@@ -85,7 +90,7 @@ function renderPanelTable(pn) {
         <td data-col="value">${esc(r.display)}${deltaMark}</td>
         <td data-col="unit">${esc(r.unit)}</td>
         <td data-col="ref"><span class="lbl">基準</span>${esc(r.referenceDisplay)}</td>
-        <td data-col="flag"><span class="${flagClass}">${esc(r.flag)}</span></td>
+        <td data-col="flag"${cellClass}><span class="${flagClass}">${esc(r.flag)}</span></td>
         <td data-col="prev"><span class="lbl">前回</span>${esc(r.previousDisplay)}</td>
       </tr>`;
   });
@@ -105,6 +110,21 @@ function renderPanelTable(pn) {
       </thead>
       <tbody>${rows.join('')}</tbody>
     </table>`;
+}
+
+/** 再採血した検体の結果。再採血を依頼したときだけ、最初の検体の下に並べる。 */
+export function renderRecollect(caseDef, panel) {
+  const re = caseDef.recollect;
+  const sampleText = panel.sampleComment || '特記なし';
+  return `
+    <section class="recollect">
+      <h3 class="recollect-head">再採血検体　${esc(re.accession)}　採取 ${esc(re.received_at)}</h3>
+      <dl class="pt-meta">
+        <dt>検体状態</dt><dd class="${panel.sampleComment ? 'is-flagged' : ''}">${esc(sampleText)}</dd>
+        <dt>前回値欄</dt><dd>同じ患者の最初の検体（${esc(caseDef.accession)}）の値を並べています。</dd>
+      </dl>
+      ${panel.panels.map((pn) => renderPanelTable(pn)).join('')}
+    </section>`;
 }
 
 /** 索引（用語集）。枠は5つで固定。枠2の基準範囲は hospital.json から作る。 */

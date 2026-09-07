@@ -203,6 +203,28 @@ export function buildPanel(caseDef, data) {
   });
 
   const rows = panels.flatMap((p) => p.rows);
+  return summarize(panels, rows, values, artifact);
+}
+
+/**
+ * 再採血した検体を組み立てる。中身（病態）はそのままで、検体トラブルだけ外す。
+ * 前回値欄には最初の検体の値を入れ、どこが動いてどこが動かなかったかを並べて見せる。
+ */
+export function buildRecollect(caseDef, firstPanel, data) {
+  const re = caseDef.recollect;
+  if (!re) return null;
+  return buildPanel(
+    {
+      ...caseDef,
+      seed: re.seed || caseDef.seed,
+      artifact: re.artifact ?? null,
+      previous: { date: re.received_at, note: '同日・最初の検体', values: firstPanel.values },
+    },
+    data,
+  );
+}
+
+function summarize(panels, rows, values, artifact) {
   return {
     panels,
     rows,

@@ -37,13 +37,31 @@
       "AG": 12.0
     }
   },
-  "correct": { "report": "routine", "recheck": false, "comment": "recommended" },
   "nav": "msg_n03_nav",
-  "outcome": {
-    "routine": "msg_n03_ok",
-    "routine_nocomment": "msg_n03_ok_nocomment",
-    "urgent": "msg_n03_over",
-    "emergency": "msg_n03_over",
-    "recheck": "msg_n03_recheck"
-  }
+  "choices": [
+    {
+      "when": { "recheck": true },
+      "score": "poor",
+      "headline": "再検の理由がありません",
+      "reply": "msg_n03_recheck"
+    },
+    {
+      "when": { "report": "routine", "comment": true },
+      "score": "best",
+      "headline": "適切な報告です",
+      "reply": "msg_n03_ok"
+    },
+    {
+      "when": { "report": "routine", "comment": false },
+      "score": "ok",
+      "headline": "報告レベルは適切。ただしコメントを付けたい場面でした",
+      "reply": "msg_n03_ok_nocomment"
+    },
+    {
+      "when": {},
+      "score": "poor",
+      "headline": "過剰報告です",
+      "reply": "msg_n03_over"
+    }
+  ]
 }
