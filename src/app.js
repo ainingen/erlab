@@ -3,8 +3,9 @@
 import { loadData } from './data.js';
 import { buildPanel, buildRecollect } from './derive.js';
 import { renderWorklist, renderResults, renderRecollect, renderGlossary, esc } from './lis.js';
-import { renderMessages, messageById } from './messages.js';
+import { renderMessages, resolveMessages, filterBySpeaker } from './messages.js';
 import { renderReportDialog, renderPhone, evaluate, renderVerdict, SCORE_LABEL } from './report.js';
+import { renderMentorPicker, mentorById } from './mentor.js';
 
 const state = {
   data: null,
@@ -13,9 +14,11 @@ const state = {
   status: {},
   results: {},
   recollected: {},
-  messages: [],
+  messageIds: [],
+  mentorId: null,
   currentCaseId: null,
   pendingChoice: null,
+  started: false,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -39,23 +42,54 @@ async function main() {
   const h = state.data.hospital.hospital;
   $('#hospital-name').textContent = `${h.name}（架空）${h.lab}`;
 
-  pushMessage('msg_shift_start');
-  selectCase(state.cases[0].id);
   bindEvents();
+  openMentorPicker();
 }
 
-function pushMessage(id) {
-  const msg = messageById(state.data, id);
-  if (!msg) return;
-  if (state.messages.some((m) => m.id === id)) return;
-  state.messages.push(msg);
+/* ---- 指導役 ---- */
+
+function openMentorPicker() {
+  $('#mentor-body').innerHTML = renderMentorPicker(state.data, state.mentorId);
+  $('#mentor-dialog').showModal();
 }
+
+function chooseMentor(id) {
+  if (!mentorById(state.data, id)) return;
+  state.mentorId = id;
+  $('#mentor-dialog').close();
+  if (!state.started) {
+    state.started = true;
+    startShift();
+    return;
+  }
+  renderAll(); // 出したメッセージは残したまま、選んだ人の台詞だけに差し替わる
+}
+
+function startShift() {
+  pushMessage('msg_shift_start');
+  for (const m of state.data.mentors.mentors) pushMessage(m.greeting);
+  selectCase(state.cases[0].id);
+}
+
+/* ---- メッセージ ---- */
+
+function pushMessage(ids) {
+  for (const id of [].concat(ids ?? [])) {
+    if (!state.messageIds.includes(id)) state.messageIds.push(id);
+  }
+}
+
+function visibleMessages() {
+  return filterBySpeaker(resolveMessages(state.data, state.messageIds), state.mentorId);
+}
+
+/* ---- 症例 ---- */
 
 function selectCase(caseId) {
   state.currentCaseId = caseId;
   const caseDef = currentCase();
-  if (caseDef.handover) pushMessage(caseDef.handover);
-  if (caseDef.nav) pushMessage(caseDef.nav);
+  pushMessage(caseDef.handover);
+  pushMessage(caseDef.nav);
   renderAll();
   setView('lis');
 }
@@ -70,6 +104,7 @@ function currentPanel() {
 
 function renderAll() {
   const caseDef = currentCase();
+  if (!caseDef) return;
   const panel = currentPanel();
 
   $('#pane-worklist').innerHTML = renderWorklist(state.cases, {
@@ -84,8 +119,11 @@ function renderAll() {
     renderResults(caseDef, panel, state.data) + (re ? renderRecollect(caseDef, re) : '');
 
   const msgPane = $('#pane-messages');
-  msgPane.innerHTML = renderMessages(state.messages);
+  msgPane.innerHTML = renderMessages(visibleMessages());
   msgPane.scrollTop = msgPane.scrollHeight; // 新しい申し送り・返信が見えるところまで送る
+
+  const mentor = mentorById(state.data, state.mentorId);
+  $('#mentor-btn').textContent = `指導役 ${mentor ? mentor.name : '—'}`;
 
   const done = state.status[caseDef.id] === 'done';
   const reportBtn = $('#btn-report');
@@ -114,8 +152,21 @@ function setView(view) {
   }
 }
 
+/* ---- イベント ---- */
+
 function bindEvents() {
+  // 最初の1人を選ぶまでは閉じさせない
+  $('#mentor-dialog').addEventListener('cancel', (ev) => {
+    if (!state.mentorId) ev.preventDefault();
+  });
+
   document.addEventListener('click', (ev) => {
+    const mentorBtn = ev.target.closest('[data-mentor]');
+    if (mentorBtn) {
+      chooseMentor(mentorBtn.dataset.mentor);
+      return;
+    }
+
     const caseBtn = ev.target.closest('[data-case]');
     if (caseBtn) {
       selectCase(caseBtn.dataset.case);
@@ -138,6 +189,8 @@ function bindEvents() {
     if (action === 'close-report') closeReport();
     if (action === 'close-glossary') $('#glossary-dialog').close();
     if (action === 'open-report') openReport();
+    if (action === 'open-mentor') openMentorPicker();
+    if (action === 'close-mentor') $('#mentor-dialog').close();
     if (action === 'readback') finishReport({ ...state.pendingChoice, readback: true });
   });
 

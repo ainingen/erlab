@@ -11,7 +11,7 @@
   "seed": {
     "condition": "hyperkalemia_renal",
     "severity": 1,
-    "overrides": { "K": 6.2, "Cre": 3.2 }
+    "overrides": { "K": 6.0, "Cre": 3.2 }
   },
   "artifact": "hemolysis_2plus",
   "previous": {

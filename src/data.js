@@ -11,18 +11,19 @@ async function readJson(relativePath) {
 }
 
 export async function loadData() {
-  const [tests, hospital, conditions, artifacts, caseIndex, messages] = await Promise.all([
+  const [tests, hospital, conditions, artifacts, caseIndex, messages, mentors] = await Promise.all([
     readJson('data/tests.json'),
     readJson('data/hospital.json'),
     readJson('data/conditions.json'),
     readJson('data/artifacts.json'),
     readJson('data/cases/index.json'),
     readJson('data/messages/rookie.json'),
+    readJson('data/mentors.json'),
   ]);
 
   const cases = await Promise.all(
     caseIndex.rookie.map((id) => readJson(`data/cases/${id}.json`)),
   );
 
-  return { tests, hospital, conditions, artifacts, messages, cases };
+  return { tests, hospital, conditions, artifacts, messages, mentors, cases };
 }

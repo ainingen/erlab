@@ -46,7 +46,25 @@
   .brand { font-size: 17px; font-weight: 700; letter-spacing: .14em; }
   .brand .sub { font-size: 11px; font-weight: 400; letter-spacing: .04em; margin-left: 6px; opacity: .85; }
   .app-header .meta { font-size: 11px; opacity: .9; }
-  .app-header .score { margin-left: auto; font-size: 11px; border: 1px solid #6b7686; padding: 1px 8px; }
+  .app-header .score { font-size: 11px; border: 1px solid #6b7686; padding: 1px 8px; }
+  .header-btn {
+    margin-left: auto; font: inherit; font-size: 11px; color: var(--head-ink);
+    background: transparent; border: 1px solid #6b7686; padding: 1px 8px; cursor: pointer;
+  }
+
+  /* ---- 指導役 ---- */
+  .mentor-lead { font-family: var(--sans); font-size: 12px; color: var(--ink-dim); margin: 0 0 10px; }
+  .mentor-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .mentor {
+    display: grid; gap: 2px; width: 100%; text-align: left; font: inherit; cursor: pointer;
+    background: #fbfbf9; border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
+    padding: 8px 10px;
+  }
+  .mentor.is-selected { border-left-color: var(--head); background: #eef1f6; }
+  .mentor-name { font-weight: 700; font-size: 14px; }
+  .mentor-role { font-size: 11px; color: var(--ink-dim); }
+  .mentor-tagline { font-size: 12px; }
+  .mentor-style { font-family: var(--sans); font-size: 11px; color: var(--ink-dim); }
 
   /* ---- tabs (narrow only) ---- */
   .tabs { display: none; background: #dcdad4; border-bottom: 1px solid var(--line-strong); }
@@ -248,6 +266,7 @@
 <header class="app-header">
   <div class="brand">ERLAB<span class="sub">―その数値を見逃すな―</span></div>
   <div class="meta"><span id="hospital-name">読み込み中…</span> ／ 新人研修モード（時間無制限）</div>
+  <button class="header-btn" id="mentor-btn" type="button" data-action="open-mentor">指導役 —</button>
   <div class="score" id="score">報告 0件</div>
 </header>
 
@@ -277,6 +296,8 @@
     <div id="pane-messages"></div>
   </section>
 </main>
+
+<dialog id="mentor-dialog"><div id="mentor-body"></div></dialog>
 
 <dialog id="report-dialog"><div id="report-body"></div></dialog>
 

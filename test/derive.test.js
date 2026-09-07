@@ -78,7 +78,7 @@ export function suite(data) {
   test('applyArtifact: 溶血はK・LD・ASTだけを動かす', () => {
     const base = { K: 4.1, LD: 178, AST: 21, ALT: 16 };
     const { values } = applyArtifact(base, data.artifacts.artifacts.hemolysis_2plus);
-    close(values.K, 4.8, 0.0001, 'K');
+    close(values.K, 5.0, 0.0001, 'K');
     close(values.LD, 498.4, 0.0001, 'LD');
     close(values.AST, 46, 0.0001, 'AST');
     eq(values.ALT, 16, 'ALTは動かない');
@@ -253,8 +253,8 @@ export function suite(data) {
 
     const re = buildRecollect(caseById.n05b, first, data);
     const reById = Object.fromEntries(re.rows.map((r) => [r.id, r]));
-    eq(reById.K.display, '6.2', '再採血後も高値が残る');
-    eq(reById.K.flag, 'HH', 'パニック値のまま');
+    eq(reById.K.display, '6.0', '再採血後も高値が残る');
+    eq(reById.K.flag, 'HH', 'パニック値の線ちょうどでもHH');
     eq(re.hasPanic, true);
     eq(reById.LD.flag, '', 'LDは基準範囲に戻る');
     eq(reById.AST.flag, '', 'ASTは基準範囲に戻る');

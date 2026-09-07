@@ -16,7 +16,7 @@
       "comment": "溶血（2+）",
       "hint": "中等度の溶血。赤血球内のK・LD・ASTが漏れ出て偽性高値になる。この状態のKをそのまま緊急報告してはいけない。",
       "effects": [
-        { "test": "K", "op": "add", "value": 0.7 },
+        { "test": "K", "op": "add", "value": 0.9 },
         { "test": "LD", "op": "mul", "value": 2.8 },
         { "test": "AST", "op": "add", "value": 25 }
       ]

@@ -28,13 +28,15 @@ src/
   data.js           JSONの読み込み
   derive.js         派生値の計算・検体トラブルの適用・フラグ判定（DOMに触らない）
   lis.js            LIS結果画面／受付一覧／索引の描画
-  messages.js       院内メッセージの描画
+  messages.js       院内メッセージの描画と指導役による出し分け
+  mentor.js         指導役の選択画面
   report.js         報告ダイアログと判定
 data/
   tests.json        検査項目マスタ（索引5枠つき）
   hospital.json     架空病院の運用規定（基準範囲・パニック値・報告ルール・TAT）
   conditions.json   病態テンプレート（根っこの値だけ）
   artifacts.json    検体トラブル
+  mentors.json      指導役（ナビの話し手）
   cases/            症例（新人モードは手書きで固定）
   messages/         申し送り・ナビ・医師からの返信の文面
 docs/
@@ -45,14 +47,17 @@ test/
   harness.js        テスト用の最小の道具
   derive.test.js    derive.js のテスト
   report.test.js    判定構造（症例の choices）のテスト
+  mentor.test.js    指導役の出し分けのテスト
 ```
 
 ## 決めごと
 
 - 基準範囲・パニック値は `data/hospital.json` の1セットのみ。ほかの場所に数値を書かない
 - 派生値（Hb・Ht・MCHC・AG）は `src/derive.js` が計算する。症例JSONに直書きしない
-- 異常表示の主はフラグ記号（H, L, HH, LL）。色は該当セルだけに付ける補助で、色がなくても判断できること
+- 異常表示の主はフラグ記号（H, L, HH, LL）。色を塗ってよいのはフラグ欄のセルと、コメントがあるときの検体状態欄だけ
 - 症例に単一の正解は置かない。`choices` に選択肢ごとの評価（最善／許容／要改善）と医師返信を並べる
+- ナビは指導役ごとに言い方を変えてよいが、教える中身は変えない
+- 溶血などの検体トラブルの影響量は固定。見せたい値は症例側の素の値で合わせる（`docs/sources.md`）
 - 索引は5枠固定
 - 医師パート・病名確定・治療選択は作らない
 

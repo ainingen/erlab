@@ -1,0 +1,21 @@
+{
+  "_note": "指導役。ナビはここで選んだ人の台詞だけを出す。台詞本文は data/messages 側に置き、speaker で紐づける。人物像・台詞まわりはまだ仮で、後から差し替える前提。",
+  "mentors": [
+    {
+      "id": "kanae",
+      "name": "三嶋 かなえ",
+      "role": "主任臨床検査技師",
+      "tagline": "先に結論、理由はあとから",
+      "style": "規定と手順から入る。やることを短く言い切ってから、なぜそうするかを足す。",
+      "greeting": "msg_mentor_kanae_hello"
+    },
+    {
+      "id": "yusuke",
+      "name": "羽鳥 悠介",
+      "role": "臨床検査技師（教育担当）",
+      "tagline": "まず自分で見てから",
+      "style": "問いかけから入る。考える時間を置いてから答え合わせをする。",
+      "greeting": "msg_mentor_yusuke_hello"
+    }
+  ]
+}

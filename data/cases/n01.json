@@ -11,7 +11,7 @@
   "seed": { "condition": "normal", "severity": 0 },
   "artifact": null,
   "previous": null,
-  "nav": "msg_n01_nav",
+  "nav": ["msg_n01_nav_kanae", "msg_n01_nav_yusuke"],
   "choices": [
     {
       "when": { "recheck": true },
