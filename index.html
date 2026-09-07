@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERLAB ―その数値を見逃すな―</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #eceae4;
+    --panel: #ffffff;
+    --ink: #1b1f27;
+    --ink-dim: #5d636e;
+    --line: #c6c9d0;
+    --line-strong: #8b909a;
+    --head: #2b3646;
+    --head-ink: #f2f4f7;
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Courier New", "MS Gothic", monospace;
+    --sans: system-ui, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ---- header ---- */
+  .app-header {
+    background: var(--head);
+    color: var(--head-ink);
+    padding: 6px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+    border-bottom: 2px solid #101620;
+  }
+  .brand { font-size: 17px; font-weight: 700; letter-spacing: .14em; }
+  .brand .sub { font-size: 11px; font-weight: 400; letter-spacing: .04em; margin-left: 6px; opacity: .85; }
+  .app-header .meta { font-size: 11px; opacity: .9; }
+  .app-header .score { margin-left: auto; font-size: 11px; border: 1px solid #6b7686; padding: 1px 8px; }
+
+  /* ---- tabs (narrow only) ---- */
+  .tabs { display: none; background: #dcdad4; border-bottom: 1px solid var(--line-strong); }
+  .tab {
+    flex: 1; padding: 9px 4px; font: inherit; font-size: 12px;
+    background: transparent; border: 0; border-bottom: 3px solid transparent;
+    color: var(--ink-dim); cursor: pointer;
+  }
+  .tab[aria-selected="true"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--head); background: var(--panel); }
+
+  /* ---- columns ---- */
+  .cols {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr) 320px;
+    gap: 8px;
+    padding: 8px;
+    align-items: start;
+  }
+  .col { background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+  .col-title {
+    margin: 0; padding: 5px 8px; font-size: 11px; letter-spacing: .1em;
+    background: #e3e1db; border-bottom: 1px solid var(--line); font-weight: 700;
+  }
+  .col-title span { font-weight: 400; letter-spacing: 0; color: var(--ink-dim); margin-left: 8px; }
+  .col > div { padding: 8px; }
+  .col-messages > div { max-height: calc(100vh - 130px); overflow-y: auto; }
+
+  /* ---- worklist ---- */
+  .worklist { list-style: none; margin: 0; padding: 0; }
+  .wl-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 6px;
+    width: 100%; text-align: left; font: inherit;
+    background: #fbfbf9; border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
+    padding: 5px 6px; margin-bottom: 5px; cursor: pointer;
+  }
+  .wl-row.is-selected { border-left-color: var(--head); background: #eef1f6; }
+  .wl-acc { font-size: 11px; color: var(--ink-dim); }
+  .wl-mark { font-size: 10px; text-align: right; white-space: pre; }
+  .wl-pt { font-weight: 700; }
+  .wl-from, .wl-order { font-size: 11px; color: var(--ink-dim); }
+  .wl-status { font-size: 11px; text-align: right; }
+  .wl-title { grid-column: 1 / -1; font-size: 11px; color: var(--ink-dim); border-top: 1px dotted var(--line); margin-top: 3px; padding-top: 3px; }
+
+  /* ---- patient head ---- */
+  .pt-head { border: 1px solid var(--line); background: #fbfbf9; padding: 6px 8px; margin-bottom: 10px; }
+  .pt-line { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  .pt-line + .pt-line { margin-top: 2px; }
+  .pt-acc, .pt-time, .pt-from, .pt-demo { font-size: 11px; color: var(--ink-dim); }
+  .pt-id { font-weight: 700; }
+  .pt-name { font-weight: 700; }
+  .pt-meta { display: grid; grid-template-columns: 5.5em 1fr; gap: 2px 8px; margin: 6px 0 0; font-size: 12px; }
+  .pt-meta dt { color: var(--ink-dim); }
+  .pt-meta dd { margin: 0; }
+  .pt-meta dd.is-flagged { font-weight: 700; border-bottom: 2px solid var(--ink); display: inline-block; }
+
+  /* ---- result table ---- */
+  .lis-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .lis-table caption {
+    text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    background: #e3e1db; border: 1px solid var(--line); padding: 3px 6px;
+  }
+  .lis-table th, .lis-table td { border: 1px solid var(--line); padding: 3px 6px; text-align: right; }
+  .lis-table thead th { background: #f0efeb; font-size: 11px; color: var(--ink-dim); text-align: right; font-weight: 400; }
+  .lis-table thead th:first-child { text-align: left; }
+  .lis-table tbody th { text-align: left; font-weight: 400; }
+  .lis-table td[data-col="unit"], .lis-table td[data-col="ref"] { color: var(--ink-dim); font-size: 11px; }
+  .lis-table td[data-col="value"] { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .lis-table td[data-col="prev"] { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .lis-table tr.is-flagged td[data-col="value"] { text-decoration: underline; text-underline-offset: 2px; }
+  .lis-table .lbl { display: none; }
+
+  .test-name { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline dotted; }
+  .t-abbr { font-weight: 700; }
+  .t-name { color: var(--ink-dim); font-size: 11px; margin-left: 6px; }
+
+  .flag { display: inline-block; min-width: 2.2em; font-weight: 700; letter-spacing: .05em; }
+  .flag-panic { background: var(--ink); color: var(--panel); padding: 0 3px; }
+  .delta { margin-left: 4px; border: 1px solid var(--ink); padding: 0 2px; font-size: 10px; }
+
+  .hint { font-size: 11px; color: var(--ink-dim); margin: 0 0 10px; }
+  .error { color: var(--ink); border: 2px solid var(--ink); padding: 10px; }
+
+  .lis-actions { display: flex; gap: 8px; padding: 0 8px 10px; }
+
+  .btn {
+    font: inherit; padding: 7px 14px; background: #f0efeb;
+    border: 1px solid var(--line-strong); cursor: pointer; min-height: 36px;
+  }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn-primary { background: var(--head); color: var(--head-ink); border-color: #101620; font-weight: 700; }
+
+  /* ---- messages ---- */
+  .msg { border: 1px solid var(--line); border-left: 3px solid var(--line-strong); background: #fbfbf9; padding: 6px 8px; margin-bottom: 8px; }
+  .msg-nav { border-left-color: var(--head); background: #eef1f6; }
+  .msg-kind { font-size: 10px; border: 1px solid var(--line-strong); padding: 0 4px; }
+  .msg-time { font-size: 10px; color: var(--ink-dim); margin-left: 6px; }
+  .msg-subject { font-size: 12px; margin: 3px 0 1px; }
+  .msg-from { font-size: 11px; color: var(--ink-dim); margin: 0 0 5px; }
+  .msg p { font-family: var(--sans); font-size: 12px; margin: 0 0 5px; }
+  .empty { color: var(--ink-dim); }
+
+  /* ---- dialogs ---- */
+  dialog { border: 2px solid var(--head); background: var(--panel); color: var(--ink); padding: 0; width: min(560px, 94vw); }
+  dialog::backdrop { background: rgba(20, 24, 32, .55); }
+  dialog > div { padding: 12px; }
+  dialog h2 { font-size: 14px; margin: 0 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+  .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+  fieldset { border: 1px solid var(--line); margin: 0 0 10px; padding: 6px; }
+  legend { font-size: 11px; color: var(--ink-dim); padding: 0 4px; }
+  .lv { display: flex; gap: 8px; align-items: flex-start; padding: 5px; border-bottom: 1px dotted var(--line); cursor: pointer; }
+  .lv:last-child { border-bottom: 0; }
+  .lv input { margin-top: 3px; }
+  .lv-body { display: block; }
+  .lv-label { display: block; font-weight: 700; }
+  .lv-action { display: block; font-size: 11px; }
+  .lv-when { display: block; font-size: 11px; color: var(--ink-dim); font-family: var(--sans); }
+  .field { display: block; margin-bottom: 10px; }
+  .field > span { display: block; font-size: 11px; color: var(--ink-dim); margin-bottom: 3px; }
+  .field textarea { width: 100%; font: inherit; font-family: var(--sans); padding: 5px; border: 1px solid var(--line-strong); }
+  .check { display: flex; gap: 6px; align-items: center; }
+
+  .phone-dial { border: 1px solid var(--line-strong); background: #f0efeb; padding: 6px; text-align: center; }
+  .phone-script { font-family: var(--sans); font-size: 12px; }
+  .phone-value { font-family: var(--mono); font-weight: 700; border: 1px solid var(--ink); padding: 5px; text-align: center; }
+
+  .verdict-choice { font-size: 12px; }
+  .verdict-note, .gl-foot, .gl-derived { font-size: 11px; color: var(--ink-dim); }
+
+  /* ---- glossary ---- */
+  .gl-title { font-size: 14px; }
+  .gl-unit { font-size: 11px; color: var(--ink-dim); margin-left: 8px; }
+  .glossary { margin: 0; }
+  .glossary dt { font-size: 11px; font-weight: 700; background: #e3e1db; padding: 2px 5px; margin-top: 6px; }
+  .glossary dd { margin: 4px 0 0; font-family: var(--sans); font-size: 12px; }
+  .glossary .sub { color: var(--ink-dim); font-family: var(--mono); font-size: 11px; }
+
+  /* ---- narrow screens: tabs + stacked table rows ---- */
+  @media (max-width: 899px) {
+    .tabs { display: flex; }
+    .cols { grid-template-columns: 1fr; padding: 6px; }
+    body[data-view="worklist"] .col-lis,
+    body[data-view="worklist"] .col-messages,
+    body[data-view="lis"] .col-worklist,
+    body[data-view="lis"] .col-messages,
+    body[data-view="messages"] .col-worklist,
+    body[data-view="messages"] .col-lis { display: none; }
+    .col-messages > div { max-height: none; }
+  }
+
+  @media (max-width: 700px) {
+    .lis-table thead { display: none; }
+    .lis-table, .lis-table tbody, .lis-table tr, .lis-table th, .lis-table td { display: block; }
+    .lis-table caption { display: block; }
+    .lis-table tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto 2.6em;
+      grid-template-areas: "name value unit flag" "ref ref prev prev";
+      border: 1px solid var(--line);
+      border-top: 0;
+      align-items: baseline;
+      padding: 3px 5px;
+    }
+    .lis-table tbody tr:first-child { border-top: 1px solid var(--line); }
+    .lis-table th, .lis-table td { border: 0; padding: 0 3px; }
+    .lis-table th[data-col="name"] { grid-area: name; }
+    .lis-table td[data-col="value"] { grid-area: value; font-size: 14px; }
+    .lis-table td[data-col="unit"] { grid-area: unit; }
+    .lis-table td[data-col="ref"] { grid-area: ref; text-align: left; }
+    .lis-table td[data-col="flag"] { grid-area: flag; }
+    .lis-table td[data-col="prev"] { grid-area: prev; }
+    .lis-table .lbl { display: inline; margin-right: 4px; }
+    .t-name { display: none; }
+    .wl-title { display: none; }
+  }
+</style>
+</head>
+<body data-view="lis">
+
+<header class="app-header">
+  <div class="brand">ERLAB<span class="sub">―その数値を見逃すな―</span></div>
+  <div class="meta"><span id="hospital-name">読み込み中…</span> ／ 新人研修モード（時間無制限）</div>
+  <div class="score" id="score">報告 0件</div>
+</header>
+
+<nav class="tabs" aria-label="画面切替">
+  <button class="tab" type="button" data-view-target="worklist" aria-selected="false">受付一覧</button>
+  <button class="tab" type="button" data-view-target="lis" aria-selected="true">検査結果</button>
+  <button class="tab" type="button" data-view-target="messages" aria-selected="false">メッセージ</button>
+</nav>
+
+<main class="cols">
+  <section class="col col-worklist">
+    <h2 class="col-title">受付一覧</h2>
+    <div id="pane-worklist"></div>
+  </section>
+
+  <section class="col col-lis">
+    <h2 class="col-title">検査結果<span id="case-title"></span></h2>
+    <div id="pane-lis"><p>読み込み中…</p></div>
+    <div class="lis-actions">
+      <button class="btn btn-primary" id="btn-report" type="button" data-action="open-report">報告する</button>
+      <button class="btn" id="btn-next" type="button" hidden>次の症例へ</button>
+    </div>
+  </section>
+
+  <section class="col col-messages">
+    <h2 class="col-title">院内メッセージ</h2>
+    <div id="pane-messages"></div>
+  </section>
+</main>
+
+<dialog id="report-dialog"><div id="report-body"></div></dialog>
+
+<dialog id="glossary-dialog">
+  <div>
+    <div id="glossary-body"></div>
+    <div class="dlg-actions">
+      <button class="btn" type="button" data-action="close-glossary">閉じる</button>
+    </div>
+  </div>
+</dialog>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

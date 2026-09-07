@@ -1,0 +1,22 @@
+{
+  "id": "n01",
+  "mode": "rookie",
+  "title": "1. 全部そろって正常",
+  "goal": "フラグの見方と結果送信の操作を覚える",
+  "accession": "26-0907-014",
+  "received_at": "08:12",
+  "patient": { "id": "P-0001", "label": "患者A", "age": 34, "sex": "F", "from": "ER" },
+  "handover": "msg_n01_intro",
+  "order": ["CBC", "CHEM_BASIC"],
+  "seed": { "condition": "normal", "severity": 0 },
+  "artifact": null,
+  "previous": null,
+  "correct": { "report": "routine", "recheck": false, "comment": "none" },
+  "nav": "msg_n01_nav",
+  "outcome": {
+    "routine": "msg_n01_ok",
+    "urgent": "msg_n01_over",
+    "emergency": "msg_n01_over",
+    "recheck": "msg_n01_recheck"
+  }
+}

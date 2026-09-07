@@ -1,0 +1,22 @@
+{
+  "id": "n02",
+  "mode": "rookie",
+  "title": "2. Hがひとつだけ点く",
+  "goal": "軽度のHは通常報告でよい、と判断できるようになる",
+  "accession": "26-0907-021",
+  "received_at": "08:41",
+  "patient": { "id": "P-0002", "label": "患者B", "age": 58, "sex": "M", "from": "内科外来" },
+  "handover": "msg_n02_intro",
+  "order": ["CBC", "CHEM_BASIC"],
+  "seed": { "condition": "mild_inflammation", "severity": 1 },
+  "artifact": null,
+  "previous": null,
+  "correct": { "report": "routine", "recheck": false, "comment": "none" },
+  "nav": "msg_n02_nav",
+  "outcome": {
+    "routine": "msg_n02_ok",
+    "urgent": "msg_n02_over",
+    "emergency": "msg_n02_over",
+    "recheck": "msg_n02_recheck"
+  }
+}

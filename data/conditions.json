@@ -1,0 +1,71 @@
+{
+  "_note": "病態テンプレート。ここに書くのは『根っこの値』だけ。Hb・Ht・MCHC・AG は src/derive.js が計算するので絶対に書かない。重症度は severity[n] を roots の上に重ねる。",
+  "base_roots": {
+    "default": {
+      "WBC": 6.2,
+      "RBC": 4.42,
+      "MCV": 90.0,
+      "MCH": 30.4,
+      "PLT": 245,
+      "Na": 140,
+      "K": 4.1,
+      "Cl": 104,
+      "HCO3": 24.0,
+      "BUN": 13,
+      "Cre": 0.62,
+      "Glu": 92,
+      "AST": 21,
+      "ALT": 16,
+      "LD": 178,
+      "CRP": 0.05,
+      "Ca": 9.3
+    },
+    "M": { "RBC": 4.9, "Cre": 0.88, "ALT": 24 },
+    "F": { "RBC": 4.42, "Cre": 0.62, "ALT": 16 }
+  },
+  "conditions": {
+    "normal": {
+      "label": "特記なし",
+      "roots": {},
+      "severity": [{}]
+    },
+    "mild_inflammation": {
+      "label": "軽度の炎症反応",
+      "roots": { "CRP": 0.42, "WBC": 7.4 },
+      "severity": [
+        {},
+        { "CRP": 2.5, "WBC": 8.4 },
+        { "CRP": 8.6, "WBC": 12.9, "Na": 136 },
+        { "CRP": 19.4, "WBC": 17.8, "Na": 133, "BUN": 26, "Cre": 0.96 }
+      ]
+    },
+    "iron_deficiency_anemia": {
+      "label": "小球性低色素性の貧血",
+      "roots": { "RBC": 4.15, "MCV": 82.0, "MCH": 27.0, "PLT": 298 },
+      "severity": [
+        {},
+        { "RBC": 4.05, "MCV": 79.0, "MCH": 25.6, "PLT": 318 },
+        { "RBC": 3.92, "MCV": 76.0, "MCH": 24.0, "PLT": 336, "BUN": 9, "Cre": 0.55 },
+        { "RBC": 3.15, "MCV": 71.0, "MCH": 22.2, "PLT": 364, "BUN": 9, "Cre": 0.54 }
+      ]
+    },
+    "hyperkalemia_renal": {
+      "label": "腎機能低下に伴う高カリウム血症",
+      "roots": { "K": 5.2, "BUN": 32, "Cre": 1.86, "HCO3": 21.0 },
+      "severity": [
+        {},
+        { "K": 5.8, "BUN": 41, "Cre": 2.44, "HCO3": 19.5 },
+        { "K": 6.8, "BUN": 58, "Cre": 3.62, "HCO3": 17.0, "Ca": 8.5 }
+      ]
+    },
+    "acute_blood_loss": {
+      "label": "急性の出血",
+      "roots": { "RBC": 4.0, "MCV": 89.0, "MCH": 30.0, "WBC": 9.2, "BUN": 22 },
+      "severity": [
+        {},
+        { "RBC": 3.55, "WBC": 10.4, "BUN": 28 },
+        { "RBC": 2.85, "WBC": 12.8, "BUN": 34, "Cre": 0.94, "HCO3": 20.0 }
+      ]
+    }
+  }
+}

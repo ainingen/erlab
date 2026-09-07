@@ -1,0 +1,79 @@
+{
+  "_note": "検体トラブル。all を全ての根っこの値に掛けたあと effects を順に適用し、そのあとで派生値を計算する。影響量はゲーム内の固定値で、根拠は docs/sources.md に記録する。",
+  "artifacts": {
+    "hemolysis_1plus": {
+      "label": "溶血（+）",
+      "comment": "溶血（+）",
+      "hint": "軽度の溶血。K・LD・ASTがわずかに押し上げられる。ALTはほとんど動かない。",
+      "effects": [
+        { "test": "K", "op": "add", "value": 0.3 },
+        { "test": "LD", "op": "mul", "value": 1.5 },
+        { "test": "AST", "op": "add", "value": 8 }
+      ]
+    },
+    "hemolysis_2plus": {
+      "label": "溶血（2+）",
+      "comment": "溶血（2+）",
+      "hint": "中等度の溶血。赤血球内のK・LD・ASTが漏れ出て偽性高値になる。この状態のKをそのまま緊急報告してはいけない。",
+      "effects": [
+        { "test": "K", "op": "add", "value": 0.9 },
+        { "test": "LD", "op": "mul", "value": 2.8 },
+        { "test": "AST", "op": "add", "value": 25 }
+      ]
+    },
+    "hemolysis_3plus": {
+      "label": "溶血（3+）",
+      "comment": "溶血（3+）",
+      "hint": "高度の溶血。K・LD・ASTは判定不能に近い。再採血が原則。",
+      "effects": [
+        { "test": "K", "op": "add", "value": 2.2 },
+        { "test": "LD", "op": "mul", "value": 6.0 },
+        { "test": "AST", "op": "add", "value": 60 }
+      ]
+    },
+    "platelet_clump_edta": {
+      "label": "EDTA依存性血小板凝集",
+      "comment": "血小板凝集塊あり（EDTA）",
+      "hint": "EDTAで血小板が固まり、装置が数えられずに偽性血小板減少になる。塗抹で凝集塊を確認し、クエン酸採血管での再採血を依頼する。",
+      "effects": [
+        { "test": "PLT", "op": "mul", "value": 0.32 }
+      ]
+    },
+    "fibrin": {
+      "label": "フィブリン析出",
+      "comment": "フィブリン析出",
+      "hint": "採血後の混和不足などで微小凝固が起き、血小板が消費されて偽性低値になる。再採血が原則。",
+      "effects": [
+        { "test": "PLT", "op": "mul", "value": 0.55 }
+      ]
+    },
+    "iv_line_dilution": {
+      "label": "点滴側採血（疑い）",
+      "comment": "点滴ルート側からの採血の疑い",
+      "hint": "輸液で希釈され、ほぼ全項目が低めに出る。ブドウ糖入りの輸液なら血糖だけが跳ね上がる。この組み合わせを見たら採血部位を確認する。",
+      "all": { "op": "mul", "value": 0.75, "except": ["MCV", "MCH"] },
+      "effects": [
+        { "test": "Glu", "op": "mul", "value": 5.4 }
+      ]
+    },
+    "edta_contamination": {
+      "label": "EDTA混入",
+      "comment": "EDTA採血管からの混入疑い",
+      "hint": "採血管の順序違いなどでEDTAが生化学検体に入ると、K著明高値とCa著明低値が同時に出る。生理的にはまず起きない組み合わせ。",
+      "effects": [
+        { "test": "K", "op": "add", "value": 6.0 },
+        { "test": "Ca", "op": "mul", "value": 0.25 }
+      ]
+    },
+    "short_sample": {
+      "label": "検体量不足",
+      "comment": "検体量不足（生化学 一部測定不可）",
+      "hint": "規定量に足りず、途中で測定が止まった。測れなかった項目は空欄のまま報告せず、再採血を依頼する。",
+      "effects": [
+        { "test": "LD", "op": "unmeasurable" },
+        { "test": "CRP", "op": "unmeasurable" },
+        { "test": "Ca", "op": "unmeasurable" }
+      ]
+    }
+  }
+}

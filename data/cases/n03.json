@@ -1,0 +1,49 @@
+{
+  "id": "n03",
+  "mode": "rookie",
+  "title": "3. 急がないが、黙って送らない",
+  "goal": "中等度の異常に、検査室からのコメントを添えて報告する",
+  "accession": "26-0907-033",
+  "received_at": "09:05",
+  "patient": { "id": "P-0003", "label": "患者C", "age": 41, "sex": "F", "from": "内科外来" },
+  "handover": "msg_n03_intro",
+  "order": ["CBC", "CHEM_BASIC"],
+  "seed": { "condition": "iron_deficiency_anemia", "severity": 2 },
+  "artifact": null,
+  "previous": {
+    "date": "2026-06-12",
+    "note": "3か月前・同院内科外来",
+    "values": {
+      "WBC": 6.0,
+      "RBC": 4.05,
+      "Hb": 10.1,
+      "Ht": 31.9,
+      "MCV": 78.8,
+      "MCH": 24.9,
+      "MCHC": 31.6,
+      "PLT": 322,
+      "Na": 140,
+      "K": 4.0,
+      "Cl": 104,
+      "HCO3": 24.0,
+      "BUN": 10,
+      "Cre": 0.56,
+      "Glu": 89,
+      "AST": 20,
+      "ALT": 15,
+      "LD": 176,
+      "CRP": 0.06,
+      "Ca": 9.2,
+      "AG": 12.0
+    }
+  },
+  "correct": { "report": "routine", "recheck": false, "comment": "recommended" },
+  "nav": "msg_n03_nav",
+  "outcome": {
+    "routine": "msg_n03_ok",
+    "routine_nocomment": "msg_n03_ok_nocomment",
+    "urgent": "msg_n03_over",
+    "emergency": "msg_n03_over",
+    "recheck": "msg_n03_recheck"
+  }
+}

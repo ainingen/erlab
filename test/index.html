@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERLAB derive.js テスト</title>
+<style>
+  body { font-family: ui-monospace, Consolas, monospace; margin: 16px; background: #eceae4; color: #1b1f27; font-size: 13px; }
+  h1 { font-size: 15px; }
+  #summary { padding: 6px 10px; border: 2px solid #1b1f27; display: inline-block; font-weight: 700; }
+  ul { list-style: none; padding: 0; }
+  li { border-bottom: 1px dotted #c6c9d0; padding: 4px 0; }
+  .ok::before { content: "PASS "; font-weight: 700; }
+  .ng::before { content: "FAIL "; font-weight: 700; }
+  .ng { background: #1b1f27; color: #fff; padding: 4px 6px; }
+  .msg { display: block; padding-left: 3em; }
+</style>
+</head>
+<body>
+<h1>ERLAB — src/derive.js テスト</h1>
+<p id="summary">実行中…</p>
+<ul id="list"></ul>
+<script type="module">
+  import { run } from './derive.test.js';
+
+  const list = document.getElementById('list');
+  const summary = document.getElementById('summary');
+
+  try {
+    const results = await run();
+    const failed = results.filter((r) => !r.ok);
+    summary.textContent = `${results.length} 件中 ${results.length - failed.length} 件 PASS / ${failed.length} 件 FAIL`;
+    document.title = `${failed.length ? 'FAIL' : 'PASS'} — ERLAB derive.js テスト`;
+    list.innerHTML = results
+      .map((r) => `<li class="${r.ok ? 'ok' : 'ng'}">${r.name}${r.ok ? '' : `<span class="msg">${r.message}</span>`}</li>`)
+      .join('');
+  } catch (err) {
+    summary.textContent = `実行できませんでした: ${err.message}`;
+    document.title = 'ERROR — ERLAB derive.js テスト';
+  }
+</script>
+</body>
+</html>

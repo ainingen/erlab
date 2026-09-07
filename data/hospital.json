@@ -1,0 +1,100 @@
+{
+  "_note": "架空病院『青波総合病院』の検査室運用規定。基準範囲・パニック値はこの1セットのみを正とする。数値の追加・変更時は docs/sources.md に出典を書くこと。",
+  "hospital": {
+    "name": "青波総合病院",
+    "lab": "中央検査部 検体検査室",
+    "policy_version": "2026-04版",
+    "fictional": true
+  },
+  "panels": {
+    "CBC": {
+      "label": "血算",
+      "tests": ["WBC", "RBC", "Hb", "Ht", "MCV", "MCH", "MCHC", "PLT"]
+    },
+    "CHEM_BASIC": {
+      "label": "生化学（基本）",
+      "tests": ["Na", "K", "Cl", "HCO3", "BUN", "Cre", "Glu", "AST", "ALT", "LD", "CRP", "Ca", "AG"]
+    }
+  },
+  "reference": {
+    "WBC": { "low": 3.3, "high": 8.6 },
+    "RBC": { "M": { "low": 4.35, "high": 5.55 }, "F": { "low": 3.86, "high": 4.92 } },
+    "Hb": { "M": { "low": 13.7, "high": 16.8 }, "F": { "low": 11.6, "high": 14.8 } },
+    "Ht": { "M": { "low": 40.7, "high": 50.1 }, "F": { "low": 35.1, "high": 44.4 } },
+    "MCV": { "low": 83.6, "high": 98.2 },
+    "MCH": { "low": 27.5, "high": 33.2 },
+    "MCHC": { "low": 31.7, "high": 35.3 },
+    "PLT": { "low": 158, "high": 348 },
+    "Na": { "low": 138, "high": 145 },
+    "K": { "low": 3.6, "high": 4.8 },
+    "Cl": { "low": 101, "high": 108 },
+    "HCO3": { "low": 22.0, "high": 26.0 },
+    "BUN": { "low": 8, "high": 20 },
+    "Cre": { "M": { "low": 0.65, "high": 1.07 }, "F": { "low": 0.46, "high": 0.79 } },
+    "Glu": { "low": 73, "high": 109 },
+    "AST": { "low": 13, "high": 30 },
+    "ALT": { "M": { "low": 10, "high": 42 }, "F": { "low": 7, "high": 23 } },
+    "LD": { "low": 124, "high": 222 },
+    "CRP": { "low": 0.0, "high": 0.14 },
+    "Ca": { "low": 8.8, "high": 10.1 },
+    "AG": { "low": 8.0, "high": 16.0 }
+  },
+  "panic": {
+    "WBC": { "low": 1.0, "high": 30.0 },
+    "Hb": { "low": 5.0, "high": 20.0 },
+    "PLT": { "low": 20, "high": 1000 },
+    "Na": { "low": 120, "high": 160 },
+    "K": { "low": 2.5, "high": 6.0 },
+    "HCO3": { "low": 10.0, "high": 40.0 },
+    "Glu": { "low": 50, "high": 500 },
+    "Ca": { "low": 6.0, "high": 12.5 }
+  },
+  "delta_check": {
+    "_note": "前回値と比べてこの幅を超えて動いたら、再検・患者取り違えを疑って確認する。abs は絶対差、ratio は比。",
+    "WBC": { "ratio": 2.0 },
+    "Hb": { "abs": 2.0 },
+    "PLT": { "ratio": 2.0 },
+    "Na": { "abs": 8 },
+    "K": { "abs": 1.0 },
+    "Cre": { "abs": 0.3, "ratio": 1.5 },
+    "Glu": { "abs": 100 }
+  },
+  "report_levels": [
+    {
+      "id": "routine",
+      "label": "通常報告",
+      "action": "結果を電子カルテへ送信する",
+      "use_when": "基準範囲内、または臨床的に急がない範囲の異常。"
+    },
+    {
+      "id": "urgent",
+      "label": "至急報告",
+      "action": "担当医・ERへ院内メッセージで直接連絡する（コメント可）",
+      "use_when": "パニック値ではないが、放置すると対応が遅れる異常。検体不良の疑いを伝えたいとき。"
+    },
+    {
+      "id": "emergency",
+      "label": "緊急報告",
+      "action": "電話で担当医に連絡し、相手に値を読み返してもらって確認する",
+      "use_when": "パニック値。検体不良が否定できる場合に限る。"
+    }
+  ],
+  "report_rules": [
+    "パニック値は原則、緊急報告（電話＋読み返し確認）とする。",
+    "検体不良が疑われる値は、そのまま緊急報告せず、再検・再採血または検体状態を付記した報告を選ぶ。",
+    "全件を緊急報告にすると、本当に急ぐ連絡が埋もれる。報告レベルの選択そのものが判断である。",
+    "報告後は、報告先・時刻・伝えた値・読み返しの有無を記録に残す。"
+  ],
+  "tat_minutes": {
+    "_note": "実運用の目安時間。ゲーム内では time_compression を掛けて短縮するが、項目間の比率は保つ。",
+    "CBC": 5,
+    "CHEM_BASIC": 35,
+    "BLOOD_GAS": 2,
+    "BLOOD_CULTURE": 2880,
+    "time_compression": 0.1
+  },
+  "sample_policy": {
+    "hemolysis_hold": ["K", "LD", "AST"],
+    "_note": "溶血検体ではこれらの項目に検体状態コメントを付け、値をそのまま緊急報告しない。"
+  }
+}
