@@ -5,25 +5,47 @@
   "goal": "フラグの見方と結果送信の操作を覚える",
   "accession": "26-0907-014",
   "received_at": "08:12",
-  "patient": { "id": "P-0001", "label": "患者A", "age": 34, "sex": "F", "from": "ER" },
+  "patient": {
+    "id": "P-0001",
+    "label": "患者A",
+    "age": 34,
+    "sex": "F",
+    "from": "ER"
+  },
   "handover": "msg_n01_intro",
-  "order": ["CBC", "CHEM_BASIC"],
-  "seed": { "condition": "normal", "severity": 0 },
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
+  "seed": {
+    "condition": "normal",
+    "severity": 0
+  },
   "artifact": null,
   "previous": null,
-  "nav": ["msg_n01_nav_kanae", "msg_n01_nav_yusuke"],
+  "nav": [
+    "msg_n01_nav_kanae",
+    "msg_n01_nav_yusuke"
+  ],
   "choices": [
     {
-      "when": { "recheck": true },
+      "when": {
+        "recheck": true
+      },
       "score": "poor",
       "headline": "再検の理由がありません",
       "reply": "msg_n01_recheck"
     },
     {
-      "when": { "report": "routine" },
+      "when": {
+        "report": "routine"
+      },
       "score": "best",
       "headline": "適切な報告です",
-      "reply": "msg_n01_ok"
+      "reply": [
+        "msg_n01_ok_kanae",
+        "msg_n01_ok_yusuke"
+      ]
     },
     {
       "when": {},

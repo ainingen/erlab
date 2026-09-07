@@ -10,6 +10,7 @@
 - `data/artifacts.json` の影響量（溶血の段階ごとの上乗せなど）は固定。症例を成立させるために変更しない。見せたい値にならないときは症例側の素の値（`conditions.json` か `seed.overrides`）で合わせる
 - 索引（用語集）は5枠固定: 何を測るか / 基準範囲 / 高いと / 低いと / 検体トラブルで偽値が出る条件
 - ナビは指導役（`data/mentors.json`）ごとに言い方を変えてよいが、教える中身は変えない。どちらを選んでも同じ判断にたどり着けること
+- 台詞の原文は `docs/dialogue.md`。実装に流すときは speaker と emotion を必ず付ける（emotion は `assets/portraits/{speaker}_{emotion}.png` に対応）
 - 異常表示の主はフラグ記号（H, L, HH, LL）。色は補助
 - **色を塗ってよいのは次の2か所だけ**
   1. フラグ欄のセル（H/L 淡い黄、HH/LL 淡い赤）

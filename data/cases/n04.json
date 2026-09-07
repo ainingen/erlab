@@ -5,10 +5,22 @@
   "goal": "HHを見つけたら、電話をかけて読み返しを取るところまでやる",
   "accession": "26-0907-041",
   "received_at": "09:38",
-  "patient": { "id": "P-0004", "label": "患者D", "age": 67, "sex": "M", "from": "ER" },
+  "patient": {
+    "id": "P-0004",
+    "label": "患者D",
+    "age": 67,
+    "sex": "M",
+    "from": "ER"
+  },
   "handover": "msg_n04_intro",
-  "order": ["CBC", "CHEM_BASIC"],
-  "seed": { "condition": "hyperkalemia_renal", "severity": 2 },
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
+  "seed": {
+    "condition": "hyperkalemia_renal",
+    "severity": 2
+  },
   "artifact": null,
   "previous": {
     "date": "2026-08-24",
@@ -37,31 +49,51 @@
       "AG": 17.5
     }
   },
-  "nav": "msg_n04_nav",
+  "nav": [
+    "msg_n04_nav_kanae",
+    "msg_n04_nav_yusuke"
+  ],
   "choices": [
     {
-      "when": { "report": "emergency", "recheck": false },
+      "when": {
+        "report": "emergency",
+        "recheck": false
+      },
       "score": "best",
       "headline": "適切な報告です",
-      "reply": "msg_n04_ok"
+      "reply": [
+        "msg_n04_ok_kanae",
+        "msg_n04_ok_yusuke"
+      ]
     },
     {
-      "when": { "report": "emergency", "recheck": true },
+      "when": {
+        "report": "emergency",
+        "recheck": true
+      },
       "score": "ok",
       "headline": "報告は正しい。ただしこの検体に再検の理由はありません",
       "reply": "msg_n04_recheck"
     },
     {
-      "when": { "report": "urgent" },
+      "when": {
+        "report": "urgent"
+      },
       "score": "ok",
       "headline": "届いてはいます。ただしパニック値は電話で読み返しまで取る決まりです",
-      "reply": "msg_n04_urgent"
+      "reply": [
+        "msg_n04_urgent_kanae",
+        "msg_n04_urgent_yusuke"
+      ]
     },
     {
       "when": {},
       "score": "poor",
       "headline": "パニック値を通常報告にしています",
-      "reply": "msg_n04_routine"
+      "reply": [
+        "msg_n04_routine_kanae",
+        "msg_n04_routine_yusuke"
+      ]
     }
   ]
 }

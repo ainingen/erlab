@@ -30,6 +30,7 @@ src/
   lis.js            LIS結果画面／受付一覧／索引の描画
   messages.js       院内メッセージの描画と指導役による出し分け
   mentor.js         指導役の選択画面
+  tutorial.js       症例0（チュートリアル）の描画
   report.js         報告ダイアログと判定
 data/
   tests.json        検査項目マスタ（索引5枠つき）
@@ -37,11 +38,13 @@ data/
   conditions.json   病態テンプレート（根っこの値だけ）
   artifacts.json    検体トラブル
   mentors.json      指導役（ナビの話し手）
+  tutorial.json     症例0の8ステップ（指導役2人ぶん）
   cases/            症例（新人モードは手書きで固定）
   messages/         申し送り・ナビ・医師からの返信の文面
 docs/
   design.md         設計メモ
   characters.md     登場人物・立ち絵の使い分け・引き継ぎメモ
+  dialogue.md       症例0〜5bの台詞（かなえ版・悠介版）
   sources.md        数値の出典と確認状況
 test/
   index.html        テストを開くページ

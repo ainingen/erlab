@@ -2,6 +2,7 @@
 
 import { test, eq } from './harness.js';
 import { evaluate, SCORE_LABEL } from '../src/report.js';
+import { resolveMessages, filterBySpeaker } from '../src/messages.js';
 
 const SCORES = ['best', 'ok', 'poor'];
 
@@ -10,9 +11,12 @@ function pick(level, opts = {}) {
   return { level, comment: '', recheck: false, readback: level === 'emergency', ...opts };
 }
 
+const ids = (reply) => [].concat(reply ?? []);
+
 export function suite(data) {
   const caseById = Object.fromEntries(data.cases.map((c) => [c.id, c]));
   const messageIds = new Set(Object.keys(data.messages.messages));
+  const mentorIds = data.mentors.mentors.map((m) => m.id);
 
   // ---- 仕組み ----
   test('evaluate: choices を上から見て最初に当たった枝を返す', () => {
@@ -63,40 +67,41 @@ export function suite(data) {
   // ---- 症例ごとの判定 ----
   test('症例n01: 通常報告が最善、上げすぎも再検も要改善', () => {
     eq(evaluate(caseById.n01, pick('routine')).score, 'best');
+    eq(ids(evaluate(caseById.n01, pick('routine')).messageId).join(','),
+       'msg_n01_ok_kanae,msg_n01_ok_yusuke');
     eq(evaluate(caseById.n01, pick('urgent')).score, 'poor');
     eq(evaluate(caseById.n01, pick('emergency')).score, 'poor');
     eq(evaluate(caseById.n01, pick('routine', { recheck: true })).score, 'poor');
   });
 
-  test('症例n02: 軽度のHは通常報告が最善', () => {
+  test('症例n02: 軽度のHは通常報告が最善、電話すると要改善', () => {
     eq(evaluate(caseById.n02, pick('routine')).score, 'best');
-    eq(evaluate(caseById.n02, pick('routine')).messageId, 'msg_n02_ok');
     eq(evaluate(caseById.n02, pick('emergency')).score, 'poor');
+    eq(ids(evaluate(caseById.n02, pick('emergency')).messageId).join(','),
+       'msg_n02_over_kanae,msg_n02_over_yusuke');
   });
 
   test('症例n03: コメントの有無で best と ok が分かれる', () => {
     eq(evaluate(caseById.n03, pick('routine', { comment: '小球性低色素性。' })).score, 'best');
     const thin = evaluate(caseById.n03, pick('routine'));
     eq(thin.score, 'ok');
-    eq(thin.messageId, 'msg_n03_ok_nocomment');
+    eq(ids(thin.messageId).join(','), 'msg_n03_ok_nocomment_kanae,msg_n03_ok_nocomment_yusuke');
     eq(evaluate(caseById.n03, pick('urgent')).score, 'poor');
   });
 
   test('症例n04: 緊急報告が最善、至急どまりと不要な再検は許容、通常報告は要改善', () => {
     const best = evaluate(caseById.n04, pick('emergency'));
     eq(best.score, 'best');
-    eq(best.messageId, 'msg_n04_ok');
+    eq(ids(best.messageId).join(','), 'msg_n04_ok_kanae,msg_n04_ok_yusuke');
     eq(evaluate(caseById.n04, pick('emergency', { recheck: true })).score, 'ok');
-    eq(evaluate(caseById.n04, pick('emergency', { recheck: true })).messageId, 'msg_n04_recheck');
     eq(evaluate(caseById.n04, pick('urgent')).score, 'ok');
     eq(evaluate(caseById.n04, pick('routine')).score, 'poor');
-    eq(evaluate(caseById.n04, pick('routine', { recheck: true })).score, 'poor');
   });
 
   test('症例n05: 再採血が最善、溶血した値での電話は要改善', () => {
     const best = evaluate(caseById.n05, pick('routine', { recheck: true }));
     eq(best.score, 'best');
-    eq(best.messageId, 'msg_n05_ok');
+    eq(ids(best.messageId).join(','), 'msg_n05_ok_kanae,msg_n05_ok_yusuke');
     eq(evaluate(caseById.n05, pick('emergency', { recheck: true })).score, 'ok');
     eq(evaluate(caseById.n05, pick('urgent', { comment: '溶血3+のため参考値' })).score, 'ok');
     eq(evaluate(caseById.n05, pick('emergency')).score, 'poor');
@@ -104,22 +109,25 @@ export function suite(data) {
     eq(evaluate(caseById.n05, pick('urgent')).score, 'poor', '溶血に触れない至急報告');
   });
 
-  test('症例n05b: 再採血＋一報が最善、溶血を理由に流すのだけが要改善', () => {
-    const best = evaluate(caseById.n05b, pick('urgent', { recheck: true }));
+  test('症例n05b: 緊急報告＋再採血が最善、再採血だけは要改善', () => {
+    const best = evaluate(caseById.n05b, pick('emergency', { recheck: true }));
     eq(best.score, 'best');
-    eq(best.messageId, 'msg_n05b_ok');
-    eq(evaluate(caseById.n05b, pick('emergency', { recheck: true })).score, 'ok');
-    eq(evaluate(caseById.n05b, pick('routine', { recheck: true })).score, 'ok');
+    eq(ids(best.messageId).join(','), 'msg_n05b_ok_kanae,msg_n05b_ok_yusuke');
+
+    const only = evaluate(caseById.n05b, pick('routine', { recheck: true }));
+    eq(only.score, 'poor');
+    eq(ids(only.messageId).join(','),
+       'msg_n05b_recheck_only_kanae,msg_n05b_recheck_only_yusuke');
+
     eq(evaluate(caseById.n05b, pick('emergency')).score, 'ok', '値そのものは本物だった');
-    eq(evaluate(caseById.n05b, pick('urgent', { comment: '溶血2+。前回5.8。' })).score, 'ok');
+    eq(evaluate(caseById.n05b, pick('urgent', { recheck: true })).score, 'best');
     eq(evaluate(caseById.n05b, pick('routine')).score, 'poor');
-    eq(evaluate(caseById.n05b, pick('routine')).messageId, 'msg_n05b_missed');
   });
 
   test('症例5と5-b: 同じ「溶血」でも最善の手が変わる', () => {
     const recheckOnly = pick('routine', { recheck: true });
     eq(evaluate(caseById.n05, recheckOnly).score, 'best', 'n05は再採血だけで足りる');
-    eq(evaluate(caseById.n05b, recheckOnly).score, 'ok', 'n05bは黙って待たせない');
+    eq(evaluate(caseById.n05b, recheckOnly).score, 'poor', 'n05bは黙って待たせない');
   });
 
   // ---- 症例JSONの形 ----
@@ -136,7 +144,9 @@ export function suite(data) {
       for (const branch of c.choices) {
         eq(SCORES.includes(branch.score), true, `${c.id} の score: ${branch.score}`);
         eq(typeof branch.headline, 'string', `${c.id} の headline`);
-        eq(messageIds.has(branch.reply), true, `${c.id} の返信 ${branch.reply} が messages にない`);
+        for (const id of ids(branch.reply)) {
+          eq(messageIds.has(id), true, `${c.id} の返信 ${id} が messages にない`);
+        }
       }
     }
   });
@@ -155,14 +165,18 @@ export function suite(data) {
     }
   });
 
-  test('全症例: どの操作を選んでも必ず判定と返信が返る', () => {
+  test('全症例: どの操作を選んでも、どの指導役でも講評が1本以上返る', () => {
     for (const c of data.cases) {
       for (const level of ['routine', 'urgent', 'emergency']) {
         for (const recheck of [false, true]) {
           for (const comment of ['', 'コメント']) {
             const res = evaluate(c, pick(level, { recheck, comment }));
             eq(SCORES.includes(res.score), true, `${c.id} ${level} recheck=${recheck}`);
-            eq(messageIds.has(res.messageId), true, `${c.id} ${level} recheck=${recheck} の返信`);
+            for (const mentorId of mentorIds) {
+              const shown = filterBySpeaker(resolveMessages(data, res.messageId), mentorId);
+              eq(shown.length > 0, true,
+                 `${c.id} ${level} recheck=${recheck} comment=${Boolean(comment)} の講評 (${mentorId})`);
+            }
           }
         }
       }

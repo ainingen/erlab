@@ -5,10 +5,22 @@
   "goal": "中等度の異常に、検査室からのコメントを添えて報告する",
   "accession": "26-0907-033",
   "received_at": "09:05",
-  "patient": { "id": "P-0003", "label": "患者C", "age": 41, "sex": "F", "from": "内科外来" },
+  "patient": {
+    "id": "P-0003",
+    "label": "患者C",
+    "age": 41,
+    "sex": "F",
+    "from": "内科外来"
+  },
   "handover": "msg_n03_intro",
-  "order": ["CBC", "CHEM_BASIC"],
-  "seed": { "condition": "iron_deficiency_anemia", "severity": 2 },
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
+  "seed": {
+    "condition": "iron_deficiency_anemia",
+    "severity": 2
+  },
   "artifact": null,
   "previous": {
     "date": "2026-06-12",
@@ -37,25 +49,42 @@
       "AG": 12.0
     }
   },
-  "nav": "msg_n03_nav",
+  "nav": [
+    "msg_n03_nav_kanae",
+    "msg_n03_nav_yusuke"
+  ],
   "choices": [
     {
-      "when": { "recheck": true },
+      "when": {
+        "recheck": true
+      },
       "score": "poor",
       "headline": "再検の理由がありません",
       "reply": "msg_n03_recheck"
     },
     {
-      "when": { "report": "routine", "comment": true },
+      "when": {
+        "report": "routine",
+        "comment": true
+      },
       "score": "best",
       "headline": "適切な報告です",
-      "reply": "msg_n03_ok"
+      "reply": [
+        "msg_n03_ok_kanae",
+        "msg_n03_ok_yusuke"
+      ]
     },
     {
-      "when": { "report": "routine", "comment": false },
+      "when": {
+        "report": "routine",
+        "comment": false
+      },
       "score": "ok",
       "headline": "報告レベルは適切。ただしコメントを付けたい場面でした",
-      "reply": "msg_n03_ok_nocomment"
+      "reply": [
+        "msg_n03_ok_nocomment_kanae",
+        "msg_n03_ok_nocomment_yusuke"
+      ]
     },
     {
       "when": {},

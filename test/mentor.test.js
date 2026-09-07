@@ -1,12 +1,14 @@
-// 指導役の切り替え（speaker によるメッセージの出し分け）のテスト。
+// 指導役の切り替え（speaker によるメッセージの出し分け）と、症例0のテスト。
 
 import { test, eq } from './harness.js';
-import { filterBySpeaker, resolveMessages, messageById } from '../src/messages.js';
+import { filterBySpeaker, resolveMessages, messageById, portraitUrl } from '../src/messages.js';
 import { mentorById } from '../src/mentor.js';
+import { renderTutorialStep, stepCount } from '../src/tutorial.js';
 
 export function suite(data) {
   const mentors = data.mentors.mentors;
   const mentorIds = mentors.map((m) => m.id);
+  const emotionsOf = Object.fromEntries(mentors.map((m) => [m.id, m.emotions]));
   const caseById = Object.fromEntries(data.cases.map((c) => [c.id, c]));
 
   test('mentors.json: kanae と yusuke がそろっている', () => {
@@ -15,13 +17,26 @@ export function suite(data) {
       for (const key of ['name', 'role', 'tagline', 'style', 'greeting']) {
         eq(typeof m[key], 'string', `${m.id}.${key}`);
       }
+      eq(Array.isArray(m.emotions), true, `${m.id}.emotions`);
       eq(messageById(data, m.greeting) !== null, true, `${m.id} の挨拶 ${m.greeting} がない`);
     }
+  });
+
+  test('mentors.json: かなえは deadpan、悠介は troubled を持つ', () => {
+    eq(emotionsOf.kanae.includes('deadpan'), true);
+    eq(emotionsOf.kanae.includes('troubled'), false);
+    eq(emotionsOf.yusuke.includes('troubled'), true);
+    eq(emotionsOf.yusuke.includes('deadpan'), false);
   });
 
   test('mentorById: 知らないIDには null を返す', () => {
     eq(mentorById(data, 'kanae').name, '三嶋 かなえ');
     eq(mentorById(data, 'nobody'), null);
+  });
+
+  test('portraitUrl: {speaker}_{emotion}.png を指す', () => {
+    eq(portraitUrl('kanae', 'deadpan').endsWith('/assets/portraits/kanae_deadpan.png'), true);
+    eq(portraitUrl('yusuke', 'troubled').endsWith('/assets/portraits/yusuke_troubled.png'), true);
   });
 
   test('filterBySpeaker: speaker のない台詞は誰を選んでも出る', () => {
@@ -42,20 +57,16 @@ export function suite(data) {
     eq(resolveMessages(data, ['msg_shift_start', 'msg_nonexistent']).length, 1, '無い台詞は落とす');
   });
 
-  test('症例n01: 指導役ごとにナビが1本ずつ出る', () => {
-    const navs = resolveMessages(data, caseById.n01.nav);
-    eq(navs.length, 2);
-    for (const id of mentorIds) {
-      const shown = filterBySpeaker(navs, id);
-      eq(shown.length, 1, `${id} に出るナビの本数`);
-      eq(shown[0].speaker, id);
-    }
-  });
-
-  test('全メッセージ: speaker は実在する指導役のIDだけ', () => {
+  test('全メッセージ: speaker と emotion は実在する指導役と表情だけ', () => {
     for (const [id, msg] of Object.entries(data.messages.messages)) {
-      if (!msg.speaker) continue;
+      if (!msg.speaker) {
+        eq(msg.emotion, undefined, `${id} に speaker なしで emotion がある`);
+        continue;
+      }
       eq(mentorIds.includes(msg.speaker), true, `${id} の speaker: ${msg.speaker}`);
+      eq(typeof msg.emotion, 'string', `${id} に emotion がない`);
+      eq(emotionsOf[msg.speaker].includes(msg.emotion), true,
+         `${id} の emotion ${msg.emotion} は ${msg.speaker} にない`);
     }
   });
 
@@ -66,5 +77,73 @@ export function suite(data) {
         eq(filterBySpeaker(resolveMessages(data, c.nav), id).length > 0, true, `${c.id} のナビ (${id})`);
       }
     }
+  });
+
+  test('症例1〜5b: ナビは指導役ごとに1本ずつ、立ち絵つきで出る', () => {
+    for (const c of data.cases) {
+      const navs = resolveMessages(data, c.nav);
+      eq(navs.length, mentorIds.length, `${c.id} のナビの本数`);
+      for (const id of mentorIds) {
+        const shown = filterBySpeaker(navs, id);
+        eq(shown.length, 1, `${c.id} で ${id} に出るナビ`);
+        eq(shown[0].speaker, id);
+        eq(typeof shown[0].emotion, 'string', `${c.id} ${id} のナビに emotion がない`);
+      }
+    }
+  });
+
+  test('症例4以降のナビは結論を言わない（段階設計）', () => {
+    // 症例4〜5bのナビは、症例1〜3より短く、報告レベルを名指ししない
+    for (const cid of ['n04', 'n05', 'n05b']) {
+      for (const m of resolveMessages(data, caseById[cid].nav)) {
+        const text = m.body.join('');
+        eq(/通常報告|至急報告|緊急報告|再採血して/.test(text), false,
+           `${cid} の ${m.speaker} のナビが結論を言っている`);
+      }
+    }
+  });
+
+  // ---- 症例0 ----
+  test('症例0: 8ステップあり、両方の指導役ぶんの台詞がそろっている', () => {
+    eq(stepCount(data.tutorial), 8);
+    for (const step of data.tutorial.steps) {
+      for (const id of mentorIds) {
+        const line = step.lines[id];
+        eq(Boolean(line), true, `${step.id} に ${id} の台詞がない`);
+        eq(Array.isArray(line.body) && line.body.length > 0, true, `${step.id} ${id} の本文`);
+        eq(emotionsOf[id].includes(line.emotion), true,
+           `${step.id} ${id} の emotion ${line.emotion} は ${id} にない`);
+      }
+      if (step.focus) {
+        eq(typeof data.tutorial.focus_label[step.focus], 'string', `${step.id} の focus 表記`);
+      }
+    }
+  });
+
+  test('症例0: 検査値を出さない（台詞に数値を入れない）', () => {
+    for (const step of data.tutorial.steps) {
+      for (const id of mentorIds) {
+        const text = step.lines[id].body.join('');
+        eq(/[0-9]+\.[0-9]/.test(text), false, `${step.id} ${id} の台詞に検査値らしき数字がある`);
+      }
+    }
+  });
+
+  test('症例0: 各ステップが立ち絵つきで描ける', () => {
+    for (const mentor of mentors) {
+      for (let i = 0; i < stepCount(data.tutorial); i += 1) {
+        const html = renderTutorialStep(data.tutorial, i, mentor);
+        eq(html.includes('tut-portrait'), true, `${mentor.id} step${i + 1} に立ち絵がない`);
+        eq(html.includes(`${mentor.id}_`), true, `${mentor.id} step${i + 1} の立ち絵のID`);
+        eq(html.includes('data-action="tutorial-next"'), true, `${mentor.id} step${i + 1} の次へ`);
+      }
+    }
+  });
+
+  test('症例0: 最後のステップだけボタンが「一件目へ」になる', () => {
+    const mentor = mentors[0];
+    const last = stepCount(data.tutorial) - 1;
+    eq(renderTutorialStep(data.tutorial, 0, mentor).includes('次へ'), true);
+    eq(renderTutorialStep(data.tutorial, last, mentor).includes('一件目へ'), true);
   });
 }

@@ -5,13 +5,25 @@
   "goal": "検体を疑うことと、異常を否定することは違うと知る",
   "accession": "26-0907-058",
   "received_at": "10:41",
-  "patient": { "id": "P-0006", "label": "患者F", "age": 71, "sex": "M", "from": "ER" },
+  "patient": {
+    "id": "P-0006",
+    "label": "患者F",
+    "age": 71,
+    "sex": "M",
+    "from": "ER"
+  },
   "handover": "msg_n05b_intro",
-  "order": ["CBC", "CHEM_BASIC"],
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
   "seed": {
     "condition": "hyperkalemia_renal",
     "severity": 1,
-    "overrides": { "K": 6.0, "Cre": 3.2 }
+    "overrides": {
+      "K": 6.0,
+      "Cre": 3.2
+    }
   },
   "artifact": "hemolysis_2plus",
   "previous": {
@@ -41,7 +53,10 @@
       "AG": 16.0
     }
   },
-  "nav": "msg_n05b_nav",
+  "nav": [
+    "msg_n05b_nav_kanae",
+    "msg_n05b_nav_yusuke"
+  ],
   "recollect": {
     "accession": "26-0907-058R",
     "received_at": "11:12",
@@ -50,31 +65,53 @@
   },
   "choices": [
     {
-      "when": { "report": "urgent", "recheck": true },
+      "when": {
+        "report": "urgent",
+        "recheck": true
+      },
       "score": "best",
       "headline": "再採血しつつ、高い可能性を先に伝えたのが最善です",
-      "reply": "msg_n05b_ok"
+      "reply": "msg_n05b_urgent_recheck"
     },
     {
-      "when": { "report": "emergency", "recheck": true },
-      "score": "ok",
-      "headline": "再採血は正しい。ただし読み返しまで取るのは、値が確かめられてからです",
-      "reply": "msg_n05b_call_and_recheck"
+      "when": {
+        "report": "emergency",
+        "recheck": true
+      },
+      "score": "best",
+      "headline": "溶血を付記したうえで緊急報告し、再採血まで出せています",
+      "reply": [
+        "msg_n05b_ok_kanae",
+        "msg_n05b_ok_yusuke"
+      ]
     },
     {
-      "when": { "recheck": true },
-      "score": "ok",
-      "headline": "再採血は正しい。ただし黙って待たせる時間が生まれます",
-      "reply": "msg_n05b_recheck_only"
+      "when": {
+        "recheck": true
+      },
+      "score": "poor",
+      "headline": "再採血だけで、報告が伴っていません",
+      "reply": [
+        "msg_n05b_recheck_only_kanae",
+        "msg_n05b_recheck_only_yusuke"
+      ]
     },
     {
-      "when": { "report": "emergency" },
+      "when": {
+        "report": "emergency"
+      },
       "score": "ok",
       "headline": "結果として値は本物でした。ただし確かめる前の数字で読み返しを取っています",
-      "reply": "msg_n05b_call_only"
+      "reply": [
+        "msg_n05b_call_only_kanae",
+        "msg_n05b_call_only_yusuke"
+      ]
     },
     {
-      "when": { "report": "urgent", "comment": true },
+      "when": {
+        "report": "urgent",
+        "comment": true
+      },
       "score": "ok",
       "headline": "溶血を伝えたのは正しい。あと一歩、再採血まで出しておきたい場面です",
       "reply": "msg_n05b_urgent_only"

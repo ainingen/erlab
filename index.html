@@ -182,6 +182,25 @@
   .msg p { font-family: var(--sans); font-size: 12px; margin: 0 0 5px; }
   .empty { color: var(--ink-dim); }
 
+  /* 指導役の台詞は立ち絵を左、台詞を右に置く */
+  .msg.has-portrait { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: start; }
+  .msg-portrait { width: 76px; height: auto; display: block; background: #fff; border: 1px solid var(--line); }
+  .msg-main { min-width: 0; }
+
+  /* ---- 症例0（チュートリアル） ---- */
+  .tut-title { display: flex; align-items: baseline; gap: 8px; }
+  .tut-step { font-size: 11px; font-weight: 400; color: var(--ink-dim); border: 1px solid var(--line-strong); padding: 0 5px; }
+  .tut-focus { font-size: 11px; color: var(--ink-dim); margin: -4px 0 10px; }
+  .tut-body { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .tut-portrait { width: 120px; height: auto; display: block; background: #fff; border: 1px solid var(--line); }
+  .tut-lines { font-family: var(--sans); font-size: 13px; line-height: 1.7; }
+  .tut-lines p { margin: 0 0 8px; }
+  .tut-from { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); margin: 0 0 8px; }
+  .tut-placeholder {
+    font-family: var(--sans); color: var(--ink-dim); text-align: center;
+    border: 1px dashed var(--line-strong); padding: 20px 12px; margin: 0 0 10px;
+  }
+
   /* ---- dialogs ---- */
   dialog { border: 2px solid var(--head); background: var(--panel); color: var(--ink); padding: 0; width: min(560px, 94vw); }
   dialog::backdrop { background: rgba(20, 24, 32, .55); }
@@ -258,6 +277,10 @@
     .lis-table .lbl { display: inline; margin-right: 4px; }
     .t-name { display: none; }
     .wl-title { display: none; }
+    .tut-body { grid-template-columns: 88px minmax(0, 1fr); gap: 10px; }
+    .tut-portrait { width: 88px; }
+    .msg.has-portrait { grid-template-columns: 64px minmax(0, 1fr); }
+    .msg-portrait { width: 64px; }
   }
 </style>
 </head>
@@ -298,6 +321,8 @@
 </main>
 
 <dialog id="mentor-dialog"><div id="mentor-body"></div></dialog>
+
+<dialog id="tutorial-dialog"><div id="tutorial-body"></div></dialog>
 
 <dialog id="report-dialog"><div id="report-body"></div></dialog>
 

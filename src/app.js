@@ -6,6 +6,7 @@ import { renderWorklist, renderResults, renderRecollect, renderGlossary, esc } f
 import { renderMessages, resolveMessages, filterBySpeaker } from './messages.js';
 import { renderReportDialog, renderPhone, evaluate, renderVerdict, SCORE_LABEL } from './report.js';
 import { renderMentorPicker, mentorById } from './mentor.js';
+import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
 
 const state = {
   data: null,
@@ -18,7 +19,8 @@ const state = {
   mentorId: null,
   currentCaseId: null,
   pendingChoice: null,
-  started: false,
+  phase: 'mentor', // mentor → tutorial → cases
+  tutorialStep: 0,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -48,6 +50,10 @@ async function main() {
 
 /* ---- 指導役 ---- */
 
+function currentMentor() {
+  return mentorById(state.data, state.mentorId);
+}
+
 function openMentorPicker() {
   $('#mentor-body').innerHTML = renderMentorPicker(state.data, state.mentorId);
   $('#mentor-dialog').showModal();
@@ -55,19 +61,48 @@ function openMentorPicker() {
 
 function chooseMentor(id) {
   if (!mentorById(state.data, id)) return;
+  const first = state.mentorId === null;
   state.mentorId = id;
   $('#mentor-dialog').close();
-  if (!state.started) {
-    state.started = true;
+
+  if (first) {
     startShift();
     return;
   }
-  renderAll(); // 出したメッセージは残したまま、選んだ人の台詞だけに差し替わる
+  // 出したメッセージは残したまま、選んだ人の台詞だけに差し替わる
+  renderAll();
+  if (state.phase === 'tutorial') renderTutorial();
 }
 
 function startShift() {
   pushMessage('msg_shift_start');
   for (const m of state.data.mentors.mentors) pushMessage(m.greeting);
+  state.phase = 'tutorial';
+  state.tutorialStep = 0;
+  renderAll();
+  setView('lis');
+  renderTutorial();
+  $('#tutorial-dialog').showModal();
+}
+
+/* ---- 症例0（チュートリアル） ---- */
+
+function renderTutorial() {
+  $('#tutorial-body').innerHTML = renderTutorialStep(
+    state.data.tutorial,
+    state.tutorialStep,
+    currentMentor(),
+  );
+}
+
+function advanceTutorial() {
+  state.tutorialStep += 1;
+  if (state.tutorialStep < stepCount(state.data.tutorial)) {
+    renderTutorial();
+    return;
+  }
+  state.phase = 'cases';
+  $('#tutorial-dialog').close();
   selectCase(state.cases[0].id);
 }
 
@@ -86,6 +121,7 @@ function visibleMessages() {
 /* ---- 症例 ---- */
 
 function selectCase(caseId) {
+  if (state.phase !== 'cases') return; // チュートリアル中は検体を開かせない
   state.currentCaseId = caseId;
   const caseDef = currentCase();
   pushMessage(caseDef.handover);
@@ -103,27 +139,24 @@ function currentPanel() {
 }
 
 function renderAll() {
+  renderWorklistPane();
+  renderMessagePane();
+  renderScore();
+
+  if (state.phase !== 'cases') {
+    $('#case-title').textContent = `${state.data.tutorial.title}（画面の見方）`;
+    $('#pane-lis').innerHTML = renderTutorialPlaceholder();
+    $('.lis-actions').hidden = true;
+    return;
+  }
+
   const caseDef = currentCase();
   if (!caseDef) return;
-  const panel = currentPanel();
-
-  $('#pane-worklist').innerHTML = renderWorklist(state.cases, {
-    status: state.status,
-    results: state.results,
-    scoreLabel: SCORE_LABEL,
-    currentCaseId: state.currentCaseId,
-  });
+  $('.lis-actions').hidden = false;
 
   const re = state.recollected[caseDef.id];
   $('#pane-lis').innerHTML =
-    renderResults(caseDef, panel, state.data) + (re ? renderRecollect(caseDef, re) : '');
-
-  const msgPane = $('#pane-messages');
-  msgPane.innerHTML = renderMessages(visibleMessages());
-  msgPane.scrollTop = msgPane.scrollHeight; // 新しい申し送り・返信が見えるところまで送る
-
-  const mentor = mentorById(state.data, state.mentorId);
-  $('#mentor-btn').textContent = `指導役 ${mentor ? mentor.name : '—'}`;
+    renderResults(caseDef, currentPanel(), state.data) + (re ? renderRecollect(caseDef, re) : '');
 
   const done = state.status[caseDef.id] === 'done';
   const reportBtn = $('#btn-report');
@@ -136,13 +169,34 @@ function renderAll() {
   nextBtn.hidden = !(done && next);
   if (next) nextBtn.dataset.case = next.id;
 
+  $('#case-title').textContent = caseDef.title;
+}
+
+function renderWorklistPane() {
+  $('#pane-worklist').innerHTML = renderWorklist(state.cases, {
+    status: state.status,
+    results: state.results,
+    scoreLabel: SCORE_LABEL,
+    currentCaseId: state.currentCaseId,
+  });
+}
+
+function renderMessagePane() {
+  const pane = $('#pane-messages');
+  pane.innerHTML = renderMessages(visibleMessages(), currentMentor());
+  pane.scrollTop = pane.scrollHeight; // 新しい申し送り・返信が見えるところまで送る
+}
+
+function renderScore() {
+  const mentor = currentMentor();
+  $('#mentor-btn').textContent = `指導役 ${mentor ? mentor.name : '—'}`;
+
   const tally = { best: 0, ok: 0, poor: 0 };
   for (const r of Object.values(state.results)) tally[r.score] = (tally[r.score] || 0) + 1;
   const total = Object.keys(state.results).length;
   $('#score').textContent = total
     ? `報告 ${total}件 ／ 最善 ${tally.best}・許容 ${tally.ok}・要改善 ${tally.poor}`
     : '報告 0件';
-  $('#case-title').textContent = caseDef.title;
 }
 
 function setView(view) {
@@ -159,6 +213,8 @@ function bindEvents() {
   $('#mentor-dialog').addEventListener('cancel', (ev) => {
     if (!state.mentorId) ev.preventDefault();
   });
+  // チュートリアルは最後まで送る
+  $('#tutorial-dialog').addEventListener('cancel', (ev) => ev.preventDefault());
 
   document.addEventListener('click', (ev) => {
     const mentorBtn = ev.target.closest('[data-mentor]');
@@ -191,6 +247,7 @@ function bindEvents() {
     if (action === 'open-report') openReport();
     if (action === 'open-mentor') openMentorPicker();
     if (action === 'close-mentor') $('#mentor-dialog').close();
+    if (action === 'tutorial-next') advanceTutorial();
     if (action === 'readback') finishReport({ ...state.pendingChoice, readback: true });
   });
 
@@ -214,6 +271,7 @@ function bindEvents() {
 }
 
 function openGlossary(testId) {
+  if (state.phase !== 'cases') return;
   const sex = currentCase().patient.sex;
   $('#glossary-body').innerHTML = renderGlossary(testId, state.data, sex);
   $('#glossary-dialog').showModal();
