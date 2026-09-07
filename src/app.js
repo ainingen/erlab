@@ -15,6 +15,8 @@ const state = {
   status: {},
   results: {},
   recollected: {},
+  marks: {},
+  suspects: {},
   messageIds: [],
   mentorId: null,
   currentCaseId: null,
@@ -138,6 +140,45 @@ function currentPanel() {
   return state.panels.get(state.currentCaseId);
 }
 
+/* ---- マークと疑い ---- */
+
+/** その症例のマークと疑い。報告に載るのはマークした行だけ。 */
+function selection(caseId) {
+  return { marks: state.marks[caseId] || [], suspects: state.suspects[caseId] || {} };
+}
+
+function toggleMark(testId) {
+  const caseId = state.currentCaseId;
+  if (!caseId || state.status[caseId] === 'done') return;
+  const marks = [...(state.marks[caseId] || [])];
+  const at = marks.indexOf(testId);
+  if (at >= 0) {
+    marks.splice(at, 1);
+    // マークを外したら、その行に付けた疑いも落とす
+    const suspects = { ...(state.suspects[caseId] || {}) };
+    delete suspects[testId];
+    state.suspects[caseId] = suspects;
+  } else {
+    marks.push(testId);
+  }
+  state.marks[caseId] = marks;
+  renderAll();
+}
+
+function toggleSuspect(testId, suspectId) {
+  const caseId = state.currentCaseId;
+  if (!caseId || state.status[caseId] === 'done') return;
+  if (!(state.marks[caseId] || []).includes(testId)) return;
+  const suspects = { ...(state.suspects[caseId] || {}) };
+  const picked = [...(suspects[testId] || [])];
+  const at = picked.indexOf(suspectId);
+  if (at >= 0) picked.splice(at, 1);
+  else picked.push(suspectId);
+  suspects[testId] = picked;
+  state.suspects[caseId] = suspects;
+  renderAll();
+}
+
 function renderAll() {
   renderWorklistPane();
   renderMessagePane();
@@ -154,11 +195,15 @@ function renderAll() {
   if (!caseDef) return;
   $('.lis-actions').hidden = false;
 
+  const done = state.status[caseDef.id] === 'done';
   const re = state.recollected[caseDef.id];
   $('#pane-lis').innerHTML =
-    renderResults(caseDef, currentPanel(), state.data) + (re ? renderRecollect(caseDef, re) : '');
+    renderResults(caseDef, currentPanel(), state.data, {
+      ...selection(caseDef.id),
+      suspectDefs: state.data.suspects.suspects,
+      interactive: !done, // 報告したあとはマークを動かせない
+    }) + (re ? renderRecollect(caseDef, re) : '');
 
-  const done = state.status[caseDef.id] === 'done';
   const reportBtn = $('#btn-report');
   reportBtn.disabled = done;
   reportBtn.textContent = done ? '報告済み' : '報告する';
@@ -235,6 +280,18 @@ function bindEvents() {
       return;
     }
 
+    const suspectBtn = ev.target.closest('[data-suspect]');
+    if (suspectBtn) {
+      toggleSuspect(suspectBtn.dataset.suspectTest, suspectBtn.dataset.suspect);
+      return;
+    }
+
+    const markRow = ev.target.closest('[data-mark]');
+    if (markRow) {
+      toggleMark(markRow.dataset.mark);
+      return;
+    }
+
     const tab = ev.target.closest('.tab');
     if (tab) {
       setView(tab.dataset.viewTarget);
@@ -251,6 +308,17 @@ function bindEvents() {
     if (action === 'readback') finishReport({ ...state.pendingChoice, readback: true });
   });
 
+  // 行は button ではないので、Enter と Space を自前で拾う
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const markRow = ev.target.closest?.('[data-mark]');
+    if (!markRow) return;
+    ev.preventDefault();
+    const testId = markRow.dataset.mark;
+    toggleMark(testId);
+    $(`[data-mark="${testId}"]`)?.focus();
+  });
+
   document.addEventListener('submit', (ev) => {
     if (ev.target.id !== 'report-form') return;
     ev.preventDefault();
@@ -260,10 +328,11 @@ function bindEvents() {
       comment: form.get('comment') || '',
       recheck: form.get('recheck') === 'on',
       readback: false,
+      ...selection(state.currentCaseId),
     };
     if (choice.level === 'emergency') {
       state.pendingChoice = choice;
-      $('#report-body').innerHTML = renderPhone(currentCase(), currentPanel());
+      $('#report-body').innerHTML = renderPhone(currentCase(), currentPanel(), choice);
       return;
     }
     finishReport(choice);
@@ -279,7 +348,11 @@ function openGlossary(testId) {
 
 function openReport() {
   state.pendingChoice = null;
-  $('#report-body').innerHTML = renderReportDialog(currentCase(), state.data);
+  $('#report-body').innerHTML = renderReportDialog(
+    currentCase(),
+    state.data,
+    selection(state.currentCaseId),
+  );
   $('#report-dialog').showModal();
 }
 

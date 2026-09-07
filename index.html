@@ -144,12 +144,47 @@
   .lis-table th, .lis-table td { border: 1px solid var(--line); padding: 4px 7px; text-align: right; }
   .lis-table thead th { background: #f0efeb; font-size: 13px; color: var(--ink-dim); text-align: right; font-weight: 400; }
   .lis-table thead th:first-child { text-align: left; }
+  .lis-table.has-mark thead th:first-child { text-align: center; }
+  .lis-table.has-mark thead th:nth-child(2) { text-align: left; }
   .lis-table tbody th { text-align: left; font-weight: 400; }
   .lis-table td[data-col="unit"], .lis-table td[data-col="ref"] { color: var(--ink-dim); font-size: 13px; }
   .lis-table td[data-col="value"] { font-weight: 700; font-size: 16px; white-space: nowrap; }
   .lis-table td[data-col="prev"] { color: var(--ink-dim); white-space: nowrap; }
   .lis-table tr.is-flagged td[data-col="value"] { text-decoration: underline; text-underline-offset: 2px; }
   .lis-table .lbl { display: none; }
+
+  /* ---- マーク（選択状態） ---- */
+  /* 行の反転は色ルールの例外。値の重さではなく「報告に載せる行を選んだ」ことだけを示す。
+     反転だけに頼らないよう、印欄の記号と aria-pressed を必ず併せて出す */
+  .lis-table td[data-col="mark"] { text-align: center; padding: 4px 5px; }
+  .mark-box {
+    display: inline-block; width: 1.3em; height: 1.3em; line-height: 1.25em;
+    border: 1px solid currentColor; text-align: center; font-size: 13px;
+  }
+  .lis-table tr[data-mark] { cursor: pointer; }
+  .lis-table tr[data-mark]:focus-visible { outline: 3px solid var(--head); outline-offset: -3px; }
+  .lis-table tr.is-marked { background: var(--head); color: var(--head-ink); }
+  .lis-table tr.is-marked .t-name,
+  .lis-table tr.is-marked td[data-col="unit"],
+  .lis-table tr.is-marked td[data-col="ref"],
+  .lis-table tr.is-marked td[data-col="prev"] { color: #d2d9e4; }
+  .lis-table tr.is-marked .test-name { color: inherit; }
+  .lis-table tr.is-marked .delta { border-color: currentColor; }
+  /* フラグ欄は淡い地色のままなので、反転行では文字色を戻す */
+  .lis-table tr.is-marked td[data-col="flag"].is-warn,
+  .lis-table tr.is-marked td[data-col="flag"].is-panic { color: var(--ink); }
+
+  /* ---- 疑いタブ ---- */
+  .suspect-row td { background: #eef1f6; padding: 6px 7px; text-align: left; }
+  .suspects { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .suspects-label { font-size: 13px; color: var(--ink-dim); }
+  .suspect {
+    font: inherit; font-size: 14px; padding: 4px 9px; min-height: 34px;
+    background: #fbfbf9; border: 1px solid var(--line-strong); cursor: pointer;
+  }
+  .suspect.is-on { background: var(--head); color: var(--head-ink); border-color: #101620; font-weight: 700; }
+  .suspect-check { display: inline-block; min-width: 1.1em; }
+  .suspect:disabled { cursor: default; opacity: .75; }
 
   .test-name { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline dotted; }
   .t-abbr { font-weight: 700; }
@@ -226,6 +261,11 @@
   .lv-label { display: block; font-weight: 700; font-size: 16px; }
   .lv-action { display: block; font-size: 14px; }
   .lv-when { display: block; font-size: 14px; color: var(--ink-dim); font-family: var(--sans); }
+  .report-marks {
+    font-size: 15px; background: #f0efeb; border: 1px solid var(--line-strong);
+    padding: 6px 8px; margin: 0 0 12px;
+  }
+  .report-marks-label { font-size: 12px; border: 1px solid var(--line-strong); padding: 0 4px; margin-right: 8px; }
   .field { display: block; margin-bottom: 12px; }
   .field > span { display: block; font-size: 13px; color: var(--ink-dim); margin-bottom: 4px; }
   .field textarea { width: 100%; font: inherit; font-size: 15px; font-family: var(--sans); padding: 7px; border: 1px solid var(--line-strong); }
@@ -277,6 +317,13 @@
       align-items: baseline;
       padding: 5px 6px;
     }
+    /* マーク欄のぶんを1列足す。再採血検体の表（印欄なし）は元の4列のまま */
+    .lis-table.has-mark tr {
+      grid-template-columns: 2em minmax(0, 1fr) auto auto 2.8em;
+      grid-template-areas: "mark name value unit flag" "mark ref ref prev prev";
+    }
+    .lis-table td[data-col="mark"] { grid-area: mark; align-self: center; }
+    .lis-table tr.suspect-row { display: block; padding: 0; border-top: 0; }
     .lis-table tbody tr:first-child { border-top: 1px solid var(--line); }
     .lis-table th, .lis-table td { border: 0; padding: 0 4px; }
     .lis-table th[data-col="name"] { grid-area: name; }

@@ -8,7 +8,15 @@ const SCORES = ['best', 'ok', 'poor'];
 
 /** 報告ダイアログが作るのと同じ形の選択を組み立てる。 */
 function pick(level, opts = {}) {
-  return { level, comment: '', recheck: false, readback: level === 'emergency', ...opts };
+  return {
+    level,
+    comment: '',
+    recheck: false,
+    readback: level === 'emergency',
+    marks: [],
+    suspects: {},
+    ...opts,
+  };
 }
 
 const ids = (reply) => [].concat(reply ?? []);
@@ -56,6 +64,51 @@ export function suite(data) {
     eq(evaluate(caseDef, pick('routine', { comment: '溶血あり' })).headline, 'あり');
     eq(evaluate(caseDef, pick('routine', { comment: '   ' })).headline, 'なし');
     eq(evaluate(caseDef, pick('routine')).headline, 'なし');
+  });
+
+  test('evaluate: marks は must / max / forbid だけを見る', () => {
+    const caseDef = {
+      choices: [
+        { when: { marks: { must: ['K'], max: 1 } }, score: 'best', headline: 'Kだけ', reply: 'a' },
+        { when: { marks: { must: ['K'] } }, score: 'ok', headline: 'Kと他', reply: 'b' },
+        { when: { marks: { forbid: ['CRP'] } }, score: 'ok', headline: 'CRPなし', reply: 'c' },
+        { when: {}, score: 'poor', headline: '受け皿', reply: 'd' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('routine', { marks: ['K'] })).headline, 'Kだけ');
+    eq(evaluate(caseDef, pick('routine', { marks: ['K', 'Cre'] })).headline, 'Kと他');
+    eq(evaluate(caseDef, pick('routine', { marks: [] })).headline, 'CRPなし');
+    eq(evaluate(caseDef, pick('routine', { marks: ['CRP'] })).headline, '受け皿');
+  });
+
+  test('evaluate: marks を書かない枝はマークを不問にする（既存の枝がそのまま動く）', () => {
+    const caseDef = { choices: [{ when: { report: 'routine' }, score: 'best', headline: 'x' }] };
+    eq(evaluate(caseDef, pick('routine')).score, 'best');
+    eq(evaluate(caseDef, pick('routine', { marks: ['K', 'Hb', 'CRP'] })).score, 'best');
+  });
+
+  test('evaluate: suspects は指定した疑いが付いていれば一致、指定外は不問', () => {
+    const caseDef = {
+      choices: [
+        { when: { suspects: { K: ['hemolysis'] } }, score: 'best', headline: '溶血', reply: 'a' },
+        { when: {}, score: 'poor', headline: '受け皿', reply: 'b' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('routine', { suspects: { K: ['hemolysis'] } })).headline, '溶血');
+    eq(evaluate(caseDef, pick('routine', { suspects: { K: ['real', 'hemolysis'] } })).headline, '溶血');
+    eq(evaluate(caseDef, pick('routine', { suspects: { K: ['real'] } })).headline, '受け皿');
+    eq(evaluate(caseDef, pick('routine')).headline, '受け皿');
+  });
+
+  test('evaluate: suspects の exact:true は厳密一致にする', () => {
+    const caseDef = {
+      choices: [
+        { when: { suspects: { K: ['hemolysis'], exact: true } }, score: 'best', headline: '溶血だけ' },
+        { when: {}, score: 'poor', headline: '受け皿' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('routine', { suspects: { K: ['hemolysis'] } })).headline, '溶血だけ');
+    eq(evaluate(caseDef, pick('routine', { suspects: { K: ['hemolysis', 'real'] } })).headline, '受け皿');
   });
 
   test('evaluate: どれにも当たらなければ poor で落とす', () => {
@@ -216,6 +269,35 @@ export function suite(data) {
           }
         }
       }
+    }
+  });
+
+  test('全症例: choices が参照する項目IDと疑いIDが実在する', () => {
+    const testIds = new Set(data.tests.tests.map((t) => t.id));
+    const suspectIds = new Set(data.suspects.suspects.map((s) => s.id));
+    for (const c of data.cases) {
+      for (const branch of c.choices) {
+        const marks = (branch.when || {}).marks || {};
+        for (const id of [].concat(marks.must || [], marks.forbid || [])) {
+          eq(testIds.has(id), true, `${c.id} の marks に未定義の項目 ${id}`);
+        }
+        for (const [testId, wanted] of Object.entries((branch.when || {}).suspects || {})) {
+          if (testId === 'exact') continue;
+          eq(testIds.has(testId), true, `${c.id} の suspects に未定義の項目 ${testId}`);
+          for (const s of [].concat(wanted)) {
+            eq(suspectIds.has(s), true, `${c.id} の suspects に未定義の疑い ${s}`);
+          }
+        }
+      }
+    }
+  });
+
+  test('疑いのIDと表示名がそろっている（mechanics.md の6つ）', () => {
+    const ids = data.suspects.suspects.map((s) => s.id).join(',');
+    eq(ids, 'real,hemolysis,clot,dilution,mismatch,delta');
+    for (const s of data.suspects.suspects) {
+      eq(typeof s.label, 'string', `${s.id} の表示名`);
+      eq(typeof s.hint, 'string', `${s.id} の説明`);
     }
   });
 
