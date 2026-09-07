@@ -64,6 +64,8 @@ export function renderResults(caseDef, panel, data) {
         <span class="pt-from">依頼元 ${esc(p.from)}</span>
       </div>
       <dl class="pt-meta">
+        ${p.note ? `<dt>主訴</dt><dd>${esc(p.note)}</dd>` : ''}
+        ${p.vitals ? `<dt>バイタル</dt><dd>脈拍 ${esc(p.vitals.pulse)} /分　血圧 ${esc(p.vitals.bp)} mmHg</dd>` : ''}
         <dt>検体状態</dt><dd class="${sampleLines.length ? 'is-flagged' : ''}">${esc(sampleText)}</dd>
         <dt>前回検査</dt><dd>${esc(prevNote)}</dd>
       </dl>

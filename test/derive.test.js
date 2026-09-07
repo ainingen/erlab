@@ -271,6 +271,30 @@ export function suite(data) {
     eq(Object.fromEntries(re.rows.map((r) => [r.id, r])).K.delta, false, '取り直すとΔは鳴らない');
   });
 
+  test('症例n06: Δが点き、正球性正色素性のまま Hb だけ落ちている', () => {
+    const panel = buildPanel(caseById.n06, data);
+    const byId = Object.fromEntries(panel.rows.map((r) => [r.id, r]));
+    eq(byId.Hb.display, '9.8');
+    eq(byId.Hb.flag, 'L');
+    eq(byId.Hb.previousDisplay, '13.5');
+    eq(byId.Hb.delta, true, 'デルタチェックが鳴る');
+    eq(byId.MCV.flag, '', '正球性');
+    eq(byId.MCH.flag, '', '正色素性');
+    eq(byId.MCHC.flag, '');
+    eq(byId.PLT.display, '210');
+    eq(byId.PLT.flag, '', '血小板は基準内');
+    eq(panel.sampleComment, null, '検体は正しい');
+    eq(panel.hasPanic, false);
+  });
+
+  test('全症例: 患者情報にバイタルと主訴がある', () => {
+    for (const c of data.cases) {
+      eq(typeof c.patient.note, 'string', `${c.id} の主訴`);
+      eq(typeof c.patient.vitals.pulse, 'number', `${c.id} の脈拍`);
+      eq(/^[0-9]{2,3}\/[0-9]{2,3}$/.test(c.patient.vitals.bp), true, `${c.id} の血圧: ${c.patient.vitals.bp}`);
+    }
+  });
+
   test('全症例: recollect を持つ症例は検体トラブルなしで組み直せる', () => {
     for (const c of data.cases) {
       if (!c.recollect) continue;

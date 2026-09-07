@@ -1,0 +1,137 @@
+{
+  "id": "n06",
+  "mode": "rookie",
+  "title": "6. 数字は動いた、検体は正しい",
+  "goal": "前回値との乖離が検体のせいか患者の変化かを切り分ける",
+  "accession": "26-0907-071",
+  "received_at": "11:48",
+  "patient": {
+    "id": "P-0007",
+    "label": "患者G",
+    "age": 72,
+    "sex": "F",
+    "from": "消化器内科病棟",
+    "vitals": {
+      "pulse": 104,
+      "bp": "98/62"
+    },
+    "note": "黒色便、入院3日目"
+  },
+  "handover": "msg_n06_intro",
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
+  "seed": {
+    "condition": "acute_blood_loss",
+    "severity": 0,
+    "overrides": {
+      "RBC": 3.27,
+      "MCV": 88.0,
+      "MCH": 30.0,
+      "PLT": 210,
+      "WBC": 7.4,
+      "BUN": 18
+    }
+  },
+  "artifact": null,
+  "previous": {
+    "date": "2026-09-04",
+    "note": "3日前・同病棟",
+    "values": {
+      "WBC": 6.8,
+      "RBC": 4.47,
+      "Hb": 13.5,
+      "Ht": 39.8,
+      "MCV": 89.0,
+      "MCH": 30.2,
+      "MCHC": 33.9,
+      "PLT": 232,
+      "Na": 140,
+      "K": 4.0,
+      "Cl": 103,
+      "HCO3": 24.0,
+      "BUN": 14,
+      "Cre": 0.6,
+      "Glu": 96,
+      "AST": 20,
+      "ALT": 15,
+      "LD": 175,
+      "CRP": 0.08,
+      "Ca": 9.2,
+      "AG": 13.0
+    }
+  },
+  "nav": [
+    "msg_n06_nav_kanae",
+    "msg_n06_nav_yusuke"
+  ],
+  "choices": [
+    {
+      "when": {
+        "report": "urgent",
+        "comment": true
+      },
+      "score": "best",
+      "headline": "変化の速さを理由に至急報告できています",
+      "reply": [
+        "msg_n06_ok_kanae",
+        "msg_n06_ok_yusuke"
+      ],
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "comment": true
+      },
+      "score": "ok",
+      "headline": "向きは正しい。ただしHHでない値に緊急回線を使っています",
+      "reply": [
+        "msg_n06_call_kanae",
+        "msg_n06_call_yusuke"
+      ],
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "取り違えを疑う姿勢は正しい。ただし報告が先です",
+      "reply": [
+        "msg_n06_recheck_kanae",
+        "msg_n06_recheck_yusuke"
+      ],
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {
+        "report": "urgent"
+      },
+      "score": "ok",
+      "headline": "至急報告は適切。ただしコメントがありません",
+      "reply": null,
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {
+        "report": "emergency"
+      },
+      "score": "ok",
+      "headline": "急いだ判断は妥当。ただしHHではなく、コメントもありません",
+      "reply": null,
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {},
+      "score": "poor",
+      "headline": "Lだけを見てΔを見落としています",
+      "reply": [
+        "msg_n06_routine_kanae",
+        "msg_n06_routine_yusuke"
+      ],
+      "doctor": "msg_n06_doctor_poor"
+    }
+  ]
+}

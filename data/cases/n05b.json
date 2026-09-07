@@ -10,7 +10,12 @@
     "label": "患者F",
     "age": 71,
     "sex": "M",
-    "from": "ER"
+    "from": "ER",
+    "vitals": {
+      "pulse": 52,
+      "bp": "142/88"
+    },
+    "note": "透析中、脱力感"
   },
   "handover": "msg_n05b_intro",
   "order": [

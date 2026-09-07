@@ -44,7 +44,8 @@ data/
 docs/
   design.md         設計メモ
   characters.md     登場人物・立ち絵の使い分け・引き継ぎメモ
-  dialogue.md       症例0〜5bの台詞（かなえ版・悠介版）
+  dialogue.md       症例0〜6の台詞（かなえ版・悠介版）
+  roadmap.md        進め方の順番と、この先の設計方針
   sources.md        数値の出典と確認状況
 test/
   index.html        テストを開くページ

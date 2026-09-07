@@ -10,7 +10,12 @@
     "label": "患者A",
     "age": 34,
     "sex": "F",
-    "from": "ER"
+    "from": "ER",
+    "vitals": {
+      "pulse": 72,
+      "bp": "118/74"
+    },
+    "note": "健診で軽度の異常、精査目的"
   },
   "handover": "msg_n01_intro",
   "order": [

@@ -10,7 +10,12 @@
     "label": "患者D",
     "age": 67,
     "sex": "M",
-    "from": "ER"
+    "from": "ER",
+    "vitals": {
+      "pulse": 68,
+      "bp": "138/86"
+    },
+    "note": "慢性腎不全でフォロー中、倦怠感"
   },
   "handover": "msg_n04_intro",
   "order": [

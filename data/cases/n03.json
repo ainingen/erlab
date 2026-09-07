@@ -10,7 +10,12 @@
     "label": "患者C",
     "age": 41,
     "sex": "F",
-    "from": "内科外来"
+    "from": "内科外来",
+    "vitals": {
+      "pulse": 80,
+      "bp": "116/70"
+    },
+    "note": "倦怠感、以前から貧血を指摘"
   },
   "handover": "msg_n03_intro",
   "order": [

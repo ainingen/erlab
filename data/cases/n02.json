@@ -10,7 +10,12 @@
     "label": "患者B",
     "age": 58,
     "sex": "M",
-    "from": "内科外来"
+    "from": "内科外来",
+    "vitals": {
+      "pulse": 84,
+      "bp": "124/78"
+    },
+    "note": "3日前からの微熱と咳"
   },
   "handover": "msg_n02_intro",
   "order": [

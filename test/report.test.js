@@ -130,6 +130,23 @@ export function suite(data) {
     eq(res.doctorId, 'msg_n05b_urgent_only');
   });
 
+  test('症例n06: 至急＋コメントが最善、Δを見落とした通常報告は要改善', () => {
+    const c = caseById.n06;
+    const note = '前回13.5から急激な低下、黒色便あり';
+    const best = evaluate(c, pick('urgent', { comment: note }));
+    eq(best.score, 'best');
+    eq(ids(best.messageId).join(','), 'msg_n06_ok_kanae,msg_n06_ok_yusuke');
+    eq(best.doctorId, 'msg_n06_doctor_ok');
+
+    eq(evaluate(c, pick('emergency', { comment: note })).score, 'ok', 'HHでない値に緊急回線');
+    eq(evaluate(c, pick('routine', { recheck: true })).score, 'ok', '再採血のみ');
+
+    const bad = evaluate(c, pick('routine'));
+    eq(bad.score, 'poor');
+    eq(ids(bad.messageId).join(','), 'msg_n06_routine_kanae,msg_n06_routine_yusuke');
+    eq(bad.doctorId, 'msg_n06_doctor_poor');
+  });
+
   test('症例5と5-b: 同じ「溶血」でも最善の手が変わる', () => {
     const recheckOnly = pick('routine', { recheck: true });
     eq(evaluate(caseById.n05, recheckOnly).score, 'best', 'n05は再採血だけで足りる');

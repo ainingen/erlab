@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 このリポジトリは HTML5 ゲーム『ERLAB ―その数値を見逃すな―』の開発用です。
-作業前に必ず `docs/design.md` と `docs/characters.md` を読んでください。設計判断はそこに集約しています。
+作業前に必ず `docs/design.md`・`docs/characters.md`・`docs/roadmap.md` を読んでください。設計判断はそこに集約しています。
 
 ## 守ること
 - 医師パート・病名確定・治療選択は実装しない（検査室特化）

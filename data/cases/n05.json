@@ -10,7 +10,12 @@
     "label": "患者E",
     "age": 45,
     "sex": "F",
-    "from": "ER"
+    "from": "ER",
+    "vitals": {
+      "pulse": 78,
+      "bp": "128/76"
+    },
+    "note": "腹痛、既往なし"
   },
   "handover": "msg_n05_intro",
   "order": [

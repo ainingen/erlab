@@ -38,15 +38,16 @@ export function renderMessages(list, mentor = null) {
 }
 
 function renderMessage(m, mentor) {
-  // 指導役の台詞には立ち絵を左に置く。申し送りや医師からの返信には付けない。
+  // from_mentor の申し送りは、選択中の指導役の名義と立ち絵で出す
+  const speaker = m.speaker || (m.from_mentor && mentor ? mentor.id : null);
+  const from = m.from_mentor && mentor ? `${mentor.name} / ${mentor.role}` : m.from;
+
+  // 指導役が喋るものには立ち絵を左に置く。医師からの返信や記録には付けない。
   const portrait =
-    m.speaker && m.emotion
-      ? `<img class="msg-portrait" src="${esc(portraitUrl(m.speaker, m.emotion))}"
+    speaker && m.emotion
+      ? `<img class="msg-portrait" src="${esc(portraitUrl(speaker, m.emotion))}"
               width="928" height="1232" alt="${esc(mentor ? mentor.name : '')}">`
       : '';
-
-  // from_mentor の申し送りは、選択中の指導役の名義で出す
-  const from = m.from_mentor && mentor ? `${mentor.name} / ${mentor.role}` : m.from;
 
   return `
     <article class="msg msg-${esc(m.kind)}${portrait ? ' has-portrait' : ''}">

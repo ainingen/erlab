@@ -60,6 +60,13 @@ export function suite(data) {
   test('全メッセージ: speaker と emotion は実在する指導役と表情だけ', () => {
     for (const [id, msg] of Object.entries(data.messages.messages)) {
       if (!msg.speaker) {
+        if (msg.from_mentor) {
+          // 申し送りは指導役が誰であっても同じ表情で出るので、両方が持つ表情に限る
+          for (const mid of mentorIds) {
+            eq(emotionsOf[mid].includes(msg.emotion), true, `${id} の emotion ${msg.emotion} は ${mid} にない`);
+          }
+          continue;
+        }
         eq(msg.emotion, undefined, `${id} に speaker なしで emotion がある`);
         continue;
       }
@@ -94,7 +101,7 @@ export function suite(data) {
 
   test('症例4以降のナビは結論を言わない（段階設計）', () => {
     // 症例4〜5bのナビは、症例1〜3より短く、報告レベルを名指ししない
-    for (const cid of ['n04', 'n05', 'n05b']) {
+    for (const cid of ['n04', 'n05', 'n05b', 'n06']) {
       for (const m of resolveMessages(data, caseById[cid].nav)) {
         const text = m.body.join('');
         eq(/通常報告|至急報告|緊急報告|再採血して/.test(text), false,
@@ -109,10 +116,13 @@ export function suite(data) {
       eq(intro.from_mentor, true, `${c.id} の申し送りが from_mentor でない`);
       eq(intro.from, undefined, `${c.id} の申し送りに固定の送信者名が残っている`);
       eq(intro.speaker, undefined, `${c.id} の申し送りは speaker を持たない（両方に出す）`);
+      eq(intro.emotion, 'normal', `${c.id} の申し送りの表情`);
     }
     const intro = messageById(data, 'msg_n01_intro');
     for (const m of mentors) {
-      eq(renderMessages([intro], m).includes(`${m.name} / ${m.role}`), true, `${m.id} 名義になっていない`);
+      const html = renderMessages([intro], m);
+      eq(html.includes(`${m.name} / ${m.role}`), true, `${m.id} 名義になっていない`);
+      eq(html.includes(`${m.id}_normal.png`), true, `${m.id} の立ち絵が出ていない`);
     }
   });
 
