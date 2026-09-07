@@ -23,7 +23,11 @@ const state = {
   pendingChoice: null,
   phase: 'mentor', // mentor → tutorial → cases
   tutorialStep: 0,
+  interrupt: null, // { caseId, from, at } … ERからの至急が入っている間だけ立つ
+  interruptDone: false, // 新人研修では1回だけ（上級モードでランダム化する）
 };
+
+let interruptTimer = null;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -128,6 +132,7 @@ function selectCase(caseId) {
   const caseDef = currentCase();
   pushMessage(caseDef.handover);
   pushMessage(caseDef.nav);
+  scheduleInterrupt(caseDef);
   renderAll();
   setView('lis');
 }
@@ -179,7 +184,51 @@ function toggleSuspect(testId, suspectId) {
   renderAll();
 }
 
+/* ---- 割り込み（ERからの至急） ---- */
+
+/** 症例側の interrupt 設定を見て、結果表示から一定時間後に割り込みを予約する。 */
+function scheduleInterrupt(caseDef) {
+  if (!caseDef.interrupt || state.interruptDone || interruptTimer) return;
+  interruptTimer = setTimeout(() => triggerInterrupt(caseDef), caseDef.interrupt.after_ms ?? 30000);
+}
+
+/** 予約した時刻に来たか、その検体を報告する直前に呼ばれる。研修中は1回だけ起きる。 */
+function triggerInterrupt(caseDef) {
+  const cfg = caseDef.interrupt;
+  if (!cfg || state.interruptDone) return;
+  clearTimeout(interruptTimer);
+  interruptTimer = null;
+  state.interruptDone = true;
+  if (state.status[cfg.case] === 'done') return; // 割り込む先をもう報告していたら何もしない
+  state.interrupt = { caseId: cfg.case, from: caseDef.id, at: Date.now() };
+  pushMessage(cfg.message);
+  pushMessage(cfg.nav);
+  renderAll();
+}
+
+/** 割り込み先を報告し終えたら白に戻す。前の検体を放置していたら申し送りで一言。 */
+function clearInterrupt(reportedCaseId) {
+  if (!state.interrupt || state.interrupt.caseId !== reportedCaseId) return;
+  const source = state.cases.find((c) => c.id === state.interrupt.from);
+  state.interrupt = null;
+  if (source && state.status[source.id] !== 'done') pushMessage(source.interrupt.pending);
+}
+
+/** ヘッダーの赤は画面状態の合図。値の判定ではないので、文字も必ず併せて出す。 */
+function renderInterruptState() {
+  const on = Boolean(state.interrupt);
+  document.body.dataset.state = on ? 'interrupt' : 'normal';
+  const badge = $('#header-alert');
+  badge.hidden = !on;
+  badge.textContent = on
+    ? state.currentCaseId === state.interrupt.caseId
+      ? '至急対応中'
+      : 'ERから至急'
+    : '';
+}
+
 function renderAll() {
+  renderInterruptState();
   renderWorklistPane();
   renderMessagePane();
   renderScore();
@@ -223,6 +272,9 @@ function renderWorklistPane() {
     results: state.results,
     scoreLabel: SCORE_LABEL,
     currentCaseId: state.currentCaseId,
+    interrupt: state.interrupt
+      ? { ...state.interrupt, active: true, blink: Date.now() - state.interrupt.at < 5000 }
+      : null,
   });
 }
 
@@ -347,6 +399,8 @@ function openGlossary(testId) {
 }
 
 function openReport() {
+  const caseDef = currentCase();
+  if (caseDef && caseDef.interrupt && !state.interruptDone) triggerInterrupt(caseDef);
   state.pendingChoice = null;
   $('#report-body').innerHTML = renderReportDialog(
     currentCase(),
@@ -366,6 +420,7 @@ function finishReport(choice) {
   const res = evaluate(caseDef, choice);
   state.results[caseDef.id] = res;
   state.status[caseDef.id] = 'done';
+  clearInterrupt(caseDef.id);
   // 報告 → 指導役の講評 → 医師の返信、の順に届く
   if (res.messageId) pushMessage(res.messageId);
   if (res.doctorId) pushMessage(res.doctorId);

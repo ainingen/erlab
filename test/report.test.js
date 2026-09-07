@@ -367,6 +367,32 @@ export function suite(data) {
     }
   });
 
+  test('割り込み: 参照先の症例と文面がすべて実在する', () => {
+    const caseIds = new Set(data.cases.map((c) => c.id));
+    for (const c of data.cases) {
+      const cut = c.interrupt;
+      if (!cut) continue;
+      eq(caseIds.has(cut.case), true, `${c.id} の割り込み先 ${cut.case} がない`);
+      eq(cut.case !== c.id, true, `${c.id} が自分自身に割り込んでいる`);
+      eq(typeof cut.after_ms, 'number', `${c.id} の割り込みまでの時間`);
+      for (const id of [].concat(cut.message, cut.nav, cut.pending)) {
+        eq(messageIds.has(id), true, `${c.id} の割り込み文面 ${id} が messages にない`);
+      }
+      // 指導役つきの台詞は、どちらを選んでも1本だけ出ること
+      for (const key of ['nav', 'pending']) {
+        for (const mentorId of mentorIds) {
+          const shown = filterBySpeaker(resolveMessages(data, cut[key]), mentorId);
+          eq(shown.length, 1, `${c.id} の割り込み ${key} (${mentorId})`);
+        }
+      }
+    }
+  });
+
+  test('割り込み: 新人研修では症例3の1回だけ', () => {
+    const withCutIn = data.cases.filter((c) => c.interrupt).map((c) => c.id);
+    eq(withCutIn.join(','), 'n03');
+  });
+
   test('全症例: 旧構造（correct / outcome）が残っていない', () => {
     for (const c of data.cases) {
       eq(c.correct, undefined, `${c.id} に correct が残っている`);

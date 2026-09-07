@@ -97,7 +97,9 @@ export function renderResults(caseDef, panel, data, view = null) {
     </div>
     ${tables}
     <p class="hint">
-      項目名をタップすると索引が開きます。${view ? '行をタップするとマークが付き、その行だけが報告に載ります。' : ''}
+      項目名をタップすると索引が開きます。${
+        view && view.interactive ? '行をタップするとマークが付き、その行だけが報告に載ります。' : ''
+      }
     </p>
   `;
 }

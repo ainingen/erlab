@@ -351,6 +351,62 @@
         "急ぐ連絡と、伝えておきたい連絡は分けてください。後者は結果にコメントを付けて通常報告で届きます。"
       ]
     },
+    "msg_n03_pending_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "申し送り",
+      "time": "—",
+      "body": [
+        "……で、さっきの貧血の人。まだ送ってないよね。急がないけど、忘れない。"
+      ]
+    },
+    "msg_n03_pending_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "申し送り",
+      "time": "—",
+      "body": [
+        "先ほどのHb低値の検体が未報告です。緊急性はありませんが、忘れずに送ってください。"
+      ]
+    },
+    "msg_n04_er_request": {
+      "kind": "handover",
+      "from": "ER 当直医",
+      "subject": "至急でお願いします",
+      "time": "09:36",
+      "body": [
+        "至急でお願いします。慢性腎不全の67歳男性、倦怠感と脱力で搬送。",
+        "血算・生化学、急ぎで。"
+      ]
+    },
+    "msg_n04_interrupt_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "alert",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "割り込みです",
+      "time": "09:37",
+      "body": [
+        "……来た。手、止めて。",
+        "今の貧血、急がないでしょ。先に至急。"
+      ]
+    },
+    "msg_n04_interrupt_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "alert",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "割り込みです",
+      "time": "09:37",
+      "body": [
+        "ERからの至急です。",
+        "現在の検体は緊急性がありません。至急を先に処理してください。"
+      ]
+    },
     "msg_n04_intro": {
       "kind": "handover",
       "subject": "【研修4】この検体は手順が変わります",

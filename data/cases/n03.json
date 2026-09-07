@@ -58,6 +58,20 @@
     "msg_n03_nav_kanae",
     "msg_n03_nav_yusuke"
   ],
+  "interrupt": {
+    "_note": "この検体を開いてしばらく経つか、報告する直前にERから至急が割り込む（docs/mechanics.md 4）。新人研修では1回だけ。",
+    "case": "n04",
+    "after_ms": 30000,
+    "message": "msg_n04_er_request",
+    "nav": [
+      "msg_n04_interrupt_kanae",
+      "msg_n04_interrupt_yusuke"
+    ],
+    "pending": [
+      "msg_n03_pending_kanae",
+      "msg_n03_pending_yusuke"
+    ]
+  },
   "choices": [
     {
       "when": {

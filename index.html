@@ -17,6 +17,8 @@
     --head-ink: #f2f4f7;
     --warn: #fbf0c4;
     --panic: #f6d4d4;
+    /* 割り込み中のヘッダー。値の重さではなく画面状態の合図なので、必ず文字と併せて使う */
+    --alert: #7f1d21;
     /* 数字と画面まわり。BIZ UDGothic は数字の幅がそろうので、桁が縦に並ぶ。
        Osaka-Mono は mac、Consolas は Windows、MS Gothic は古い環境向けの控え。Webフォントは使わない */
     --num: "BIZ UDGothic", "Osaka-Mono", Consolas, "Courier New", "MS Gothic", monospace;
@@ -53,6 +55,13 @@
   .header-btn {
     margin-left: auto; font: inherit; font-size: 13px; color: var(--head-ink);
     background: transparent; border: 1px solid #6b7686; padding: 2px 8px; cursor: pointer;
+  }
+  /* 割り込み中。赤は「ERから至急が入っている」画面状態の合図で、値の判定ではない。
+     色を消しても分かるよう、ヘッダーには必ず文字の札を出す */
+  body[data-state="interrupt"] .app-header { background: var(--alert); border-bottom-color: #40090b; }
+  .alert-badge {
+    font-size: 13px; font-weight: 700; letter-spacing: .08em;
+    border: 1px solid var(--head-ink); padding: 2px 8px;
   }
 
   /* ---- 指導役 ---- */
@@ -106,6 +115,12 @@
     padding: 6px 7px; margin-bottom: 5px; cursor: pointer;
   }
   .wl-row.is-selected { border-left-color: var(--head); background: #eef1f6; }
+  /* 割り込みで先頭に上がった検体。文字（至急⚑・割り込み）を主にし、点滅は数秒でやめる */
+  .wl-row.is-interrupt { border-left-color: var(--alert); border-left-width: 5px; }
+  .wl-row.is-interrupt .wl-mark { font-weight: 700; }
+  .wl-row.is-blinking { animation: cut-in .6s steps(1, end) 6; }
+  @keyframes cut-in { 50% { background: var(--panic); } }
+  @media (prefers-reduced-motion: reduce) { .wl-row.is-blinking { animation: none; } }
   .wl-acc { font-size: 13px; color: var(--ink-dim); }
   .wl-mark { font-size: 12px; text-align: right; white-space: pre; }
   .wl-pt { font-weight: 700; }
@@ -348,6 +363,7 @@
 <header class="app-header">
   <div class="brand">ERLAB<span class="sub">―その数値を見逃すな―</span></div>
   <div class="meta"><span id="hospital-name">読み込み中…</span> ／ 新人研修モード（時間無制限）</div>
+  <span class="alert-badge" id="header-alert" hidden></span>
   <button class="header-btn" id="mentor-btn" type="button" data-action="open-mentor">指導役 —</button>
   <div class="score" id="score">報告 0件</div>
 </header>
