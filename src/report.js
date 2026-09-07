@@ -73,6 +73,9 @@ export function renderPhone(caseDef, panel) {
  *   comment  … コメントを書いたか（真偽値。中身は見ない）
  *   readback … 読み返し確認をとったか
  * 最後の枝は when を空にして、必ずどれかに当たるようにしておく。
+ *
+ * reply  … 指導役の講評（無い枝もある。その症例で教えたい判断に関わる分岐だけ付ける）
+ * doctor … 医師からの返信。どの枝にも必ずある。報告 → 講評 → 医師の返信、の順で流す
  */
 export function evaluate(caseDef, choice) {
   const branch = (caseDef.choices || []).find((c) => matches(c.when || {}, choice));
@@ -81,6 +84,7 @@ export function evaluate(caseDef, choice) {
       score: 'poor',
       headline: '判定できませんでした',
       messageId: null,
+      doctorId: null,
       matched: null,
     };
   }
@@ -88,6 +92,7 @@ export function evaluate(caseDef, choice) {
     score: branch.score,
     headline: branch.headline,
     messageId: branch.reply || null,
+    doctorId: branch.doctor || null,
     matched: branch,
   };
 }

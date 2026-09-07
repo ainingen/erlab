@@ -34,7 +34,8 @@
       },
       "score": "poor",
       "headline": "再検の理由がありません",
-      "reply": "msg_n02_recheck"
+      "reply": null,
+      "doctor": "msg_n02_ok"
     },
     {
       "when": {
@@ -45,7 +46,8 @@
       "reply": [
         "msg_n02_ok_kanae",
         "msg_n02_ok_yusuke"
-      ]
+      ],
+      "doctor": "msg_n02_ok"
     },
     {
       "when": {},
@@ -54,7 +56,8 @@
       "reply": [
         "msg_n02_over_kanae",
         "msg_n02_over_yusuke"
-      ]
+      ],
+      "doctor": "msg_n02_over"
     }
   ]
 }

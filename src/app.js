@@ -293,7 +293,9 @@ function finishReport(choice) {
   const res = evaluate(caseDef, choice);
   state.results[caseDef.id] = res;
   state.status[caseDef.id] = 'done';
+  // 報告 → 指導役の講評 → 医師の返信、の順に届く
   if (res.messageId) pushMessage(res.messageId);
+  if (res.doctorId) pushMessage(res.doctorId);
 
   if (choice.recheck && caseDef.recollect) {
     state.recollected[caseDef.id] = buildRecollect(caseDef, currentPanel(), state.data);

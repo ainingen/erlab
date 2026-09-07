@@ -45,6 +45,9 @@ function renderMessage(m, mentor) {
               width="928" height="1232" alt="${esc(mentor ? mentor.name : '')}">`
       : '';
 
+  // from_mentor の申し送りは、選択中の指導役の名義で出す
+  const from = m.from_mentor && mentor ? `${mentor.name} / ${mentor.role}` : m.from;
+
   return `
     <article class="msg msg-${esc(m.kind)}${portrait ? ' has-portrait' : ''}">
       ${portrait}
@@ -53,7 +56,7 @@ function renderMessage(m, mentor) {
           <span class="msg-kind">${esc(KIND_LABEL[m.kind] || m.kind)}</span>
           <span class="msg-time">${esc(m.time)}</span>
           <h3 class="msg-subject">${esc(m.subject)}</h3>
-          <p class="msg-from">${esc(m.from)}</p>
+          <p class="msg-from">${esc(from)}</p>
         </header>
         ${m.body.map((p) => `<p>${esc(p)}</p>`).join('')}
       </div>

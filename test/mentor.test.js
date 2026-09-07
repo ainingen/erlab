@@ -1,7 +1,7 @@
 // 指導役の切り替え（speaker によるメッセージの出し分け）と、症例0のテスト。
 
 import { test, eq } from './harness.js';
-import { filterBySpeaker, resolveMessages, messageById, portraitUrl } from '../src/messages.js';
+import { filterBySpeaker, resolveMessages, messageById, portraitUrl, renderMessages } from '../src/messages.js';
 import { mentorById } from '../src/mentor.js';
 import { renderTutorialStep, stepCount } from '../src/tutorial.js';
 
@@ -100,6 +100,25 @@ export function suite(data) {
         eq(/通常報告|至急報告|緊急報告|再採血して/.test(text), false,
            `${cid} の ${m.speaker} のナビが結論を言っている`);
       }
+    }
+  });
+
+  test('申し送りは選択中の指導役の名義で出る', () => {
+    for (const c of data.cases) {
+      const intro = messageById(data, c.handover);
+      eq(intro.from_mentor, true, `${c.id} の申し送りが from_mentor でない`);
+      eq(intro.from, undefined, `${c.id} の申し送りに固定の送信者名が残っている`);
+      eq(intro.speaker, undefined, `${c.id} の申し送りは speaker を持たない（両方に出す）`);
+    }
+    const intro = messageById(data, 'msg_n01_intro');
+    for (const m of mentors) {
+      eq(renderMessages([intro], m).includes(`${m.name} / ${m.role}`), true, `${m.id} 名義になっていない`);
+    }
+  });
+
+  test('「教育担当 / 中央検査部」名義のメッセージは残っていない', () => {
+    for (const [id, msg] of Object.entries(data.messages.messages)) {
+      eq((msg.from || '').includes('教育担当 / 中央検査部'), false, `${id} に旧名義が残っている`);
     }
   });
 

@@ -64,7 +64,8 @@
       "reply": [
         "msg_n04_ok_kanae",
         "msg_n04_ok_yusuke"
-      ]
+      ],
+      "doctor": "msg_n04_ok"
     },
     {
       "when": {
@@ -73,7 +74,8 @@
       },
       "score": "ok",
       "headline": "報告は正しい。ただしこの検体に再検の理由はありません",
-      "reply": "msg_n04_recheck"
+      "reply": null,
+      "doctor": "msg_n04_ok"
     },
     {
       "when": {
@@ -84,7 +86,8 @@
       "reply": [
         "msg_n04_urgent_kanae",
         "msg_n04_urgent_yusuke"
-      ]
+      ],
+      "doctor": "msg_n04_urgent"
     },
     {
       "when": {},
@@ -93,7 +96,8 @@
       "reply": [
         "msg_n04_routine_kanae",
         "msg_n04_routine_yusuke"
-      ]
+      ],
+      "doctor": "msg_n04_routine"
     }
   ]
 }

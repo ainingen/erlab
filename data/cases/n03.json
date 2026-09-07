@@ -60,7 +60,8 @@
       },
       "score": "poor",
       "headline": "再検の理由がありません",
-      "reply": "msg_n03_recheck"
+      "reply": null,
+      "doctor": "msg_n03_ok_nocomment"
     },
     {
       "when": {
@@ -72,7 +73,8 @@
       "reply": [
         "msg_n03_ok_kanae",
         "msg_n03_ok_yusuke"
-      ]
+      ],
+      "doctor": "msg_n03_ok"
     },
     {
       "when": {
@@ -84,13 +86,15 @@
       "reply": [
         "msg_n03_ok_nocomment_kanae",
         "msg_n03_ok_nocomment_yusuke"
-      ]
+      ],
+      "doctor": "msg_n03_ok_nocomment"
     },
     {
       "when": {},
       "score": "poor",
       "headline": "過剰報告です",
-      "reply": "msg_n03_over"
+      "reply": null,
+      "doctor": "msg_n03_over"
     }
   ]
 }

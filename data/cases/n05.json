@@ -44,7 +44,8 @@
       },
       "score": "ok",
       "headline": "再採血の判断は正しい。ただし信用していない値で電話はかけません",
-      "reply": "msg_n05_call_and_recheck"
+      "reply": null,
+      "doctor": "msg_n05_over"
     },
     {
       "when": {
@@ -55,7 +56,8 @@
       "reply": [
         "msg_n05_ok_kanae",
         "msg_n05_ok_yusuke"
-      ]
+      ],
+      "doctor": "msg_n05_ok"
     },
     {
       "when": {
@@ -67,7 +69,8 @@
       "reply": [
         "msg_n05_urgent_kanae",
         "msg_n05_urgent_yusuke"
-      ]
+      ],
+      "doctor": "msg_n05_urgent"
     },
     {
       "when": {
@@ -78,13 +81,15 @@
       "reply": [
         "msg_n05_over_kanae",
         "msg_n05_over_yusuke"
-      ]
+      ],
+      "doctor": "msg_n05_over"
     },
     {
       "when": {},
       "score": "poor",
       "headline": "検体状態に触れないまま報告しています",
-      "reply": "msg_n05_silent"
+      "reply": null,
+      "doctor": "msg_n05_silent"
     }
   ]
 }
