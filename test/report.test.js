@@ -21,6 +21,34 @@ function pick(level, opts = {}) {
 
 const ids = (reply) => [].concat(reply ?? []);
 
+/**
+ * その症例で試すマークの組み合わせ。
+ * 「何もマークしない」「症例が名指ししている項目だけ」「そこに関係ない項目を足したもの」の3通り。
+ */
+function markSetsFor(caseDef) {
+  const named = new Set();
+  for (const branch of caseDef.choices) {
+    const when = branch.when || {};
+    for (const id of [].concat(when.marks?.must || [], when.marks?.forbid || [])) named.add(id);
+    for (const testId of Object.keys(when.suspects || {})) {
+      if (testId !== 'exact') named.add(testId);
+    }
+  }
+  const key = [...named];
+  const noise = ['WBC', 'Na', 'Cl'].filter((id) => !named.has(id));
+  const sets = [[], key, [...key, ...noise]];
+  return [...new Map(sets.map((m) => [m.join(','), m])).values()];
+}
+
+/** マークした項目に付ける疑いの組み合わせ。1つずつと、本物＋溶血の重ね付け。 */
+function suspectSetsFor(marks, suspectIds) {
+  if (!marks.length) return [{}];
+  const patterns = [[], ...suspectIds.map((id) => [id]), ['real', 'hemolysis']];
+  return patterns.map((picked) =>
+    Object.fromEntries(marks.map((testId) => [testId, picked])),
+  );
+}
+
 export function suite(data) {
   const caseById = Object.fromEntries(data.cases.map((c) => [c.id, c]));
   const messageIds = new Set(Object.keys(data.messages.messages));
@@ -318,24 +346,34 @@ export function suite(data) {
     }
   });
 
-  test('全症例: どの操作でも医師の返信が必ず届く。講評は付く枝だけ、指導役ごとに1本', () => {
+  test('全症例: マークと疑いを含めた全操作で、医師の返信が必ず届く', () => {
+    const suspectIds = data.suspects.suspects.map((s) => s.id);
+    let combos = 0;
     for (const c of data.cases) {
-      for (const level of ['routine', 'urgent', 'emergency']) {
-        for (const recheck of [false, true]) {
-          for (const comment of ['', 'コメント']) {
-            const label = `${c.id} ${level} recheck=${recheck} comment=${Boolean(comment)}`;
-            const res = evaluate(c, pick(level, { recheck, comment }));
-            eq(SCORES.includes(res.score), true, label);
-            eq(messageIds.has(res.doctorId), true, `${label} の医師返信`);
-            if (!res.messageId) continue;
-            for (const mentorId of mentorIds) {
-              const shown = filterBySpeaker(resolveMessages(data, res.messageId), mentorId);
-              eq(shown.length, 1, `${label} の講評 (${mentorId})`);
+      for (const marks of markSetsFor(c)) {
+        for (const suspects of suspectSetsFor(marks, suspectIds)) {
+          for (const level of ['routine', 'urgent', 'emergency']) {
+            for (const recheck of [false, true]) {
+              for (const comment of ['', 'コメント']) {
+                combos += 1;
+                const label =
+                  `${c.id} ${level} recheck=${recheck} comment=${Boolean(comment)} ` +
+                  `marks=[${marks}] suspects=${JSON.stringify(suspects)}`;
+                const res = evaluate(c, pick(level, { recheck, comment, marks, suspects }));
+                eq(SCORES.includes(res.score), true, label);
+                eq(messageIds.has(res.doctorId), true, `${label} の医師返信`);
+                if (!res.messageId) continue;
+                for (const mentorId of mentorIds) {
+                  const shown = filterBySpeaker(resolveMessages(data, res.messageId), mentorId);
+                  eq(shown.length, 1, `${label} の講評 (${mentorId})`);
+                }
+              }
             }
           }
         }
       }
     }
+    eq(combos > 1000, true, `組み合わせ数が少なすぎる: ${combos}`);
   });
 
   test('全症例: choices が参照する項目IDと疑いIDが実在する', () => {
@@ -359,8 +397,8 @@ export function suite(data) {
   });
 
   test('疑いのIDと表示名がそろっている（mechanics.md の6つ）', () => {
-    const ids = data.suspects.suspects.map((s) => s.id).join(',');
-    eq(ids, 'real,hemolysis,clot,dilution,mismatch,delta');
+    const ids2 = data.suspects.suspects.map((s) => s.id).join(',');
+    eq(ids2, 'real,hemolysis,clot,dilution,mismatch,delta');
     for (const s of data.suspects.suspects) {
       eq(typeof s.label, 'string', `${s.id} の表示名`);
       eq(typeof s.hint, 'string', `${s.id} の説明`);
