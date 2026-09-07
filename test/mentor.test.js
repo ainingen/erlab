@@ -133,8 +133,8 @@ export function suite(data) {
   });
 
   // ---- 症例0 ----
-  test('症例0: 8ステップあり、両方の指導役ぶんの台詞がそろっている', () => {
-    eq(stepCount(data.tutorial), 8);
+  test('症例0: 9ステップあり、両方の指導役ぶんの台詞がそろっている', () => {
+    eq(stepCount(data.tutorial), 9);
     for (const step of data.tutorial.steps) {
       for (const id of mentorIds) {
         const line = step.lines[id];
