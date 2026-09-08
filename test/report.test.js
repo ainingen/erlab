@@ -1,7 +1,9 @@
 // 判定構造（症例JSONの choices）のテスト。
 
 import { test, eq } from './harness.js';
-import { evaluate, evaluateFollowup, worseScore, SCORE_LABEL } from '../src/report.js';
+import {
+  evaluate, evaluateFollowup, worseScore, commentTemplateIds, hasComment, SCORE_LABEL,
+} from '../src/report.js';
 import { resolveMessages, filterBySpeaker } from '../src/messages.js';
 
 const SCORES = ['best', 'ok', 'poor'];
@@ -45,14 +47,29 @@ function markSetsFor(caseDef) {
   return [...new Map(sets.map((m) => [m.join(','), m])).values()];
 }
 
-/** その症例で試す操作の総当たり。報告レベル × 再検 × コメント × マーク × 疑い。 */
-function combosFor(caseDef, suspectIds) {
+/**
+ * コメントの選び方。候補のタップで組むので、中身は候補オブジェクトの配列。
+ * 文字列は旧い自由記述ぶんの互換確認。
+ */
+const COMMENT_CHOICES = [
+  '',
+  'コメント',
+  [],
+  [{ id: 'real:K', templateId: 'real', text: 'K：本物の異常と判断' }],
+  [
+    { id: 'real:K', templateId: 'real', text: 'K：本物の異常と判断' },
+    { id: 'recollect_same:K', templateId: 'recollect_same', text: 'K：再採血で同値（6.2）' },
+  ],
+];
+
+/** その症例で試す操作の総当たり。報告レベル × 再検 × コメントの選び方 × マーク × 疑い。 */
+function combosFor(caseDef, suspectIds, comments = COMMENT_CHOICES) {
   const list = [];
   for (const marks of markSetsFor(caseDef)) {
     for (const suspects of suspectSetsFor(marks, suspectIds)) {
       for (const level of ['routine', 'urgent', 'emergency']) {
         for (const recheck of [false, true]) {
-          for (const comment of ['', 'コメント']) {
+          for (const comment of comments) {
             list.push(pick(level, { recheck, comment, marks, suspects }));
           }
         }
@@ -65,7 +82,7 @@ function combosFor(caseDef, suspectIds) {
 function labelOf(caseId, choice, tag = '') {
   return (
     `${caseId}${tag} ${choice.level} recheck=${choice.recheck} ` +
-    `comment=${Boolean(choice.comment)} marks=[${choice.marks}] ` +
+    `comment=${JSON.stringify(commentTemplateIds(choice))} marks=[${choice.marks}] ` +
     `suspects=${JSON.stringify(choice.suspects)}`
   );
 }
@@ -167,6 +184,53 @@ export function suite(data) {
     };
     eq(evaluate(caseDef, pick('routine', { suspects: { K: ['hemolysis'] } })).headline, '溶血だけ');
     eq(evaluate(caseDef, pick('routine', { suspects: { K: ['hemolysis', 'real'] } })).headline, '受け皿');
+  });
+
+  test('evaluate: comment は true/false なら「一行以上あるか」だけを見る', () => {
+    const caseDef = {
+      choices: [
+        { when: { comment: true }, score: 'best', headline: 'あり' },
+        { when: {}, score: 'ok', headline: 'なし' },
+      ],
+    };
+    const line = { id: 'real:K', templateId: 'real', text: 'K：本物の異常と判断' };
+    eq(evaluate(caseDef, pick('routine', { comment: [line] })).headline, 'あり', '候補を選んだ');
+    eq(evaluate(caseDef, pick('routine', { comment: [] })).headline, 'なし', '一つも選んでいない');
+    eq(evaluate(caseDef, pick('routine', { comment: '自由記述' })).headline, 'あり', '旧い文字列');
+    eq(evaluate(caseDef, pick('routine', { comment: '   ' })).headline, 'なし', '空白だけ');
+    eq(hasComment(pick('routine', { comment: [line] })), true);
+    eq(hasComment(pick('routine')), false);
+  });
+
+  test('evaluate: comment を配列で書くと、指定の候補が全部選ばれたときだけ一致', () => {
+    const caseDef = {
+      choices: [
+        { when: { comment: ['recollect_same'] }, score: 'best', headline: '同値を書いた' },
+        { when: { comment: true }, score: 'ok', headline: '何か書いた' },
+        { when: {}, score: 'poor', headline: 'なし' },
+      ],
+    };
+    const same = { templateId: 'recollect_same', text: 'K：再採血で同値（6.2）' };
+    const real = { templateId: 'real', text: 'K：本物の異常と判断' };
+    eq(evaluate(caseDef, pick('routine', { comment: [same] })).headline, '同値を書いた');
+    eq(evaluate(caseDef, pick('routine', { comment: [real, same] })).headline, '同値を書いた', '他が混ざっても可');
+    eq(evaluate(caseDef, pick('routine', { comment: [real] })).headline, '何か書いた', '指定のものがない');
+    eq(evaluate(caseDef, pick('routine', { comment: ['recollect_same'] })).headline, '同値を書いた', 'IDの配列でも可');
+    eq(commentTemplateIds(pick('routine', { comment: [real, same] })).join(','), 'real,recollect_same');
+  });
+
+  test('evaluate: 二つ以上を指定した配列は、全部そろって初めて一致', () => {
+    const caseDef = {
+      choices: [
+        { when: { comment: ['real', 'recollect_same'] }, score: 'best', headline: '両方' },
+        { when: {}, score: 'ok', headline: '片方以下' },
+      ],
+    };
+    const same = { templateId: 'recollect_same' };
+    const real = { templateId: 'real' };
+    eq(evaluate(caseDef, pick('routine', { comment: [real, same] })).headline, '両方');
+    eq(evaluate(caseDef, pick('routine', { comment: [real] })).headline, '片方以下');
+    eq(evaluate(caseDef, pick('routine', { comment: [same] })).headline, '片方以下');
   });
 
   test('evaluate: どれにも当たらなければ poor で落とす', () => {
@@ -571,6 +635,38 @@ export function suite(data) {
       }
     }
     eq(combos > 10000, true, `一本目 × 二本目 の組み合わせが少なすぎる: ${combos}`);
+  });
+
+  test('全症例: comment: true の判定は、自由記述でも候補でも同じ枝に落ちる', () => {
+    const line = { id: 'real:K', templateId: 'real', text: 'K：本物の異常と判断' };
+    for (const c of data.cases) {
+      const marks = markSetsFor(c)[1] || [];
+      const suspects = Object.fromEntries(marks.map((m) => [m, ['real', 'hemolysis', 'delta']]));
+      for (const level of ['routine', 'urgent', 'emergency']) {
+        for (const recheck of [false, true]) {
+          const base = { recheck, marks, suspects };
+          const text = evaluate(c, pick(level, { ...base, comment: 'コメント' }));
+          const picked = evaluate(c, pick(level, { ...base, comment: [line] }));
+          const label = `${c.id} ${level} recheck=${recheck}`;
+          eq(picked.headline, text.headline, `${label} の枝`);
+          eq(picked.score, text.score, `${label} の評価`);
+          if (!c.followup) continue;
+          const capText = evaluateFollowup(c, pick(level, { ...base, comment: 'コメント' }), 'best');
+          const capPick = evaluateFollowup(c, pick(level, { ...base, comment: [line] }), 'best');
+          eq(capPick.headline, capText.headline, `${label} の二本目`);
+        }
+      }
+    }
+  });
+
+  test('全症例: comment を配列で書いている枝はまだ無い（既存症例は true のまま）', () => {
+    for (const c of data.cases) {
+      for (const branch of allBranches(c)) {
+        const expected = (branch.when || {}).comment;
+        if (expected === undefined) continue;
+        eq(typeof expected, 'boolean', `${c.id} の comment 条件`);
+      }
+    }
   });
 
   test('全症例: choices が参照する項目IDと疑いIDが実在する', () => {

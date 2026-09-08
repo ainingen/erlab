@@ -13,6 +13,10 @@ import {
   deltaCheck,
   buildPanel,
   buildRecollect,
+  buildCommentOptions,
+  toggleCommentSelection,
+  withinHalfDelta,
+  sampleStateText,
 } from '../src/derive.js';
 
 export function suite(data) {
@@ -318,6 +322,120 @@ export function suite(data) {
     eq(re.sampleComment, null, '二本目にも検体トラブルはない');
     eq(byId.LD.flag, '', '二本目もLD・ASTは基準内');
     eq(byId.AST.flag, '');
+  });
+
+  // ---- コメントの候補（組み立て式コメント） ----
+  const optionIds = (opts) => opts.map((o) => o.id).join(',');
+  const templateIds = (opts) => opts.map((o) => o.templateId);
+
+  test('候補: マーク × 疑いの組み合わせすべてで候補が出る', () => {
+    const c = caseById.n06; // 前回値があるので delta の候補も出せる
+    const panel = buildPanel(c, data);
+    for (const s of data.suspects.suspects) {
+      const opts = buildCommentOptions({ data, panel, marks: ['Hb'], suspects: { Hb: [s.id] } });
+      eq(templateIds(opts).includes(s.id), true, `疑い ${s.id} の候補が出ない`);
+      for (const o of opts) {
+        eq(o.text.includes('{'), false, `${o.id} に埋め残しがある: ${o.text}`);
+        eq(o.speech.includes('{'), false, `${o.id} の読み上げに埋め残しがある: ${o.speech}`);
+      }
+    }
+    // 疑いを全部付ければ、その項目のぶんが全部並ぶ
+    const all = data.suspects.suspects.map((s) => s.id);
+    const opts = buildCommentOptions({ data, panel, marks: ['Hb'], suspects: { Hb: all } });
+    eq(templateIds(opts).slice(0, all.length).join(','), all.join(','), '疑いの並び順');
+  });
+
+  test('候補: 溶血の段階と前回値が文面に入る', () => {
+    const n05 = caseById.n05;
+    const hemo = buildCommentOptions({
+      data, panel: buildPanel(n05, data), marks: ['K'], suspects: { K: ['hemolysis'] },
+    });
+    eq(hemo[0].text, 'K：溶血（3+）の影響を疑う');
+    eq(hemo[0].speech, 'K 6.8、溶血（3+）の影響を疑います');
+
+    const n06 = caseById.n06;
+    const delta = buildCommentOptions({
+      data, panel: buildPanel(n06, data), marks: ['Hb'], suspects: { Hb: ['delta'] },
+    });
+    eq(delta[0].text, 'Hb：前回値から急な変化（13.5→9.8）');
+
+    // 溶血のない検体では段階を書かない
+    const n07 = caseById.n07;
+    const noGrade = buildCommentOptions({
+      data, panel: buildPanel(n07, data), marks: ['K'], suspects: { K: ['hemolysis'] },
+    });
+    eq(noGrade[0].text, 'K：溶血の影響を疑う');
+  });
+
+  test('候補: 前回値のない項目に「前回値から急な変化」は出さない', () => {
+    const c = caseById.n01; // 前回値なし
+    const opts = buildCommentOptions({
+      data, panel: buildPanel(c, data), marks: ['K'], suspects: { K: ['delta'] },
+    });
+    eq(templateIds(opts).includes('delta'), false);
+  });
+
+  test('候補: マーク0件でも検体状態の候補は出る', () => {
+    const withComment = buildCommentOptions({ data, panel: buildPanel(caseById.n05, data), marks: [] });
+    eq(optionIds(withComment), 'sample_state');
+    eq(withComment[0].text, '検体状態：溶血（3+）');
+
+    const clear = buildCommentOptions({ data, panel: buildPanel(caseById.n01, data), marks: [] });
+    eq(optionIds(clear), 'sample_state_clear');
+    eq(clear[0].text, '検体状態に特記なし');
+  });
+
+  test('候補: 並びはマークした項目の順 → 検体状態 → 再採血 → 操作', () => {
+    const c = caseById.n04;
+    const opts = buildCommentOptions({
+      data,
+      panel: buildPanel(c, data),
+      marks: ['K', 'Cre'],
+      suspects: { K: ['real'], Cre: ['real'] },
+      recheck: true,
+    });
+    eq(optionIds(opts), 'real:K,real:Cre,sample_state_clear,recheck');
+  });
+
+  test('候補: 再採血の候補は二本目があるときだけ出る', () => {
+    const c = caseById.n07;
+    const first = buildPanel(c, data);
+    const second = buildRecollect(c, first, data, c.followup.recollect);
+    const ctx = { data, panel: second, marks: ['K'], suspects: {} };
+
+    eq(templateIds(buildCommentOptions(ctx)).includes('recollect_same'), false, '一本目だけでは出ない');
+    const withFirst = buildCommentOptions({ ...ctx, firstPanel: first });
+    eq(templateIds(withFirst).includes('recollect_same'), true);
+    eq(withFirst.find((o) => o.templateId === 'recollect_same').text, 'K：再採血で同値（6.2）');
+
+    // 症例5は再採血で基準範囲に戻るので、こちらの候補になる
+    const n05 = caseById.n05;
+    const f5 = buildPanel(n05, data);
+    const s5 = buildRecollect(n05, f5, data);
+    const opts5 = buildCommentOptions({ data, panel: s5, firstPanel: f5, marks: ['K'], suspects: {} });
+    eq(opts5.find((o) => o.templateId === 'recollect_normal').text, 'K：再採血で基準範囲内（4.6）');
+  });
+
+  test('候補の選択: 四行目は選べない', () => {
+    let picked = [];
+    for (const id of ['a', 'b', 'c', 'd']) picked = toggleCommentSelection(picked, id, 3);
+    eq(picked.join(','), 'a,b,c', '四行目は入らない');
+    picked = toggleCommentSelection(picked, 'b', 3);
+    eq(picked.join(','), 'a,c', '外せる');
+    picked = toggleCommentSelection(picked, 'd', 3);
+    eq(picked.join(','), 'a,c,d', '外した分は入れ直せる');
+  });
+
+  test('withinHalfDelta: デルタ幅の半分に収まっているか', () => {
+    const h = data.hospital;
+    eq(withinHalfDelta(h, 'K', 6.2, 6.4), true, '差0.2は幅1.0の半分以内');
+    eq(withinHalfDelta(h, 'K', 6.4, 4.6), false, '差1.8は超える');
+    eq(withinHalfDelta(h, 'Na', 137, null), false, '前回値がなければ偽');
+  });
+
+  test('sampleStateText: コメントがなければ null', () => {
+    eq(sampleStateText(buildPanel(caseById.n05, data)), '溶血（3+）');
+    eq(sampleStateText(buildPanel(caseById.n01, data)), null);
   });
 
   test('全症例: 患者情報にバイタルと主訴がある', () => {

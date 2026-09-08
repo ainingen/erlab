@@ -17,7 +17,7 @@
 </style>
 </head>
 <body>
-<h1>ERLAB — 派生値 ・ 判定 ・ 指導役 のテスト</h1>
+<h1>ERLAB — 派生値 ・ 判定 ・ 指導役 ・ 読める画面 のテスト</h1>
 <p id="summary">実行中…</p>
 <ul id="list"></ul>
 <script type="module">
@@ -26,6 +26,7 @@
   import { suite as deriveSuite } from './derive.test.js';
   import { suite as reportSuite } from './report.test.js';
   import { suite as mentorSuite } from './mentor.test.js';
+  import { suite as readableSuite } from './readable.test.js';
 
   const list = document.getElementById('list');
   const summary = document.getElementById('summary');
@@ -35,6 +36,7 @@
     deriveSuite(data);
     reportSuite(data);
     mentorSuite(data);
+    readableSuite(data);
     const failed = results.filter((r) => !r.ok);
     summary.textContent = `${results.length} 件中 ${results.length - failed.length} 件 PASS / ${failed.length} 件 FAIL`;
     document.title = `${failed.length ? 'FAIL' : 'PASS'} — ERLAB テスト`;
