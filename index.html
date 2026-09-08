@@ -58,6 +58,9 @@
     margin-left: auto; font: inherit; font-size: 13px; color: var(--head-ink);
     background: transparent; border: 1px solid #6b7686; padding: 2px 8px; cursor: pointer;
   }
+  /* 二つ目からは右端に寄せ直さない（音のON/OFFと指導役が並ぶ） */
+  .header-btn + .header-btn { margin-left: 6px; }
+  #sound-btn[aria-pressed="false"] { color: #b9c0cb; }
   /* 割り込み中。赤は「ERから至急が入っている」画面状態の合図で、値の判定ではない。
      色を消しても分かるよう、ヘッダーには必ず文字の札を出す */
   body[data-state="interrupt"] .app-header { background: var(--alert); border-bottom-color: #40090b; }
@@ -493,6 +496,8 @@
   <div class="brand">ERLAB<span class="sub">―その数値を見逃すな―</span></div>
   <div class="meta"><span id="hospital-name">読み込み中…</span> ／ 新人研修モード（時間無制限）</div>
   <span class="alert-badge" id="header-alert" hidden></span>
+  <button class="header-btn" id="sound-btn" type="button" data-action="toggle-sound"
+          aria-pressed="true">🔊 音 入</button>
   <button class="header-btn" id="mentor-btn" type="button" data-action="open-mentor">指導役 —</button>
   <div class="score" id="score">報告 0件</div>
 </header>

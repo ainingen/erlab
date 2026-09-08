@@ -11,6 +11,7 @@ import {
   SCORE_LABEL,
 } from './report.js';
 import { renderMentorPicker, mentorById } from './mentor.js';
+import * as sound from './sound.js';
 import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
 
 const state = {
@@ -51,6 +52,9 @@ const POINT_VIEW = { reception: 'worklist', messages: 'messages' };
 
 // 差し戻しの返信が返ってから二本目が届くまでの間。演出だけで、時間制限は入れない。
 const FOLLOWUP_DELAY_MS = 4000;
+// 送信・判定・返信は同じ一瞬に起きる。音だけ少しずらして、順に起きた出来事として聞かせる
+const CLOSE_DELAY_MS = 150;
+const MESSAGE_DELAY_MS = 400;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -74,6 +78,7 @@ async function main() {
   $('#hospital-name').textContent = `${h.name}（架空）${h.lab}`;
 
   bindEvents();
+  renderSoundButton();
   openMentorPicker();
 }
 
@@ -83,6 +88,21 @@ function currentMentor() {
   return mentorById(state.data, state.mentorId);
 }
 
+/** 音のON/OFF。文字（🔊 / 🔇 と「音」）で出す。アイコンだけにしない。 */
+function toggleSound() {
+  sound.setOn(!sound.isOn());
+  if (sound.isOn()) sound.init();
+  renderSoundButton();
+}
+
+function renderSoundButton() {
+  const btn = $('#sound-btn');
+  if (!btn) return;
+  const on = sound.isOn();
+  btn.textContent = on ? '🔊 音 入' : '🔇 音 切';
+  btn.setAttribute('aria-pressed', String(on));
+}
+
 function openMentorPicker() {
   $('#mentor-body').innerHTML = renderMentorPicker(state.data, state.mentorId);
   $('#mentor-dialog').showModal();
@@ -90,6 +110,8 @@ function openMentorPicker() {
 
 function chooseMentor(id) {
   if (!mentorById(state.data, id)) return;
+  // スマホは最初のタップまで鳴らせない。ここで音を解錠する
+  sound.init();
   const first = state.mentorId === null;
   state.mentorId = id;
   $('#mentor-dialog').close();
@@ -196,6 +218,7 @@ function selectCase(caseId) {
   scheduleInterrupt(caseDef);
   renderAll();
   setView('lis');
+  sound.play('result');
 }
 
 function currentCase() {
@@ -285,6 +308,7 @@ function toggleComment(optionId) {
   const key = selectionKey(state.currentCaseId);
   const max = state.data.commentTemplates.max_lines ?? 3;
   state.comments[key] = toggleCommentSelection(state.comments[key] || [], optionId, max);
+  sound.play('tap');
   refreshCommentField();
 }
 
@@ -318,6 +342,7 @@ function toggleMark(testId) {
     marks.push(testId);
   }
   state.marks[caseId] = marks;
+  sound.play('tap');
   renderAll();
 }
 
@@ -337,6 +362,7 @@ function toggleSuspect(testId, suspectId) {
   else picked.push(suspectId);
   suspects[testId] = picked;
   state.suspects[caseId] = suspects;
+  sound.play('tap');
   renderAll();
 }
 
@@ -360,6 +386,7 @@ function triggerInterrupt(caseDef) {
   pushMessage(cfg.message);
   pushMessage(cfg.nav);
   renderAll();
+  sound.play('interrupt'); // 点滅と同じで一回だけ。message は重ねない
 }
 
 /** 割り込み先を報告し終えたら白に戻す。前の検体を放置していたら申し送りで一言。 */
@@ -616,13 +643,21 @@ function bindEvents() {
     }
 
     const action = ev.target.closest('[data-action]')?.dataset.action;
-    if (action === 'close-report') closeReport();
+    if (action === 'close-report') {
+      sound.stop('dial'); // 電話を切ったら呼出音も止める
+      closeReport();
+    }
     if (action === 'close-glossary') $('#glossary-dialog').close();
     if (action === 'open-report') openReport();
     if (action === 'open-mentor') openMentorPicker();
+    if (action === 'toggle-sound') toggleSound();
     if (action === 'close-mentor') $('#mentor-dialog').close();
     if (action === 'tutorial-next') advanceTutorial();
-    if (action === 'readback') finishReport({ ...state.pendingChoice, readback: true });
+    if (action === 'readback') {
+      sound.stop('dial');
+      sound.play('pickup');
+      finishReport({ ...state.pendingChoice, readback: true });
+    }
   });
 
   // 行は button ではないので、Enter と Space を自前で拾う
@@ -661,8 +696,10 @@ function bindEvents() {
       $('#report-body').innerHTML = renderPhone(
         currentCase(), activePanel(), choice, activeAccession(),
       );
+      sound.play('dial'); // 呼出音。切るか読み返し確認まで（最大3回）
       return;
     }
+    sound.play('send');
     finishReport(choice);
   });
 }
@@ -720,6 +757,7 @@ function deliverFollowup(caseId) {
   pushMessage(caseDef.followup.handover);
   if (re.reply) pushMessage(re.reply);
   renderAll();
+  sound.play('message');
 }
 
 function finishReport(choice) {
@@ -736,6 +774,7 @@ function finishReport(choice) {
     state.status[caseDef.id] = 'waiting';
     // 講評と医師の返信は同時に届く。一つの組にして、上下が入れ替わらないようにする
     pushGroup([res.messageId, res.doctorId]);
+    sound.play('message');
     state.pendingChoice = null;
     $('#report-body').innerHTML = renderVerdict(res, choice, state.data);
     renderAll();
@@ -745,6 +784,8 @@ function finishReport(choice) {
 
   state.results[caseDef.id] = res;
   state.status[caseDef.id] = 'done';
+  // 症例が閉じた。判定の良し悪しでは音を変えない（音で答えが分かるのを避ける）
+  setTimeout(() => sound.play('close'), CLOSE_DELAY_MS);
   clearInterrupt(caseDef.id);
   // 報告 → 指導役の講評 → 医師の返信、の順に届く。二本で一つの組にする
   pushGroup([res.messageId, res.doctorId]);
@@ -756,6 +797,8 @@ function finishReport(choice) {
   state.pendingChoice = null;
   $('#report-body').innerHTML = renderVerdict(res, choice, state.data);
   renderAll();
+  // 判定の音と重ならないよう、返信の音だけ少し遅らせる（別の出来事として聞かせる）
+  setTimeout(() => sound.play('message'), MESSAGE_DELAY_MS);
 }
 
 main();
