@@ -17,6 +17,7 @@ function pick(level, opts = {}) {
     readback: level === 'emergency',
     marks: [],
     suspects: {},
+    actions: [],
     ...opts,
   };
 }
@@ -160,6 +161,42 @@ export function suite(data) {
     const caseDef = { choices: [{ when: { report: 'routine' }, score: 'best', headline: 'x' }] };
     eq(evaluate(caseDef, pick('routine')).score, 'best');
     eq(evaluate(caseDef, pick('routine', { marks: ['K', 'Hb', 'CRP'] })).score, 'best');
+  });
+
+  test('evaluate: actions は must / forbid / max だけを見る（marks と同じ形）', () => {
+    const caseDef = {
+      choices: [
+        { when: { actions: { must: ['call'], max: 1 } }, score: 'best', headline: '電話だけ', reply: 'a' },
+        { when: { actions: { must: ['call'] } }, score: 'ok', headline: '電話と他', reply: 'b' },
+        { when: { actions: { forbid: ['smear'] } }, score: 'ok', headline: '塗抹なし', reply: 'c' },
+        { when: {}, score: 'poor', headline: '受け皿', reply: 'd' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('routine', { actions: ['call'] })).headline, '電話だけ');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look', 'call'] })).headline, '電話と他');
+    eq(evaluate(caseDef, pick('routine', { actions: [] })).headline, '塗抹なし');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look'] })).headline, '塗抹なし');
+    eq(evaluate(caseDef, pick('routine', { actions: ['smear'] })).headline, '受け皿');
+  });
+
+  // 向きに注意。「していない人を拾う枝」は forbid ではなく、must を書かない枝で受ける
+  test('evaluate: actions の forbid は「その行動をした人」を弾く', () => {
+    const caseDef = {
+      choices: [
+        { when: { actions: { must: ['idcheck'] } }, score: 'best', headline: '照合した' },
+        { when: { actions: { forbid: ['idcheck'] } }, score: 'ok', headline: '照合していない' },
+        { when: {}, score: 'poor', headline: '受け皿' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('routine', { actions: ['idcheck'] })).headline, '照合した');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look'] })).headline, '照合していない');
+    eq(evaluate(caseDef, pick('routine', { actions: [] })).headline, '照合していない');
+  });
+
+  test('evaluate: actions を書かない枝は行動を不問にする（既存の枝がそのまま動く）', () => {
+    const caseDef = { choices: [{ when: { report: 'routine' }, score: 'best', headline: 'x' }] };
+    eq(evaluate(caseDef, pick('routine')).score, 'best');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look', 'idcheck', 'smear', 'call'] })).score, 'best');
   });
 
   test('evaluate: suspects は指定した疑いが付いていれば一致、指定外は不問', () => {

@@ -215,6 +215,7 @@ export function renderPhone(caseDef, panel, selection = null, accession = caseDe
  *   readback … 読み返し確認をとったか
  *   marks    … マークした項目 { must: [...], max: n, forbid: [...] }
  *   suspects … マーク行に付けた疑い { K: ["hemolysis"], exact: true }
+ *   actions  … 調べるで押した行動 { must: [...], forbid: [...], max: n }
  * 最後の枝は when を空にして、必ずどれかに当たるようにしておく。
  *
  * reply  … 指導役の講評（無い枝もある。その症例で教えたい判断に関わる分岐だけ付ける）
@@ -265,6 +266,7 @@ function matches(when, choice) {
     if (key === 'comment') return matchesComment(expected, choice);
     if (key === 'marks') return matchesMarks(expected, choice.marks || []);
     if (key === 'suspects') return matchesSuspects(expected, choice.suspects || {});
+    if (key === 'actions') return matchesActions(expected, choice.actions || []);
     return Boolean(choice[key]) === expected;
   });
 }
@@ -299,6 +301,22 @@ function matchesCommentRule(rule, choice) {
  */
 function matchesMarks(rule, marks) {
   const list = [].concat(marks || []);
+  if (rule.must && !rule.must.every((id) => list.includes(id))) return false;
+  if (rule.forbid && rule.forbid.some((id) => list.includes(id))) return false;
+  if (rule.max !== undefined && list.length > rule.max) return false;
+  return true;
+}
+
+/**
+ * 調べるの条件。マークと同じ形で、**書かなければ不問**。
+ *   must   … 押していなければ不一致
+ *   forbid … 押していたら不一致。「その行動をした人を弾く」向きに使う。
+ *            「していない人を拾う枝」は forbid ではなく、その行動を must に書かない枝で受ける
+ *   max    … 行動数の上限。上級で「全部押して時間を使いすぎ」を拾う枝用。新人では使わない
+ * 順番は見ない（docs/investigate.md §2）。`ask` はここに含めない（別扱い）。
+ */
+function matchesActions(rule, actions) {
+  const list = [].concat(actions || []);
   if (rule.must && !rule.must.every((id) => list.includes(id))) return false;
   if (rule.forbid && rule.forbid.some((id) => list.includes(id))) return false;
   if (rule.max !== undefined && list.length > rule.max) return false;
