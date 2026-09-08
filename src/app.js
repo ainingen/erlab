@@ -11,6 +11,7 @@ import {
   SCORE_LABEL,
 } from './report.js';
 import { renderMentorPicker, mentorById } from './mentor.js';
+import { actionStates, runAction, renderActionBar, renderInvestigateLog } from './investigate.js';
 import * as sound from './sound.js';
 import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
 
@@ -23,6 +24,7 @@ const state = {
   recollected: {},
   marks: {},
   suspects: {},
+  actions: {},  // 症例ID → 押した行動（調べる）。押した順に積む。取り消しはない
   comments: {}, // 選択キー → 選んだコメント候補のID（打つものはゼロ）
   commentGroups: {}, // 選択キー → 開いている所見の群。既定は comment_templates.json の open
   stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
@@ -254,6 +256,59 @@ function selectionKey(caseId, stage = stageOf(caseId)) {
   return stage === 'followup' ? `${caseId}@2` : caseId;
 }
 
+/* ---- 調べる（目視・ID照合・塗抹・電話） ---- */
+
+/**
+ * いま画面に出ている検体が一本目か、届いた二本目か。
+ * 二本目が来たら目視だけもう一度できる（docs/investigate.md §2）。
+ */
+function investigateStage(caseId) {
+  return state.followups[caseId] || state.recollected[caseId] ? 'recollect' : 'first';
+}
+
+function investigateEntries(caseId) {
+  return state.actions[caseId] || [];
+}
+
+/** 判定に渡す形。押した行動のIDだけで、順番も時刻も見ない。 */
+function takenActionIds(caseId) {
+  return [...new Set(investigateEntries(caseId).map((e) => e.id))];
+}
+
+function currentActionStates() {
+  const caseDef = currentCase();
+  if (!caseDef) return [];
+  return actionStates({
+    order: caseDef.order || [],
+    done: !canMark(),
+    stage: investigateStage(caseDef.id),
+    taken: investigateEntries(caseDef.id),
+  });
+}
+
+/** 行動をひとつ押した。結果は検体状態欄ではなく「調べた結果」欄に積む。 */
+function investigate(actionId) {
+  const caseDef = currentCase();
+  if (!caseDef) return;
+  const st = currentActionStates().find((a) => a.id === actionId);
+  if (!st || !st.enabled) return;
+
+  const entries = investigateEntries(caseDef.id);
+  const entry = runAction(actionId, {
+    caseDef,
+    data: state.data,
+    panel: activePanel(),
+    index: entries.length,
+    stage: investigateStage(caseDef.id),
+  });
+  if (!entry) return;
+  state.actions[caseDef.id] = [...entries, entry];
+  // 電話は相手の言葉が院内メッセージにも残る。他の三つは自分で見たことなので残らない
+  if (entry.messageId) pushMessage(entry.messageId);
+  sound.play(entry.id === 'call' ? 'message' : 'tap');
+  renderAll();
+}
+
 /* ---- コメントの候補 ---- */
 
 /**
@@ -443,6 +498,8 @@ function renderAll() {
     suspectDefs,
     glossary,
     interactive: !done && stage === 'first',
+    // 調べた結果は検体状態欄の下の別欄。何も調べていなければ欄ごと出ない
+    investigateHtml: renderInvestigateLog(investigateEntries(caseDef.id), glossary),
   };
   let html = renderResults(caseDef, currentPanel(), state.data, firstView);
 
@@ -459,6 +516,8 @@ function renderAll() {
   // 自分で依頼した再採血（症例5・5-b）は読むだけ
   const re = state.recollected[caseDef.id];
   if (re) html += renderRecollect(caseDef, re);
+  // 行動ボタンは結果テーブルの下、報告ボタンの上
+  html += renderActionBar(currentActionStates());
   $('#pane-lis').innerHTML = html;
 
   const reportBtn = $('#btn-report');
@@ -624,6 +683,12 @@ function bindEvents() {
       return;
     }
 
+    const investigateBtn = ev.target.closest('[data-investigate]');
+    if (investigateBtn) {
+      investigate(investigateBtn.dataset.investigate);
+      return;
+    }
+
     const suspectBtn = ev.target.closest('[data-suspect]');
     if (suspectBtn) {
       toggleSuspect(suspectBtn.dataset.suspectTest, suspectBtn.dataset.suspect);
@@ -690,6 +755,7 @@ function bindEvents() {
       readback: false,
       marks: sel.marks,
       suspects: sel.suspects,
+      actions: takenActionIds(currentCase().id),
     };
     if (choice.level === 'emergency') {
       state.pendingChoice = choice;

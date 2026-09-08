@@ -247,6 +247,33 @@
   .btn:disabled { opacity: .5; cursor: default; }
   .btn-primary { background: var(--head); color: var(--head-ink); border-color: #101620; font-weight: 700; }
 
+  /* ---- 調べる（目視・ID照合・塗抹・電話） ---- */
+  /* 結果テーブルの下、報告ボタンの上に四つ横並び。スマホ縦390pxで一段に収める。
+     押せない状態（塗抹で血算がない・済・二本目）は濃さと添える一言で示す。色は使わない */
+  .investigate { padding: 0 8px 8px; }
+  .investigate-lead { font-family: var(--sans); font-size: 13px; color: var(--ink-dim); margin: 0 0 6px; }
+  .investigate-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .ia-btn {
+    font: inherit; font-size: 15px; min-width: 0; padding: 5px 2px; min-height: 44px;
+    background: #f0efeb; border: 1px solid var(--line-strong); cursor: pointer; text-align: center;
+  }
+  .ia-btn:disabled { opacity: .45; cursor: default; }
+  .ia-label { display: block; font-weight: 700; }
+  .ia-note {
+    display: block; font-family: var(--sans); font-size: 10px; line-height: 1.25;
+    color: var(--ink-dim); overflow-wrap: anywhere;
+  }
+  .ia-btn:disabled .ia-note { color: inherit; }
+
+  /* 調べた結果欄。検体状態欄の**下の別欄**で、装置の言い分と自分で確かめたことを混ぜない。
+     何も調べていないときは欄ごと出さない（描画側で落とす）。
+     値の判定ではないので色は塗らない（CLAUDE.md の色ルール） */
+  .investigate-log { list-style: none; margin: 0; padding: 0; }
+  .investigate-log li { display: flex; flex-wrap: wrap; gap: 0 6px; margin-bottom: 2px; }
+  .ia-time { font-family: var(--num); color: var(--ink-dim); }
+  .ia-name { font-weight: 700; }
+  .ia-text { flex: 1 1 14em; min-width: 0; }
+
   /* ---- 指さし ---- */
   /* ナビの一文から、画面のどこを見るかを示す。枠が点いて2秒でゆっくり消える。
      点滅させない（割り込みの点滅と区別する） */
