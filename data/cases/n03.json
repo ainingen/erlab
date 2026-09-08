@@ -106,8 +106,7 @@
         "marks": {
           "must": [
             "Hb"
-          ],
-          "max": 3
+          ]
         },
         "suspects": {
           "Hb": [
@@ -126,10 +125,30 @@
     {
       "when": {
         "report": "routine",
-        "comment": true
+        "comment": true,
+        "marks": {
+          "forbid": [
+            "Hb"
+          ]
+        }
       },
       "score": "ok",
-      "headline": "報告レベルもコメントも適切。ただしどこを見たのかが残っていません",
+      "headline": "Hbに印がありません",
+      "reply": null,
+      "doctor": "msg_n03_ok"
+    },
+    {
+      "when": {
+        "report": "routine",
+        "comment": true,
+        "marks": {
+          "must": [
+            "Hb"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "Hbに疑いが付いていません",
       "reply": null,
       "doctor": "msg_n03_ok"
     },

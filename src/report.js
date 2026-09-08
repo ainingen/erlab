@@ -50,7 +50,11 @@ export function hasComment(choice) {
   return commentLines(choice).length > 0;
 }
 
-/** マークした項目を「K（採血に問題なし）／Cre」の形に並べる。0件でも報告はできる。 */
+/**
+ * マークした項目を「Hb・Ht・MCV（採血に問題なし）／Cre」の形に並べる。0件でも報告はできる。
+ * 同じ疑いの組が続く項目はひとまとめにする（小球性の三項目に同じ札を付けても一行で読める）。
+ * 疑いを付けていない項目と、疑いの違う項目は分けたまま。
+ */
 export function markSummary(selection, data) {
   const marks = (selection && selection.marks) || [];
   if (!marks.length) return 'なし（異常なしとして報告します）';
@@ -60,12 +64,19 @@ export function markSummary(selection, data) {
     (data?.suspects?.suspects || []).map((s) => [s.id, s.label.replace(/（[^（）]*）$/, '')]),
   );
   const abbrById = new Map((data?.tests?.tests || []).map((t) => [t.id, t.abbr]));
-  return marks
-    .map((id) => {
-      const picked = ((selection.suspects || {})[id] || []).map((s) => labelById.get(s) || s);
-      const abbr = abbrById.get(id) || id;
-      return picked.length ? `${abbr}（${picked.join('・')}）` : abbr;
-    })
+
+  const groups = [];
+  for (const id of marks) {
+    const picked = ((selection.suspects || {})[id] || []).map((s) => labelById.get(s) || s);
+    const suspects = picked.join('・');
+    const abbr = abbrById.get(id) || id;
+    const last = groups[groups.length - 1];
+    // 疑いなしはまとめない（何を見立てたのかが分からなくなるため）
+    if (suspects && last && last.suspects === suspects) last.items.push(abbr);
+    else groups.push({ suspects, items: [abbr] });
+  }
+  return groups
+    .map((g) => (g.suspects ? `${g.items.join('・')}（${g.suspects}）` : g.items.join('・')))
     .join(' ／ ');
 }
 

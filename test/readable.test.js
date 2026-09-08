@@ -141,6 +141,23 @@ export function suite(data) {
     eq(markSummary({ marks: [] }, data).includes('なし'), true, 'マーク0件でも報告はできる');
   });
 
+  test('報告対象の並び: 同じ疑いの組が続く項目はまとめる', () => {
+    const same = ['Hb', 'Ht', 'MCV'];
+    const real = Object.fromEntries(same.map((id) => [id, ['real']]));
+    eq(markSummary({ marks: same, suspects: real }, data), 'Hb・Ht・MCV（採血に問題なし）');
+
+    // 疑いが違えば分ける
+    eq(markSummary({ marks: ['K', 'LD'], suspects: { K: ['real', 'hemolysis'], LD: ['hemolysis'] } }, data),
+      'K（採血に問題なし・溶血） ／ LD（溶血）');
+    // 疑いなしはまとめない
+    eq(markSummary({ marks: ['Hb', 'Ht'] }, data), 'Hb ／ Ht');
+    eq(markSummary({ marks: ['Hb', 'Ht', 'K'], suspects: { Hb: ['real'], Ht: ['real'] } }, data),
+      'Hb・Ht（採血に問題なし） ／ K');
+    // 間に別の疑いが挟まれば、続きとは見ない
+    eq(markSummary({ marks: ['Hb', 'K', 'Ht'], suspects: { Hb: ['real'], K: ['hemolysis'], Ht: ['real'] } }, data),
+      'Hb（採血に問題なし） ／ K（溶血） ／ Ht（採血に問題なし）');
+  });
+
   test('ナビ: 症例2・3が「採血に問題なし」を選ぶ根拠を言う', () => {
     for (const id of ['msg_n02_nav_kanae', 'msg_n02_nav_yusuke', 'msg_n03_nav_kanae', 'msg_n03_nav_yusuke']) {
       const msg = data.messages.messages[id];

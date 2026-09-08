@@ -303,11 +303,23 @@ export function suite(data) {
     eq(evaluate(c, pick('routine', full)).score, 'best');
     eq(ids(evaluate(c, pick('routine', full)).messageId).join(','),
        'msg_n03_ok_kanae,msg_n03_ok_yusuke');
+    // 小球性は一項目では言えない。何本まとめてマークしても最善のまま
     eq(evaluate(c, pick('routine', { ...full, marks: ['Hb', 'MCV', 'MCH'] })).score,
-       'best', 'MCV・MCHまでは一緒にマークしてよい');
-    eq(evaluate(c, pick('routine', { ...full, marks: ['Hb', 'MCV', 'MCH', 'RBC'] })).score,
-       'ok', '4つ目からは絞れていない');
-    eq(evaluate(c, pick('routine', { comment: '小球性低色素性。' })).score, 'ok', 'マークなし');
+       'best', 'MCV・MCHも一緒にマークしてよい');
+    eq(evaluate(c, pick('routine', { ...full, marks: ['Hb', 'MCV', 'MCH', 'RBC', 'Ht'] })).score,
+       'best', 'マークの本数では減点しない');
+
+    // コメントは付けたが、どこを見たのかが残っていない二つの形
+    const noMark = evaluate(c, pick('routine', { comment: '小球性低色素性。' }));
+    eq(noMark.score, 'ok');
+    eq(noMark.headline, 'Hbに印がありません');
+    const noSuspect = evaluate(c, pick('routine', { comment: '小球性低色素性。', marks: ['Hb'] }));
+    eq(noSuspect.score, 'ok');
+    eq(noSuspect.headline, 'Hbに疑いが付いていません');
+    const otherMark = evaluate(c, pick('routine', { comment: '小球性低色素性。', marks: ['MCV'] }));
+    eq(otherMark.headline, 'Hbに印がありません', 'Hb以外だけをマークした場合');
+    // 台詞は増やしていない（この二本は医師の返信だけ）
+    for (const res of [noMark, noSuspect, otherMark]) eq(res.messageId, null);
 
     const thin = evaluate(c, pick('routine', { marks: ['Hb'], suspects: { Hb: ['real'] } }));
     eq(thin.score, 'ok');
