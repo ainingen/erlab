@@ -91,6 +91,7 @@
 このファイルと [docs/design.md](design.md)、台詞は [docs/dialogue.md](dialogue.md) を読めば、
 設計判断は復元できる。操作メカニクスの仕様は [docs/mechanics.md](mechanics.md)。
 **進め方の順番は [docs/roadmap.md](roadmap.md) を参照。**
+スレをまたぐときの経緯と宿題は [docs/handover-2026-09-08.md](handover-2026-09-08.md)。
 
 ### 完了済み
 
