@@ -51,8 +51,8 @@
           ],
           "focus": [
             "reception",
-            null,
-            null
+            "reception",
+            "reception"
           ]
         },
         "yusuke": {
@@ -64,8 +64,8 @@
           ],
           "focus": [
             "reception",
-            null,
-            null
+            "reception",
+            "reception"
           ]
         }
       }
@@ -83,7 +83,7 @@
           ],
           "focus": [
             "results",
-            null
+            "results"
           ]
         },
         "yusuke": {
@@ -94,7 +94,7 @@
           ],
           "focus": [
             "results",
-            null
+            "results"
           ]
         }
       }
@@ -113,8 +113,8 @@
           ],
           "focus": [
             "flags",
-            null,
-            null
+            "flags",
+            "flags"
           ]
         },
         "yusuke": {
@@ -126,8 +126,8 @@
           ],
           "focus": [
             "flags",
-            null,
-            null
+            "flags",
+            "flags"
           ]
         }
       }
@@ -147,8 +147,8 @@
           ],
           "focus": [
             "sample_state",
-            null,
-            null,
+            "sample_state",
+            "sample_state",
             "sample_state"
           ]
         },
@@ -162,8 +162,8 @@
           ],
           "focus": [
             "sample_state",
-            null,
-            null,
+            "sample_state",
+            "sample_state",
             "sample_state"
           ]
         }
@@ -182,7 +182,7 @@
           ],
           "focus": [
             "results",
-            null
+            "results"
           ]
         },
         "yusuke": {
@@ -194,8 +194,8 @@
           ],
           "focus": [
             "results",
-            null,
-            null
+            "results",
+            "results"
           ]
         }
       }
@@ -214,8 +214,8 @@
           ],
           "focus": [
             "results",
-            null,
-            null
+            "results",
+            "results"
           ]
         },
         "yusuke": {
@@ -227,8 +227,8 @@
           ],
           "focus": [
             "results",
-            null,
-            null
+            "results",
+            "results"
           ]
         }
       }
@@ -249,7 +249,7 @@
           "focus": [
             "messages",
             "report",
-            null,
+            "report",
             null
           ]
         },
@@ -264,7 +264,7 @@
           "focus": [
             "messages",
             "report",
-            null,
+            "report",
             null
           ]
         }

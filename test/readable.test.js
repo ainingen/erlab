@@ -207,13 +207,17 @@ export function suite(data) {
     }
   });
 
-  test('症例0: 同じ場所を続けて光らせない（点滅に見えるため）', () => {
+  // 症例0の枠は次の文まで出したまま。続きの文には同じ場所を書き（枠はそのまま動かない）、
+  // 指す先がない文だけ null にして消す。一度離れた場所を指し直すと線を引き直すので、点滅に見える
+  test('症例0: 一度離れた場所を、同じステップで指し直さない（点滅に見えるため）', () => {
     for (const step of data.tutorial.steps) {
       for (const id of data.mentors.mentors.map((m) => m.id)) {
         const focus = step.lines[id].focus;
-        for (let i = 1; i < focus.length; i += 1) {
-          if (!focus[i]) continue;
-          eq(focus[i] === focus[i - 1], false, `${step.id} ${id} で ${focus[i]} が続いている`);
+        const seen = [];
+        for (let i = 0; i < focus.length; i += 1) {
+          if (!focus[i] || focus[i] === focus[i - 1]) continue; // 続きの文はそのまま
+          eq(seen.includes(focus[i]), false, `${step.id} ${id} で ${focus[i]} を指し直している`);
+          seen.push(focus[i]);
         }
       }
     }

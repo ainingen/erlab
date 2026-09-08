@@ -19,6 +19,8 @@
     --panic: #f6d4d4;
     /* 割り込み中のヘッダー。値の重さではなく画面状態の合図なので、必ず文字と併せて使う */
     --alert: #7f1d21;
+    /* 症例0の指さし。説明の指し示しであって値の判定ではない。割り込みの赤とぶつからない黄色 */
+    --point: #dd9b00;
     /* 数字と画面まわり。BIZ UDGothic は数字の幅がそろうので、桁が縦に並ぶ。
        Osaka-Mono は mac、Consolas は Windows、MS Gothic は古い環境向けの控え。Webフォントは使わない */
     --num: "BIZ UDGothic", "Osaka-Mono", Consolas, "Courier New", "MS Gothic", monospace;
@@ -245,6 +247,18 @@
   @keyframes point-fade { from { outline-color: var(--head); } to { outline-color: rgba(43, 54, 70, 0); } }
   @media (prefers-reduced-motion: reduce) { .is-pointed { animation: none; } }
 
+  /* 症例0だけの指さし。次の文に進むまで出したままにするので、消えるアニメーションは付けない。
+     初見でも目が行くよう、ナビの枠（3px）より太い黄色。点滅はさせず、
+     現れるときに0.3秒で線が引かれる動きを一度だけ。割り込みの赤とは別物 */
+  .is-pointed-hold { position: relative; }
+  .is-pointed-hold::after {
+    content: ""; position: absolute; inset: -3px; pointer-events: none;
+    border: 5px solid var(--point);
+    animation: point-draw .3s linear 1 both;
+  }
+  @keyframes point-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @media (prefers-reduced-motion: reduce) { .is-pointed-hold::after { animation: none; } }
+
   /* ---- messages ---- */
   .msg { border: 1px solid var(--line); border-left: 3px solid var(--line-strong); background: #fbfbf9; padding: 7px 9px; margin-bottom: 9px; }
   .msg-nav { border-left-color: var(--head); background: #eef1f6; }
@@ -289,6 +303,9 @@
   /* 帯のぶんの逃げを作る。これがないと、画面の下にあるもの（報告ボタン）を
      上へ送れず、帯の裏に入ったままになる */
   html[data-tutorial="open"] .cols { padding-bottom: 52vh; }
+  /* 症例0の報告ボタンは押せないが、薄くしない。半透明にすると指さしの枠まで一緒に薄くなる
+     （枠は疑似要素なので、親の透明度から出られない）。押せないことは字の色で見せる */
+  html[data-tutorial="open"] .btn:disabled { opacity: 1; color: var(--ink-dim); border-color: var(--line); }
 
   /* チュートリアル中の骨組み。数字は入らない */
   .lis-table.is-skeleton td[data-col="value"],
