@@ -557,6 +557,7 @@
     },
     "msg_n04_urgent_kanae": {
       "kind": "nav",
+      "repeat": true,
       "speaker": "kanae",
       "emotion": "normal",
       "from": "三嶋 かなえ / 主任臨床検査技師",
@@ -569,6 +570,7 @@
     },
     "msg_n04_urgent_yusuke": {
       "kind": "nav",
+      "repeat": true,
       "speaker": "yusuke",
       "emotion": "normal",
       "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
