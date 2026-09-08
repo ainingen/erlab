@@ -302,7 +302,13 @@ export function renderGlossaryPanel(data, view, sex = 'F') {
         ? renderGlossary(view.testId, data, sex)
         : '<p class="gl-empty">結果画面の項目名をタップすると、その項目の索引が開きます。</p>';
 
-  return `<div class="gl-tabs" role="tablist">${tabs}</div>${body}`;
+  // タブと閉じるは同じ帯に入れて上に貼り付ける。三行の長い語を開いても、
+  // スクロールせずに閉じられるようにするため。下端の閉じるも残してある
+  return `
+    <div class="gl-bar">
+      <div class="gl-tabs" role="tablist">${tabs}</div>
+      <button type="button" class="gl-close" data-action="close-glossary">閉じる</button>
+    </div>${body}`;
 }
 
 /** 「言葉」タブ。上に「見る順番」を固定で一枚、その下に辞典を表の順で並べる。 */

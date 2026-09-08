@@ -92,6 +92,24 @@ export function suite(data) {
     eq(words.includes('term-card is-current'), true, '開いた語が目印になる');
   });
 
+  test('索引パネル: タブの帯に閉じるがある（本文より上＝貼り付く側）', () => {
+    const cases = [
+      [{ tab: 'tests', testId: 'K' }, '5. 検体トラブルで偽の値が出る条件'],
+      [{ tab: 'terms', termId: 'hemolysis' }, '見る順番'],
+    ];
+    for (const [view, marker] of cases) {
+      const html = renderGlossaryPanel(data, view, 'M');
+      const bar = html.indexOf('class="gl-bar"');
+      const close = html.indexOf('class="gl-close"');
+      eq(bar >= 0, true, `${view.tab}: タブの帯がない`);
+      eq(close > bar, true, `${view.tab}: 閉じるが帯の中にない`);
+      eq(html.slice(bar, close).includes('data-gl-tab="terms"'), true, `${view.tab}: 帯にタブが入っていない`);
+      eq(html.includes('data-action="close-glossary"'), true, `${view.tab}: 閉じるが押せない`);
+      // 帯より下が本文。閉じるは本文より前にあるので、どこまで送っても貼り付いたまま押せる
+      eq(close < html.indexOf(marker), true, `${view.tab}: 閉じるが本文より後ろにある`);
+    }
+  });
+
   // ---- 画面のどこから引けるか ----
   test('結果画面: 検体状態欄・フラグ・Δ・列見出しから辞典に開ける', () => {
     const c = caseById.n06; // Δが点いていて、検体状態は特記なし
