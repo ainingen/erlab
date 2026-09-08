@@ -1,7 +1,7 @@
 // LIS結果画面・受付一覧・索引パネルの描画。
 // 状態は持たず、渡されたデータからHTML文字列を作るだけにする。
 
-import { rangeFor, formatRange } from './derive.js';
+import { rangeFor, formatRange, sampleStateText } from './derive.js';
 
 export function esc(text) {
   return String(text ?? '').replace(/[&<>"']/g, (c) => ({
@@ -119,10 +119,8 @@ function orderForWorklist(cases, interrupt) {
 export function renderResults(caseDef, panel, data, view = null) {
   const glossary = data.glossary;
   const p = caseDef.patient;
-  const sampleLines = [];
-  if (panel.sampleComment) sampleLines.push(panel.sampleComment);
-  if (panel.hasUnmeasurable) sampleLines.push('一部項目 測定不可');
-  const sampleText = sampleLines.length ? sampleLines.join(' ／ ') : '特記なし';
+  const sample = sampleStateText(panel);
+  const sampleText = sample || '特記なし';
 
   const prevNote = caseDef.previous
     ? `${caseDef.previous.date}（${caseDef.previous.note}）`
@@ -147,7 +145,7 @@ export function renderResults(caseDef, panel, data, view = null) {
         ${p.note ? `<dt>主訴</dt><dd>${esc(p.note)}</dd>` : ''}
         ${p.vitals ? `<dt>バイタル</dt><dd>脈拍 ${esc(p.vitals.pulse)} /分　血圧 ${esc(p.vitals.bp)} mmHg</dd>` : ''}
         <dt>${termLink(glossary, 'sample_state', '検体状態')}</dt>
-        <dd class="${sampleLines.length ? 'is-flagged' : ''}" data-region="sample_state">${linkTerms(sampleText, glossary)}</dd>
+        <dd class="${sample ? 'is-flagged' : ''}" data-region="sample_state">${linkTerms(sampleText, glossary)}</dd>
         <dt>前回検査</dt><dd>${esc(prevNote)}</dd>
       </dl>
     </div>

@@ -1,11 +1,12 @@
 // 画面の組み立てとイベント処理。ロジックは derive.js / report.js 側に置く。
 
 import { loadData } from './data.js';
-import { buildPanel, buildRecollect } from './derive.js';
+import { buildPanel, buildRecollect, buildCommentOptions, toggleCommentSelection } from './derive.js';
 import { renderWorklist, renderResults, renderRecollect, renderGlossaryPanel, esc } from './lis.js';
 import { renderMessages, resolveMessages, filterBySpeaker } from './messages.js';
 import {
-  renderReportDialog, renderPhone, evaluate, evaluateFollowup, renderVerdict, SCORE_LABEL,
+  renderReportDialog, renderCommentPicker, renderPhone, evaluate, evaluateFollowup, renderVerdict,
+  SCORE_LABEL,
 } from './report.js';
 import { renderMentorPicker, mentorById } from './mentor.js';
 import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
@@ -19,6 +20,7 @@ const state = {
   recollected: {},
   marks: {},
   suspects: {},
+  comments: {}, // 選択キー → 選んだコメント候補のID（打つものはゼロ）
   stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
   caps: {},      // 症例ID → 一本目の cap。最終評価の上限になる
   followups: {}, // 症例ID → 二本目のパネル
@@ -166,9 +168,61 @@ function activePanel() {
   return stageOf(id) === 'followup' ? state.followups[id] : state.panels.get(id);
 }
 
+/** 報告に載る受付番号。差し戻し後は二本目のもの。 */
+function activeAccession() {
+  const caseDef = currentCase();
+  return stageOf(caseDef.id) === 'followup'
+    ? caseDef.followup.recollect.accession
+    : caseDef.accession;
+}
+
 /** マークは一本目と二本目で別に持つ。一本目のマークは差し戻し後も残るが、動かせない。 */
 function selectionKey(caseId, stage = stageOf(caseId)) {
   return stage === 'followup' ? `${caseId}@2` : caseId;
+}
+
+/* ---- コメントの候補 ---- */
+
+/**
+ * いまの画面から作れるコメントの候補。マーク・疑い・検体状態・再採血・操作から組む。
+ * 再採血のチェックは報告ダイアログの中で変わるので、引数で受ける。
+ */
+function currentCommentOptions(recheck) {
+  const caseDef = currentCase();
+  const key = selectionKey(caseDef.id);
+  return buildCommentOptions({
+    data: state.data,
+    panel: activePanel(),
+    // 差し戻しの二本目を報告するときだけ、一本目を渡す（再採血の候補が出る）
+    firstPanel: stageOf(caseDef.id) === 'followup' ? state.panels.get(caseDef.id) : null,
+    ...selection(key),
+    recheck,
+  });
+}
+
+/** 報告ダイアログに渡す一式。選び終えた候補は、いま出ている候補だけに絞る。 */
+function reportSelection(recheck = false) {
+  const key = selectionKey(state.currentCaseId);
+  const commentOptions = currentCommentOptions(recheck);
+  const commentSelected = (state.comments[key] || []).filter((id) =>
+    commentOptions.some((o) => o.id === id),
+  );
+  return { ...selection(key), commentOptions, commentSelected };
+}
+
+function toggleComment(optionId) {
+  const key = selectionKey(state.currentCaseId);
+  const max = state.data.commentTemplates.max_lines ?? 3;
+  state.comments[key] = toggleCommentSelection(state.comments[key] || [], optionId, max);
+  refreshCommentField();
+}
+
+/** コメント欄だけを描き直す。報告レベルの選択は触らない。 */
+function refreshCommentField() {
+  const field = $('#comment-field');
+  if (!field) return;
+  const recheck = Boolean($('#report-form input[name="recheck"]')?.checked);
+  field.innerHTML = renderCommentPicker(state.data, reportSelection(recheck));
 }
 
 /* ---- マークと疑い ---- */
@@ -396,6 +450,12 @@ function bindEvents() {
       return;
     }
 
+    const commentBtn = ev.target.closest('[data-comment]');
+    if (commentBtn) {
+      toggleComment(commentBtn.dataset.comment);
+      return;
+    }
+
     const suspectBtn = ev.target.closest('[data-suspect]');
     if (suspectBtn) {
       toggleSuspect(suspectBtn.dataset.suspectTest, suspectBtn.dataset.suspect);
@@ -435,20 +495,31 @@ function bindEvents() {
     $(`[data-mark="${testId}"]`)?.focus();
   });
 
+  // 再採血のチェックで「再採血を依頼中」の候補が出入りする
+  document.addEventListener('change', (ev) => {
+    if (ev.target.name === 'recheck') refreshCommentField();
+  });
+
   document.addEventListener('submit', (ev) => {
     if (ev.target.id !== 'report-form') return;
     ev.preventDefault();
     const form = new FormData(ev.target);
+    const recheck = form.get('recheck') === 'on';
+    const sel = reportSelection(recheck);
     const choice = {
       level: form.get('level'),
-      comment: form.get('comment') || '',
-      recheck: form.get('recheck') === 'on',
+      // 報告の文面は、選んだ候補そのもの。打った文字は一つもない
+      comment: sel.commentOptions.filter((o) => sel.commentSelected.includes(o.id)),
+      recheck,
       readback: false,
-      ...selection(selectionKey(state.currentCaseId)),
+      marks: sel.marks,
+      suspects: sel.suspects,
     };
     if (choice.level === 'emergency') {
       state.pendingChoice = choice;
-      $('#report-body').innerHTML = renderPhone(currentCase(), activePanel(), choice);
+      $('#report-body').innerHTML = renderPhone(
+        currentCase(), activePanel(), choice, activeAccession(),
+      );
       return;
     }
     finishReport(choice);
@@ -487,9 +558,7 @@ function openReport() {
   if (caseDef && caseDef.interrupt && !state.interruptDone) triggerInterrupt(caseDef);
   state.pendingChoice = null;
   $('#report-body').innerHTML = renderReportDialog(
-    currentCase(),
-    state.data,
-    selection(selectionKey(state.currentCaseId)),
+    currentCase(), state.data, reportSelection(false), activeAccession(),
   );
   $('#report-dialog').showModal();
 }

@@ -1,0 +1,74 @@
+{
+  "_note": "報告に添えるコメントの候補。プレイヤーが画面で選んだもの（マーク・疑い・検体状態・再採血・操作）からだけ組む。自由記述は作らない。仕様は docs/readable.md。",
+  "_placeholder_note": "{item} 項目の略号 ／ {value}{now} いまの値 ／ {prev} 前回値 ／ {grade} 溶血の段階（「（2+）」の形。無ければ空） ／ {sample} 検体状態欄の内容。描画時に埋める。",
+  "_speech_note": "text は報告の文面、speech は緊急報告の電話で読み上げる言い方。中身は同じことを言う。",
+  "max_lines": 3,
+  "templates": [
+    {
+      "id": "real",
+      "when": "suspect_real",
+      "text": "{item}：本物の異常と判断",
+      "speech": "{item} {value}、本物の異常と判断します"
+    },
+    {
+      "id": "hemolysis",
+      "when": "suspect_hemolysis",
+      "text": "{item}：溶血{grade}の影響を疑う",
+      "speech": "{item} {value}、溶血{grade}の影響を疑います"
+    },
+    {
+      "id": "clot",
+      "when": "suspect_clot",
+      "text": "{item}：EDTA凝集の可能性",
+      "speech": "{item} {value}、EDTA凝集の可能性があります"
+    },
+    {
+      "id": "dilution",
+      "when": "suspect_dilution",
+      "text": "{item}：点滴側採血の疑い",
+      "speech": "{item} {value}、点滴側採血の疑いがあります"
+    },
+    {
+      "id": "mismatch",
+      "when": "suspect_mismatch",
+      "text": "検体取り違えの疑い（前回値と不一致）",
+      "speech": "検体取り違えの疑いがあります。前回値と一致しません"
+    },
+    {
+      "id": "delta",
+      "when": "suspect_delta",
+      "text": "{item}：前回値から急な変化（{prev}→{now}）",
+      "speech": "{item}、前回{prev}から{now}です"
+    },
+    {
+      "id": "sample_state",
+      "when": "sample_state_comment",
+      "text": "検体状態：{sample}",
+      "speech": "検体状態、{sample}です"
+    },
+    {
+      "id": "sample_state_clear",
+      "when": "sample_state_clear",
+      "text": "検体状態に特記なし",
+      "speech": "検体状態に特記はありません"
+    },
+    {
+      "id": "recollect_same",
+      "when": "recollect_same",
+      "text": "{item}：再採血で同値（{now}）",
+      "speech": "{item} {now}、再採血で同値です"
+    },
+    {
+      "id": "recollect_normal",
+      "when": "recollect_normal",
+      "text": "{item}：再採血で基準範囲内（{now}）",
+      "speech": "{item} {now}、再採血で基準範囲内です"
+    },
+    {
+      "id": "recheck",
+      "when": "recheck_requested",
+      "text": "再採血を依頼中",
+      "speech": "再採血を依頼しています"
+    }
+  ]
+}

@@ -17,6 +17,26 @@ export function worseScore(a, b) {
   return SCORE_RANK[a] >= SCORE_RANK[b] ? a : b;
 }
 
+/**
+ * 選んだコメント。候補のタップで組み立てるので、中身は候補オブジェクトの配列。
+ * 文字列（旧い自由記述）も受けられるようにしてある——判定は「一行以上あるか」だけを見る。
+ */
+export function commentLines(choice) {
+  const c = choice && choice.comment;
+  if (Array.isArray(c)) return c.map((x) => (typeof x === 'string' ? { templateId: x, text: x } : x));
+  if (typeof c === 'string' && c.trim()) return [{ templateId: null, text: c.trim() }];
+  return [];
+}
+
+/** その報告に付いているコメントの候補ID（`when.comment` の配列と突き合わせる）。 */
+export function commentTemplateIds(choice) {
+  return commentLines(choice).map((line) => line.templateId).filter(Boolean);
+}
+
+export function hasComment(choice) {
+  return commentLines(choice).length > 0;
+}
+
 /** マークした項目を「K（本物の異常）／Cre」の形に並べる。0件でも報告はできる。 */
 export function markSummary(selection, data) {
   const marks = (selection && selection.marks) || [];
@@ -32,7 +52,7 @@ export function markSummary(selection, data) {
     .join(' ／ ');
 }
 
-export function renderReportDialog(caseDef, data, selection = null) {
+export function renderReportDialog(caseDef, data, selection = null, accession = caseDef.accession) {
   const levels = data.hospital.report_levels
     .map(
       (lv, i) => `
@@ -48,16 +68,15 @@ export function renderReportDialog(caseDef, data, selection = null) {
     .join('');
 
   return `
-    <h2>報告：${esc(caseDef.accession)}　${esc(caseDef.patient.id)}</h2>
+    <h2>報告：${esc(accession)}　${esc(caseDef.patient.id)}</h2>
     <p class="report-marks"><span class="report-marks-label">報告対象</span>${esc(markSummary(selection, data))}</p>
     <form id="report-form">
       <fieldset>
         <legend>${termLink(data.glossary, 'levels', '報告レベル')}</legend>
         ${levels}
       </fieldset>
-      <div class="field">
-        <span>${termLink(data.glossary, 'comment', '検査室コメント')}（任意）</span>
-        <textarea name="comment" rows="3" placeholder="例）小球性低色素性。前回値と比べゆるやかに低下。"></textarea>
+      <div class="field" id="comment-field">
+        ${renderCommentPicker(data, selection)}
       </div>
       <label class="check">
         <input type="checkbox" name="recheck">
@@ -70,8 +89,46 @@ export function renderReportDialog(caseDef, data, selection = null) {
     </form>`;
 }
 
+/**
+ * コメントは打つものをゼロにする。画面で選んだマークと疑いから作った候補を、
+ * タップで一〜三行選ぶだけ。自由記述の欄は置かない。
+ * selection = { commentOptions, comment（選んだID）, ... }
+ */
+export function renderCommentPicker(data, selection = null) {
+  const options = (selection && selection.commentOptions) || [];
+  const selected = (selection && selection.commentSelected) || [];
+  const max = data.commentTemplates.max_lines ?? 3;
+
+  if (!options.length) {
+    return `
+      <span>${termLink(data.glossary, 'comment', '検査室コメント')}</span>
+      <p class="comment-empty">添えられる候補がありません。行をマークすると候補が出ます。</p>`;
+  }
+
+  const items = options
+    .map((o) => {
+      const on = selected.includes(o.id);
+      const full = !on && selected.length >= max;
+      return `
+        <li>
+          <button type="button" class="comment-opt${on ? ' is-on' : ''}" data-comment="${esc(o.id)}"
+                  aria-pressed="${on}"${full ? ' disabled' : ''}>
+            <span class="comment-check">${on ? '✓' : ''}</span>${esc(o.text)}
+          </button>
+        </li>`;
+    })
+    .join('');
+
+  return `
+    <span>${termLink(data.glossary, 'comment', '検査室コメント')}（任意・最大${max}行）</span>
+    <ul class="comment-options">${items}</ul>
+    <p class="comment-count">選択 ${selected.length} / ${max} 行${
+      selected.length >= max ? '（上限です。外すと選び直せます）' : ''
+    }</p>`;
+}
+
 /** 緊急報告は電話画面を挟み、読み返し確認をタップして初めて完了とする。 */
-export function renderPhone(caseDef, panel, selection = null) {
+export function renderPhone(caseDef, panel, selection = null, accession = caseDef.accession) {
   const marks = (selection && selection.marks) || [];
   // 読み返すのは報告に載せた行。マークがなければパニック値を読み上げる。
   const target = marks.length
@@ -84,8 +141,11 @@ export function renderPhone(caseDef, panel, selection = null) {
     <h2>緊急報告：電話</h2>
     <p class="phone-dial">救急外来 内線 2201 … 呼出中</p>
     <div class="phone-script">
-      <p>「中央検査部です。${esc(caseDef.patient.id)}、受付${esc(caseDef.accession)}のパニック値をご報告します。」</p>
+      <p>「中央検査部です。${esc(caseDef.patient.id)}、受付${esc(accession)}のパニック値をご報告します。」</p>
       <p class="phone-value">${esc(readback)}</p>
+      ${commentLines(selection)
+        .map((line) => `<p>「${esc(line.speech || line.text)}」</p>`)
+        .join('')}
       <p>「復唱をお願いします。」</p>
     </div>
     <div class="dlg-actions">
@@ -153,11 +213,24 @@ function pickBranch(choices, choice) {
 function matches(when, choice) {
   return Object.entries(when).every(([key, expected]) => {
     if (key === 'report') return choice.level === expected;
-    if (key === 'comment') return Boolean(choice.comment && choice.comment.trim()) === expected;
+    if (key === 'comment') return matchesComment(expected, choice);
     if (key === 'marks') return matchesMarks(expected, choice.marks || []);
     if (key === 'suspects') return matchesSuspects(expected, choice.suspects || {});
     return Boolean(choice[key]) === expected;
   });
+}
+
+/**
+ * コメントの条件。
+ *   true / false … 一行以上選んだか（中身は見ない）
+ *   ["recollect_same", ...] … 指定した候補が全部選ばれていれば一致（指定外は不問）
+ */
+function matchesComment(expected, choice) {
+  if (Array.isArray(expected)) {
+    const picked = commentTemplateIds(choice);
+    return expected.every((id) => picked.includes(id));
+  }
+  return hasComment(choice) === expected;
 }
 
 /**
@@ -196,7 +269,8 @@ export function renderVerdict(res, choice, data) {
   const bits = [`報告レベル：${level ? level.label : choice.level}`];
   bits.push(`報告対象：${markSummary(choice, data)}`);
   if (choice.recheck) bits.push('再検・再採血を依頼');
-  if (choice.comment && choice.comment.trim()) bits.push('コメントあり');
+  const lines = commentLines(choice);
+  if (lines.length) bits.push(`コメント ${lines.length}行`);
   if (choice.readback) bits.push('読み返し確認あり');
 
   return `
@@ -207,6 +281,7 @@ export function renderVerdict(res, choice, data) {
       ${esc(res.headline)}
     </h2>
     <p class="verdict-choice">${esc(bits.join(' ／ '))}</p>
+    ${lines.length ? `<ul class="verdict-comment">${lines.map((l) => `<li>${esc(l.text)}</li>`).join('')}</ul>` : ''}
     <p class="verdict-note">${
       pending
         ? '院内メッセージに返信が届いています。再採血の結果が届いたら、もう一度報告します。'

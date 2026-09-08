@@ -233,6 +233,126 @@ export function buildRecollect(caseDef, firstPanel, data, re = caseDef.recollect
   );
 }
 
+/** 検体状態欄に出す文字列。結果画面とコメントの候補で同じものを使う。 */
+export function sampleStateText(panel) {
+  const lines = [];
+  if (panel.sampleComment) lines.push(panel.sampleComment);
+  if (panel.hasUnmeasurable) lines.push('一部項目 測定不可');
+  return lines.length ? lines.join(' ／ ') : null;
+}
+
+/** 溶血の段階を検体状態のコメントから取り出す。「（2+）」の形。無ければ空。 */
+function hemolysisGrade(panel) {
+  const m = /（[0-9]?\+）/.exec(panel.sampleComment || '');
+  return m ? m[0] : '';
+}
+
+/** 前回値からの動きが、デルタ幅の半分に収まっているか（＝ほぼ動いていない）。 */
+export function withinHalfDelta(hospital, testId, value, previous) {
+  if (value === null || previous === null || value === undefined || previous === undefined) return false;
+  const rule = (hospital.delta_check || {})[testId];
+  if (rule && rule.abs !== undefined) return Math.abs(value - previous) <= rule.abs / 2;
+  if (rule && rule.ratio !== undefined && previous !== 0) {
+    const half = 1 + (rule.ratio - 1) / 2;
+    const r = value / previous;
+    return r <= half && r >= 1 / half;
+  }
+  return value === previous;
+}
+
+/**
+ * 報告に添えるコメントの候補を組み立てる。DOM には触らない。
+ * プレイヤーが画面で選んだもの（マーク・疑い・検体状態・再採血・操作）からだけ作る。
+ *
+ * ctx = { data, panel, firstPanel, marks, suspects, recheck, sex }
+ *   panel      … 報告の対象になっている検体。差し戻しの二本目ならそちら
+ *   firstPanel … 二本目を報告するときだけ渡す。渡すと再採血の候補が出る
+ *
+ * 並び順は「マークした項目の順 → 検体状態 → 再採血の結果 → 操作」。
+ */
+export function buildCommentOptions(ctx) {
+  const { data, panel, firstPanel = null, marks = [], suspects = {}, recheck = false } = ctx;
+  const templates = new Map(
+    (data.commentTemplates.templates || []).map((t) => [t.id, t]),
+  );
+  const rowById = new Map(panel.rows.map((r) => [r.id, r]));
+  const firstById = firstPanel ? new Map(firstPanel.rows.map((r) => [r.id, r])) : null;
+  const suspectOrder = (data.suspects.suspects || []).map((s) => s.id);
+  const sample = sampleStateText(panel);
+  const grade = hemolysisGrade(panel);
+  const out = [];
+
+  const add = (templateId, key, fill) => {
+    const t = templates.get(templateId);
+    if (!t) return;
+    out.push({
+      id: key,
+      templateId,
+      text: format(t.text, fill),
+      speech: format(t.speech, fill),
+    });
+  };
+
+  // 1. マーク × 疑い。マークした順に並べる
+  for (const testId of marks) {
+    const row = rowById.get(testId);
+    if (!row) continue;
+    const fill = {
+      item: row.abbr,
+      value: row.display,
+      now: row.display,
+      prev: row.previousDisplay,
+      grade,
+    };
+    for (const suspectId of suspectOrder) {
+      if (!(suspects[testId] || []).includes(suspectId)) continue;
+      // 前回値のない項目に「前回値から急な変化」は出さない
+      if (suspectId === 'delta' && row.previous === null) continue;
+      add(suspectId, `${suspectId}:${testId}`, fill);
+    }
+  }
+
+  // 2. 検体状態欄。コメントがあるときと、空のときで文が変わる
+  if (sample) add('sample_state', 'sample_state', { sample });
+  else add('sample_state_clear', 'sample_state_clear', {});
+
+  // 3. 再採血の結果。二本目を報告するときだけ
+  if (firstById) {
+    for (const testId of marks) {
+      const row = rowById.get(testId);
+      const first = firstById.get(testId);
+      if (!row || !first) continue;
+      const fill = { item: row.abbr, value: row.display, now: row.display, prev: row.previousDisplay };
+      if (row.flag === '' && first.flag !== '') add('recollect_normal', `recollect_normal:${testId}`, fill);
+      else if (withinHalfDelta(data.hospital, testId, row.value, first.value)) {
+        add('recollect_same', `recollect_same:${testId}`, fill);
+      }
+    }
+  }
+
+  // 4. 操作
+  if (recheck) add('recheck', 'recheck', {});
+
+  return out;
+}
+
+function format(text, fill) {
+  return String(text ?? '').replace(/\{(\w+)\}/g, (_, key) => (fill[key] ?? ''));
+}
+
+/** 候補の選び外し。四行目は選べない（緊急報告に9行並べさせないのと同じ理由）。 */
+export function toggleCommentSelection(selected, id, max = 3) {
+  const list = [...(selected || [])];
+  const at = list.indexOf(id);
+  if (at >= 0) {
+    list.splice(at, 1);
+    return list;
+  }
+  if (list.length >= max) return list; // 上限。何も変えない
+  list.push(id);
+  return list;
+}
+
 function summarize(panels, rows, values, artifact) {
   return {
     panels,
