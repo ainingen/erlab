@@ -4,7 +4,9 @@ import { loadData } from './data.js';
 import { buildPanel, buildRecollect } from './derive.js';
 import { renderWorklist, renderResults, renderRecollect, renderGlossary, esc } from './lis.js';
 import { renderMessages, resolveMessages, filterBySpeaker } from './messages.js';
-import { renderReportDialog, renderPhone, evaluate, renderVerdict, SCORE_LABEL } from './report.js';
+import {
+  renderReportDialog, renderPhone, evaluate, evaluateFollowup, renderVerdict, SCORE_LABEL,
+} from './report.js';
 import { renderMentorPicker, mentorById } from './mentor.js';
 import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
 
@@ -17,6 +19,9 @@ const state = {
   recollected: {},
   marks: {},
   suspects: {},
+  stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
+  caps: {},      // 症例ID → 一本目の cap。最終評価の上限になる
+  followups: {}, // 症例ID → 二本目のパネル
   messageIds: [],
   mentorId: null,
   currentCaseId: null,
@@ -28,6 +33,9 @@ const state = {
 };
 
 let interruptTimer = null;
+
+// 差し戻しの返信が返ってから二本目が届くまでの間。演出だけで、時間制限は入れない。
+const FOLLOWUP_DELAY_MS = 4000;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -145,16 +153,33 @@ function currentPanel() {
   return state.panels.get(state.currentCaseId);
 }
 
+/* ---- 差し戻し（二本立ての症例） ---- */
+
+function stageOf(caseId) {
+  return state.stage[caseId] || 'first';
+}
+
+/** いま報告の対象になっている検体。差し戻し後は二本目。 */
+function activePanel() {
+  const id = state.currentCaseId;
+  return stageOf(id) === 'followup' ? state.followups[id] : state.panels.get(id);
+}
+
+/** マークは一本目と二本目で別に持つ。一本目のマークは差し戻し後も残るが、動かせない。 */
+function selectionKey(caseId, stage = stageOf(caseId)) {
+  return stage === 'followup' ? `${caseId}@2` : caseId;
+}
+
 /* ---- マークと疑い ---- */
 
-/** その症例のマークと疑い。報告に載るのはマークした行だけ。 */
-function selection(caseId) {
-  return { marks: state.marks[caseId] || [], suspects: state.suspects[caseId] || {} };
+/** その検体のマークと疑い。報告に載るのはマークした行だけ。 */
+function selection(key) {
+  return { marks: state.marks[key] || [], suspects: state.suspects[key] || {} };
 }
 
 function toggleMark(testId) {
-  const caseId = state.currentCaseId;
-  if (!caseId || state.status[caseId] === 'done') return;
+  const caseId = selectionKey(state.currentCaseId);
+  if (!state.currentCaseId || !canMark()) return;
   const marks = [...(state.marks[caseId] || [])];
   const at = marks.indexOf(testId);
   if (at >= 0) {
@@ -170,9 +195,14 @@ function toggleMark(testId) {
   renderAll();
 }
 
+function canMark() {
+  const status = state.status[state.currentCaseId];
+  return status !== 'done' && status !== 'waiting';
+}
+
 function toggleSuspect(testId, suspectId) {
-  const caseId = state.currentCaseId;
-  if (!caseId || state.status[caseId] === 'done') return;
+  const caseId = selectionKey(state.currentCaseId);
+  if (!state.currentCaseId || !canMark()) return;
   if (!(state.marks[caseId] || []).includes(testId)) return;
   const suspects = { ...(state.suspects[caseId] || {}) };
   const picked = [...(suspects[testId] || [])];
@@ -245,17 +275,35 @@ function renderAll() {
   $('.lis-actions').hidden = false;
 
   const done = state.status[caseDef.id] === 'done';
+  const waiting = state.status[caseDef.id] === 'waiting';
+  const stage = stageOf(caseDef.id);
+  const suspectDefs = state.data.suspects.suspects;
+
+  // 一本目。差し戻しに入ったら読むだけになる（マークは残す）
+  const firstView = {
+    ...selection(selectionKey(caseDef.id, 'first')),
+    suspectDefs,
+    interactive: !done && stage === 'first',
+  };
+  let html = renderResults(caseDef, currentPanel(), state.data, firstView);
+
+  // 差し戻しで届いた二本目。報告の対象はこちらに移る
+  const followup = state.followups[caseDef.id];
+  if (followup) {
+    html += renderRecollect(caseDef, followup, caseDef.followup.recollect, {
+      ...selection(selectionKey(caseDef.id, 'followup')),
+      suspectDefs,
+      interactive: !done,
+    });
+  }
+  // 自分で依頼した再採血（症例5・5-b）は読むだけ
   const re = state.recollected[caseDef.id];
-  $('#pane-lis').innerHTML =
-    renderResults(caseDef, currentPanel(), state.data, {
-      ...selection(caseDef.id),
-      suspectDefs: state.data.suspects.suspects,
-      interactive: !done, // 報告したあとはマークを動かせない
-    }) + (re ? renderRecollect(caseDef, re) : '');
+  if (re) html += renderRecollect(caseDef, re);
+  $('#pane-lis').innerHTML = html;
 
   const reportBtn = $('#btn-report');
-  reportBtn.disabled = done;
-  reportBtn.textContent = done ? '報告済み' : '報告する';
+  reportBtn.disabled = done || waiting;
+  reportBtn.textContent = done ? '報告済み' : waiting ? '再採血 待ち' : '報告する';
 
   const nextBtn = $('#btn-next');
   const idx = state.cases.findIndex((c) => c.id === caseDef.id);
@@ -380,11 +428,11 @@ function bindEvents() {
       comment: form.get('comment') || '',
       recheck: form.get('recheck') === 'on',
       readback: false,
-      ...selection(state.currentCaseId),
+      ...selection(selectionKey(state.currentCaseId)),
     };
     if (choice.level === 'emergency') {
       state.pendingChoice = choice;
-      $('#report-body').innerHTML = renderPhone(currentCase(), currentPanel(), choice);
+      $('#report-body').innerHTML = renderPhone(currentCase(), activePanel(), choice);
       return;
     }
     finishReport(choice);
@@ -405,7 +453,7 @@ function openReport() {
   $('#report-body').innerHTML = renderReportDialog(
     currentCase(),
     state.data,
-    selection(state.currentCaseId),
+    selection(selectionKey(state.currentCaseId)),
   );
   $('#report-dialog').showModal();
 }
@@ -415,9 +463,40 @@ function closeReport() {
   $('#report-dialog').close();
 }
 
+/** 差し戻しのあと、二本目が届く。指導役の一言と受付の記録もここで流す。 */
+function deliverFollowup(caseId) {
+  const caseDef = state.cases.find((c) => c.id === caseId);
+  if (!caseDef || stageOf(caseId) !== 'waiting') return;
+  const re = caseDef.followup.recollect;
+  state.followups[caseId] = buildRecollect(caseDef, state.panels.get(caseId), state.data, re);
+  state.stage[caseId] = 'followup';
+  state.status[caseId] = 'recollect';
+  pushMessage(caseDef.followup.handover);
+  if (re.reply) pushMessage(re.reply);
+  renderAll();
+}
+
 function finishReport(choice) {
   const caseDef = currentCase();
-  const res = evaluate(caseDef, choice);
+  const followupStage = stageOf(caseDef.id) === 'followup';
+  const res = followupStage
+    ? evaluateFollowup(caseDef, choice, state.caps[caseDef.id])
+    : evaluate(caseDef, choice);
+
+  // 差し戻し。症例は閉じず、医師の返信だけ届いて二本目を待つ
+  if (res.then === 'followup' && caseDef.followup) {
+    state.caps[caseDef.id] = res.cap;
+    state.stage[caseDef.id] = 'waiting';
+    state.status[caseDef.id] = 'waiting';
+    if (res.messageId) pushMessage(res.messageId);
+    if (res.doctorId) pushMessage(res.doctorId);
+    state.pendingChoice = null;
+    $('#report-body').innerHTML = renderVerdict(res, choice, state.data);
+    renderAll();
+    setTimeout(() => deliverFollowup(caseDef.id), FOLLOWUP_DELAY_MS);
+    return;
+  }
+
   state.results[caseDef.id] = res;
   state.status[caseDef.id] = 'done';
   clearInterrupt(caseDef.id);

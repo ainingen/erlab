@@ -5,6 +5,18 @@ import { esc } from './lis.js';
 
 export const SCORE_LABEL = { best: '最善', ok: '許容', poor: '要改善' };
 
+const SCORE_RANK = { best: 0, ok: 1, poor: 2 };
+
+/**
+ * 二段の症例（差し戻し）の最終評価。悪いほうを採る。
+ * 一本目の cap で頭打ちにするので、一本目が甘いと二本目で挽回しきれない。
+ */
+export function worseScore(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  return SCORE_RANK[a] >= SCORE_RANK[b] ? a : b;
+}
+
 /** マークした項目を「K（本物の異常）／Cre」の形に並べる。0件でも報告はできる。 */
 export function markSummary(selection, data) {
   const marks = (selection && selection.marks) || [];
@@ -100,7 +112,21 @@ export function renderPhone(caseDef, panel, selection = null) {
  * doctor … 医師からの返信。どの枝にも必ずある。報告 → 講評 → 医師の返信、の順で流す
  */
 export function evaluate(caseDef, choice) {
-  const branch = (caseDef.choices || []).find((c) => matches(c.when || {}, choice));
+  return pickBranch(caseDef.choices, choice);
+}
+
+/**
+ * 差し戻しのあとに届いた二本目の判定（`followup.choices`）。
+ * 最終評価は min（この枝の score、一本目の cap）。順序は best > ok > poor。
+ * followup の枝に then は書けない（入れ子にしない）。
+ */
+export function evaluateFollowup(caseDef, choice, cap = 'best') {
+  const res = pickBranch(caseDef.followup && caseDef.followup.choices, choice);
+  return { ...res, branchScore: res.score, score: worseScore(res.score, cap), then: null, cap };
+}
+
+function pickBranch(choices, choice) {
+  const branch = (choices || []).find((c) => matches(c.when || {}, choice));
   if (!branch) {
     return {
       score: 'poor',
@@ -108,14 +134,19 @@ export function evaluate(caseDef, choice) {
       messageId: null,
       doctorId: null,
       matched: null,
+      then: null,
+      cap: 'best',
     };
   }
   return {
-    score: branch.score,
+    // then を持つ枝は症例を閉じないので score を持たない（判定は二本目でする）
+    score: branch.score || null,
     headline: branch.headline,
     messageId: branch.reply || null,
     doctorId: branch.doctor || null,
     matched: branch,
+    then: branch.then || null,
+    cap: branch.cap || 'best',
   };
 }
 
@@ -161,6 +192,7 @@ function matchesSuspects(rule, suspects) {
 
 export function renderVerdict(res, choice, data) {
   const level = data.hospital.report_levels.find((l) => l.id === choice.level);
+  const pending = !res.score; // 差し戻し。まだ症例を閉じない
   const bits = [`報告レベル：${level ? level.label : choice.level}`];
   bits.push(`報告対象：${markSummary(choice, data)}`);
   if (choice.recheck) bits.push('再検・再採血を依頼');
@@ -169,11 +201,17 @@ export function renderVerdict(res, choice, data) {
 
   return `
     <h2 class="verdict">
-      <span class="score-badge score-${esc(res.score)}">${esc(SCORE_LABEL[res.score] || res.score)}</span>
+      <span class="score-badge ${pending ? 'score-pending' : `score-${esc(res.score)}`}">${
+        pending ? '差し戻し' : esc(SCORE_LABEL[res.score] || res.score)
+      }</span>
       ${esc(res.headline)}
     </h2>
     <p class="verdict-choice">${esc(bits.join(' ／ '))}</p>
-    <p class="verdict-note">院内メッセージに返信が届いています。</p>
+    <p class="verdict-note">${
+      pending
+        ? '院内メッセージに返信が届いています。再採血の結果が届いたら、もう一度報告します。'
+        : '院内メッセージに返信が届いています。'
+    }</p>
     <div class="dlg-actions">
       <button type="button" class="btn btn-primary" data-action="close-report">閉じる</button>
     </div>`;

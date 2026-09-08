@@ -287,6 +287,39 @@ export function suite(data) {
     eq(panel.hasPanic, false);
   });
 
+  test('症例n07: 一本目は溶血の指紋がないパニック値。Kだけが動いている', () => {
+    const panel = buildPanel(caseById.n07, data);
+    const byId = Object.fromEntries(panel.rows.map((r) => [r.id, r]));
+    eq(byId.K.display, '6.4');
+    eq(byId.K.flag, 'HH');
+    eq(byId.K.delta, true, '前回4.6から規定幅を超えて動く');
+    eq(panel.sampleComment, null, '検体トラブルなし');
+    eq(byId.LD.flag, '', '溶血なら上がるはずのLDが基準内');
+    eq(byId.AST.flag, '', '同じくAST');
+    eq(byId.Hb.flag, '', 'Hbは伏せない（気を散らす異常を増やさない）');
+    for (const id of ['WBC', 'RBC', 'Ht', 'MCV', 'MCH', 'MCHC', 'PLT']) {
+      eq(byId[id].flag, '', `血算の ${id}`);
+    }
+    eq([byId.Na.flag, byId.BUN.flag, byId.Cre.flag, byId.CRP.flag].join(','), 'L,H,H,H');
+  });
+
+  test('症例n07: 二本目は followup.recollect の上書き値から作られる', () => {
+    const caseDef = caseById.n07;
+    const first = buildPanel(caseDef, data);
+    const re = buildRecollect(caseDef, first, data, caseDef.followup.recollect);
+    const byId = Object.fromEntries(re.rows.map((r) => [r.id, r]));
+
+    eq(byId.K.display, '6.2', '上書きした値');
+    eq(byId.K.flag, 'HH', '二本目もパニック値のまま');
+    eq(byId.K.delta, false, '一本目から動いたことにはしない');
+    eq(byId.K.previousDisplay, '6.4', '前回値欄が一本目の値になる');
+    eq(byId.Na.display, '137', '書かなかった項目は一本目と同じ根っこから作り直す');
+    eq(byId.Na.previousDisplay, '137');
+    eq(re.sampleComment, null, '二本目にも検体トラブルはない');
+    eq(byId.LD.flag, '', '二本目もLD・ASTは基準内');
+    eq(byId.AST.flag, '');
+  });
+
   test('全症例: 患者情報にバイタルと主訴がある', () => {
     for (const c of data.cases) {
       eq(typeof c.patient.note, 'string', `${c.id} の主訴`);

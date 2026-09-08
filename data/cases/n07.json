@@ -1,0 +1,247 @@
+{
+  "id": "n07",
+  "_note": "二本立ての症例。一本目を報告すると医師から差し戻しが返り、二本目が届いてからもう一度報告する。仕様は docs/case07.md。",
+  "mode": "rookie",
+  "title": "7. 否定されても、数字は残る",
+  "goal": "医師に差し戻されても、値が残れば同じ強さでもう一度報告する",
+  "accession": "26-0907-084",
+  "received_at": "13:12",
+  "patient": {
+    "id": "P-0008",
+    "label": "患者H",
+    "age": 78,
+    "sex": "M",
+    "from": "循環器内科病棟",
+    "vitals": {
+      "pulse": 56,
+      "bp": "118/72"
+    },
+    "note": "心不全で入院5日目、利尿薬を調整中"
+  },
+  "handover": "msg_n07_intro",
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
+  "seed": {
+    "condition": "normal",
+    "severity": 0,
+    "overrides": {
+      "Na": 137,
+      "K": 6.4,
+      "BUN": 30,
+      "Cre": 1.7,
+      "CRP": 0.4,
+      "LD": 190,
+      "AST": 24
+    }
+  },
+  "artifact": null,
+  "previous": {
+    "date": "2026-09-04",
+    "note": "3日前・同病棟",
+    "values": {
+      "WBC": 6.4,
+      "RBC": 4.92,
+      "Hb": 15.0,
+      "Ht": 44.3,
+      "MCV": 90.0,
+      "MCH": 30.5,
+      "MCHC": 33.9,
+      "PLT": 248,
+      "Na": 138,
+      "K": 4.6,
+      "Cl": 104,
+      "HCO3": 24.0,
+      "BUN": 26,
+      "Cre": 1.5,
+      "Glu": 96,
+      "AST": 22,
+      "ALT": 23,
+      "LD": 185,
+      "CRP": 0.3,
+      "Ca": 9.2,
+      "AG": 10.0
+    }
+  },
+  "nav": [
+    "msg_n07_nav_kanae",
+    "msg_n07_nav_yusuke"
+  ],
+  "choices": [
+    {
+      "when": {
+        "report": "emergency",
+        "marks": {
+          "must": [
+            "K"
+          ],
+          "max": 1
+        },
+        "suspects": {
+          "K": [
+            "real"
+          ]
+        }
+      },
+      "then": "followup",
+      "cap": "best",
+      "headline": "緊急報告は適切。医師から差し戻しが返ります",
+      "reply": null,
+      "doctor": "msg_n07_doctor_pushback"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "marks": {
+          "must": [
+            "K"
+          ],
+          "max": 1
+        }
+      },
+      "then": "followup",
+      "cap": "ok",
+      "headline": "緊急報告は適切。ただし本物かどうかの見立てが残っていません",
+      "reply": null,
+      "doctor": "msg_n07_doctor_pushback"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "marks": {
+          "must": [
+            "K"
+          ]
+        }
+      },
+      "then": "followup",
+      "cap": "ok",
+      "headline": "緊急報告は適切。ただし報告に並べる項目が多い",
+      "reply": null,
+      "doctor": "msg_n07_doctor_pushback"
+    },
+    {
+      "when": {
+        "report": "emergency"
+      },
+      "then": "followup",
+      "cap": "ok",
+      "headline": "緊急報告は適切。ただしどれが急ぎなのかが残っていません",
+      "reply": null,
+      "doctor": "msg_n07_doctor_pushback"
+    },
+    {
+      "when": {
+        "report": "urgent"
+      },
+      "then": "followup",
+      "cap": "ok",
+      "headline": "向きは正しい。ただしパニック値を至急に落としています",
+      "reply": null,
+      "doctor": "msg_n07_doctor_pushback"
+    },
+    {
+      "when": {
+        "report": "routine",
+        "recheck": true
+      },
+      "score": "poor",
+      "headline": "パニック値を報告せずに採り直しています",
+      "reply": null,
+      "doctor": "msg_n07_doctor_late_recheck"
+    },
+    {
+      "when": {
+        "report": "routine"
+      },
+      "score": "poor",
+      "headline": "HHを通常報告で流しています",
+      "reply": null,
+      "doctor": "msg_n07_doctor_late_routine"
+    },
+    {
+      "when": {},
+      "score": "poor",
+      "headline": "溶血のないパニック値です。まず報告",
+      "reply": null,
+      "doctor": "msg_n07_doctor_late_routine"
+    }
+  ],
+  "followup": {
+    "_note": "差し戻しのあとに届く二本目。最終評価は min（ここで当たった枝の score、一本目の cap）。",
+    "handover": [
+      "msg_n07_return_kanae",
+      "msg_n07_return_yusuke"
+    ],
+    "recollect": {
+      "accession": "26-0907-084R",
+      "received_at": "13:41",
+      "artifact": null,
+      "overrides": {
+        "K": 6.2,
+        "Cre": 1.7,
+        "BUN": 31,
+        "LD": 192,
+        "AST": 25
+      },
+      "reply": "msg_n07_recollect"
+    },
+    "choices": [
+      {
+        "when": {
+          "report": "emergency",
+          "comment": true,
+          "marks": {
+            "must": [
+              "K"
+            ]
+          },
+          "suspects": {
+            "K": [
+              "real"
+            ]
+          }
+        },
+        "score": "best",
+        "headline": "差し戻されても同じ強さで報告できています",
+        "reply": [
+          "msg_n07_ok_kanae",
+          "msg_n07_ok_yusuke"
+        ],
+        "doctor": "msg_n07_doctor_ok"
+      },
+      {
+        "when": {
+          "report": "emergency"
+        },
+        "score": "ok",
+        "headline": "再報告は適切。ただし二本とも同じ値だったことが残っていません",
+        "reply": null,
+        "doctor": "msg_n07_doctor_ok"
+      },
+      {
+        "when": {
+          "recheck": true
+        },
+        "score": "poor",
+        "headline": "二本同じなら検体の話ではありません",
+        "reply": [
+          "msg_n07_wait_kanae",
+          "msg_n07_wait_yusuke"
+        ],
+        "doctor": "msg_n07_doctor_poor_wait"
+      },
+      {
+        "when": {},
+        "score": "poor",
+        "headline": "医師に否定されて報告レベルを下げています",
+        "reply": [
+          "msg_n07_down_kanae",
+          "msg_n07_down_yusuke"
+        ],
+        "doctor": "msg_n07_doctor_poor_down"
+      }
+    ]
+  }
+}

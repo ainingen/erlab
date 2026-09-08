@@ -1,7 +1,7 @@
 // 判定構造（症例JSONの choices）のテスト。
 
 import { test, eq } from './harness.js';
-import { evaluate, SCORE_LABEL } from '../src/report.js';
+import { evaluate, evaluateFollowup, worseScore, SCORE_LABEL } from '../src/report.js';
 import { resolveMessages, filterBySpeaker } from '../src/messages.js';
 
 const SCORES = ['best', 'ok', 'poor'];
@@ -21,13 +21,18 @@ function pick(level, opts = {}) {
 
 const ids = (reply) => [].concat(reply ?? []);
 
+/** 一本目と二本目、両方の枝。二本立てでない症例では choices だけ。 */
+function allBranches(caseDef) {
+  return [...caseDef.choices, ...((caseDef.followup && caseDef.followup.choices) || [])];
+}
+
 /**
  * その症例で試すマークの組み合わせ。
  * 「何もマークしない」「症例が名指ししている項目だけ」「そこに関係ない項目を足したもの」の3通り。
  */
 function markSetsFor(caseDef) {
   const named = new Set();
-  for (const branch of caseDef.choices) {
+  for (const branch of allBranches(caseDef)) {
     const when = branch.when || {};
     for (const id of [].concat(when.marks?.must || [], when.marks?.forbid || [])) named.add(id);
     for (const testId of Object.keys(when.suspects || {})) {
@@ -38,6 +43,31 @@ function markSetsFor(caseDef) {
   const noise = ['WBC', 'Na', 'Cl'].filter((id) => !named.has(id));
   const sets = [[], key, [...key, ...noise]];
   return [...new Map(sets.map((m) => [m.join(','), m])).values()];
+}
+
+/** その症例で試す操作の総当たり。報告レベル × 再検 × コメント × マーク × 疑い。 */
+function combosFor(caseDef, suspectIds) {
+  const list = [];
+  for (const marks of markSetsFor(caseDef)) {
+    for (const suspects of suspectSetsFor(marks, suspectIds)) {
+      for (const level of ['routine', 'urgent', 'emergency']) {
+        for (const recheck of [false, true]) {
+          for (const comment of ['', 'コメント']) {
+            list.push(pick(level, { recheck, comment, marks, suspects }));
+          }
+        }
+      }
+    }
+  }
+  return list;
+}
+
+function labelOf(caseId, choice, tag = '') {
+  return (
+    `${caseId}${tag} ${choice.level} recheck=${choice.recheck} ` +
+    `comment=${Boolean(choice.comment)} marks=[${choice.marks}] ` +
+    `suspects=${JSON.stringify(choice.suspects)}`
+  );
 }
 
 /** マークした項目に付ける疑いの組み合わせ。1つずつと、本物＋溶血の重ね付け。 */
@@ -294,6 +324,95 @@ export function suite(data) {
     eq(bad.doctorId, 'msg_n06_doctor_poor');
   });
 
+  test('症例n07: 一本目の緊急報告は症例を閉じず、医師の差し戻しだけが返る', () => {
+    const c = caseById.n07;
+    const res = evaluate(c, pick('emergency', { marks: ['K'], suspects: { K: ['real'] } }));
+    eq(res.then, 'followup');
+    eq(res.cap, 'best');
+    eq(res.score, null, '差し戻しの枝は score を持たない');
+    eq(res.messageId, null, '講評は二本目まで出さない');
+    eq(res.doctorId, 'msg_n07_doctor_pushback');
+  });
+
+  test('症例n07: 一本目の判断の甘さが cap になる', () => {
+    const c = caseById.n07;
+    eq(evaluate(c, pick('emergency', { marks: ['K'], suspects: { K: ['real'] } })).cap, 'best');
+    eq(evaluate(c, pick('emergency', { marks: ['K'] })).cap, 'ok', '疑いを選んでいない');
+    eq(evaluate(c, pick('emergency', { marks: ['K', 'BUN', 'Cre'], suspects: { K: ['real'] } })).cap,
+       'ok', 'K以外も並べた');
+    eq(evaluate(c, pick('urgent')).cap, 'ok', 'HHを至急に落とした');
+  });
+
+  test('症例n07: 報告しなかった一本目は差し戻しに届かず、その場で閉じる', () => {
+    const c = caseById.n07;
+    const recheckOnly = evaluate(c, pick('routine', { recheck: true }));
+    eq(recheckOnly.then, null);
+    eq(recheckOnly.score, 'poor');
+    eq(recheckOnly.doctorId, 'msg_n07_doctor_late_recheck');
+
+    const routine = evaluate(c, pick('routine'));
+    eq(routine.then, null);
+    eq(routine.score, 'poor');
+    eq(routine.doctorId, 'msg_n07_doctor_late_routine');
+  });
+
+  test('症例n07: 二本目はKをマークして本物の異常、コメント付きの緊急報告が最善', () => {
+    const c = caseById.n07;
+    const again = { comment: '一本目6.4、二本目6.2。いずれも溶血なし。', marks: ['K'], suspects: { K: ['real'] } };
+    const best = evaluateFollowup(c, pick('emergency', again), 'best');
+    eq(best.score, 'best');
+    eq(ids(best.messageId).join(','), 'msg_n07_ok_kanae,msg_n07_ok_yusuke');
+    eq(best.doctorId, 'msg_n07_doctor_ok');
+
+    const thin = evaluateFollowup(c, pick('emergency', { marks: ['K'], suspects: { K: ['real'] } }), 'best');
+    eq(thin.score, 'ok', 'コメントなし');
+    eq(thin.messageId, null);
+
+    const down = evaluateFollowup(c, pick('urgent', again), 'best');
+    eq(down.score, 'poor', '医師に否定されてレベルを下げた');
+    eq(ids(down.messageId).join(','), 'msg_n07_down_kanae,msg_n07_down_yusuke');
+    eq(down.doctorId, 'msg_n07_doctor_poor_down');
+
+    const wait = evaluateFollowup(c, pick('routine', { recheck: true }), 'best');
+    eq(wait.score, 'poor', '三本目を採らせた');
+    eq(ids(wait.messageId).join(','), 'msg_n07_wait_kanae,msg_n07_wait_yusuke');
+    eq(wait.doctorId, 'msg_n07_doctor_poor_wait');
+  });
+
+  test('症例n07: 最終評価は min（二本目の score、一本目の cap）', () => {
+    const c = caseById.n07;
+    const bestFirst = { marks: ['K'], suspects: { K: ['real'] } };
+    const many = { marks: ['K', 'Na', 'BUN', 'Cre', 'CRP'], suspects: { K: ['real'] } };
+    const bestSecond = { comment: '二本とも同じ値、溶血なし。', marks: ['K'], suspects: { K: ['real'] } };
+
+    // docs/case07.md 4-3 の表をそのまま
+    const table = [
+      [pick('emergency', bestFirst), pick('emergency', bestSecond), 'best'],
+      [pick('emergency', bestFirst), pick('emergency', bestFirst), 'ok'],
+      [pick('urgent'), pick('emergency', bestSecond), 'ok'],
+      [pick('emergency', many), pick('emergency', bestSecond), 'ok'],
+      [pick('emergency', bestFirst), pick('urgent', bestSecond), 'poor'],
+      [pick('urgent'), pick('urgent', bestSecond), 'poor'],
+    ];
+    for (const [first, second, expected] of table) {
+      const r1 = evaluate(c, first);
+      eq(r1.then, 'followup', `${first.level} が差し戻しに入らない`);
+      const r2 = evaluateFollowup(c, second, r1.cap);
+      eq(r2.score, expected, `一本目 ${first.level}/cap ${r1.cap} → 二本目 ${second.level}`);
+    }
+    // 通常報告は差し戻しに届かないまま poor で閉じる
+    eq(evaluate(c, pick('routine')).score, 'poor');
+  });
+
+  test('worseScore: 悪いほうを採る', () => {
+    eq(worseScore('best', 'best'), 'best');
+    eq(worseScore('best', 'ok'), 'ok');
+    eq(worseScore('ok', 'best'), 'ok');
+    eq(worseScore('poor', 'best'), 'poor');
+    eq(worseScore('best', 'poor'), 'poor');
+    eq(worseScore('ok', null), 'ok', 'cap がなければそのまま');
+  });
+
   test('症例5と5-b: 同じ「溶血」でも最善の手が変わる', () => {
     const hemolysis = { recheck: true, marks: ['K'], suspects: { K: ['hemolysis'] } };
     eq(evaluate(caseById.n05, pick('routine', hemolysis)).score, 'best', 'n05は再採血だけで足りる');
@@ -311,8 +430,10 @@ export function suite(data) {
 
   test('全症例: score・headline・医師の返信がそろっている', () => {
     for (const c of data.cases) {
-      for (const branch of c.choices) {
-        eq(SCORES.includes(branch.score), true, `${c.id} の score: ${branch.score}`);
+      for (const branch of allBranches(c)) {
+        // then を持つ枝は症例を閉じないので score を持たない（判定は二本目でする）
+        eq(branch.then ? branch.score === undefined : SCORES.includes(branch.score), true,
+           `${c.id} の score: ${branch.score}`);
         eq(typeof branch.headline, 'string', `${c.id} の headline`);
         eq(messageIds.has(branch.doctor), true, `${c.id} の医師返信 ${branch.doctor} が messages にない`);
         for (const id of ids(branch.reply)) {
@@ -324,7 +445,7 @@ export function suite(data) {
 
   test('全症例: 医師の返信は speaker なしの共通文', () => {
     for (const c of data.cases) {
-      for (const branch of c.choices) {
+      for (const branch of allBranches(c)) {
         const doctor = data.messages.messages[branch.doctor];
         eq(doctor.speaker, undefined, `${c.id} の ${branch.doctor} に speaker がある`);
         eq(doctor.kind, 'reply', `${c.id} の ${branch.doctor} の kind`);
@@ -340,40 +461,116 @@ export function suite(data) {
     }
   });
 
-  test('全症例: best の枝が必ずある', () => {
+  test('全症例: best の枝が必ずある（二本立ての症例は二本目に）', () => {
     for (const c of data.cases) {
-      eq(c.choices.some((b) => b.score === 'best'), true, `${c.id} に best がない`);
+      eq(allBranches(c).some((b) => b.score === 'best'), true, `${c.id} に best がない`);
+    }
+  });
+
+  test('全症例: choices の最後の受け皿は followup 側にもある', () => {
+    for (const c of data.cases) {
+      if (!c.followup) continue;
+      const last = c.followup.choices[c.followup.choices.length - 1];
+      eq(Object.keys(last.when || {}).length, 0, `${c.id} の followup の最後が受け皿になっていない`);
+    }
+  });
+
+  test('全症例: followup の枝に then を書かない（入れ子にしない）', () => {
+    for (const c of data.cases) {
+      for (const branch of (c.followup && c.followup.choices) || []) {
+        eq(branch.then, undefined, `${c.id} の followup に then が書かれている`);
+      }
+    }
+  });
+
+  test('全症例: then を持つ枝は followup を持つ症例にだけあり、cap が正しい', () => {
+    for (const c of data.cases) {
+      for (const branch of c.choices) {
+        if (!branch.then) continue;
+        eq(branch.then, 'followup', `${c.id} の then`);
+        eq(Boolean(c.followup), true, `${c.id} に followup がない`);
+        eq(SCORES.includes(branch.cap), true, `${c.id} の cap: ${branch.cap}`);
+        eq(branch.reply, null, `${c.id} の then の枝に講評が付いている（講評は最後に一度だけ）`);
+      }
+    }
+  });
+
+  test('全症例: followup の文面（指導役の一言・受付の記録）が実在する', () => {
+    for (const c of data.cases) {
+      if (!c.followup) continue;
+      for (const mentorId of mentorIds) {
+        const shown = filterBySpeaker(resolveMessages(data, c.followup.handover), mentorId);
+        eq(shown.length, 1, `${c.id} の差し戻し後の一言 (${mentorId})`);
+      }
+      const re = c.followup.recollect;
+      eq(typeof re.accession, 'string', `${c.id} の二本目の受付番号`);
+      eq(typeof re.received_at, 'string', `${c.id} の二本目の採取時刻`);
+      if (re.reply) eq(messageIds.has(re.reply), true, `${c.id} の ${re.reply} が messages にない`);
     }
   });
 
   test('全症例: マークと疑いを含めた全操作で、医師の返信が必ず届く', () => {
     const suspectIds = data.suspects.suspects.map((s) => s.id);
+    const seen = new Set();
     let combos = 0;
     for (const c of data.cases) {
-      for (const marks of markSetsFor(c)) {
-        for (const suspects of suspectSetsFor(marks, suspectIds)) {
-          for (const level of ['routine', 'urgent', 'emergency']) {
-            for (const recheck of [false, true]) {
-              for (const comment of ['', 'コメント']) {
-                combos += 1;
-                const label =
-                  `${c.id} ${level} recheck=${recheck} comment=${Boolean(comment)} ` +
-                  `marks=[${marks}] suspects=${JSON.stringify(suspects)}`;
-                const res = evaluate(c, pick(level, { recheck, comment, marks, suspects }));
-                eq(SCORES.includes(res.score), true, label);
-                eq(messageIds.has(res.doctorId), true, `${label} の医師返信`);
-                if (!res.messageId) continue;
-                for (const mentorId of mentorIds) {
-                  const shown = filterBySpeaker(resolveMessages(data, res.messageId), mentorId);
-                  eq(shown.length, 1, `${label} の講評 (${mentorId})`);
-                }
-              }
-            }
-          }
+      for (const choice of combosFor(c, suspectIds)) {
+        combos += 1;
+        const res = evaluate(c, choice);
+        const label = () => labelOf(c.id, choice);
+
+        if (res.then) {
+          // 差し戻し。症例は閉じないので score を持たず、講評も出さない
+          eq(res.score, null, `${label()} の score`);
+          eq(res.messageId, null, `${label()} に講評が付いている`);
+          eq(messageIds.has(res.doctorId), true, `${label()} の医師返信`);
+          continue;
+        }
+        eq(SCORES.includes(res.score), true, label());
+        eq(messageIds.has(res.doctorId), true, `${label()} の医師返信`);
+        if (!res.messageId || seen.has(res.matched)) continue;
+        seen.add(res.matched);
+        for (const mentorId of mentorIds) {
+          const shown = filterBySpeaker(resolveMessages(data, res.messageId), mentorId);
+          eq(shown.length, 1, `${label()} の講評 (${mentorId})`);
         }
       }
     }
     eq(combos > 1000, true, `組み合わせ数が少なすぎる: ${combos}`);
+  });
+
+  test('二本立ての症例: 一本目 × 二本目 の総当たりで最終評価が min になる', () => {
+    const suspectIds = data.suspects.suspects.map((s) => s.id);
+    const seen = new Set();
+    let combos = 0;
+    for (const c of data.cases) {
+      if (!c.followup) continue;
+      const firsts = combosFor(c, suspectIds);
+      const seconds = combosFor(c, suspectIds);
+      for (const first of firsts) {
+        const r1 = evaluate(c, first);
+        if (!r1.then) continue;
+        for (const second of seconds) {
+          combos += 1;
+          const res = evaluateFollowup(c, second, r1.cap);
+          if (SCORES.includes(res.score) && res.score === worseScore(res.branchScore, r1.cap)) {
+            if (!res.messageId || seen.has(res.matched)) continue;
+            seen.add(res.matched);
+            for (const mentorId of mentorIds) {
+              const shown = filterBySpeaker(resolveMessages(data, res.messageId), mentorId);
+              eq(shown.length, 1, `${labelOf(c.id, second, '(二本目)')} の講評 (${mentorId})`);
+            }
+            eq(messageIds.has(res.doctorId), true, `${labelOf(c.id, second, '(二本目)')} の医師返信`);
+            continue;
+          }
+          // ここに来たら失敗。ラベルはこのときだけ組み立てる
+          eq(SCORES.includes(res.score), true, labelOf(c.id, second, '(二本目)'));
+          eq(res.score, worseScore(res.branchScore, r1.cap),
+             `${labelOf(c.id, first, '(一本目)')} → ${labelOf(c.id, second, '(二本目)')} の最終評価`);
+        }
+      }
+    }
+    eq(combos > 10000, true, `一本目 × 二本目 の組み合わせが少なすぎる: ${combos}`);
   });
 
   test('全症例: choices が参照する項目IDと疑いIDが実在する', () => {

@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 このリポジトリは HTML5 ゲーム『ERLAB ―その数値を見逃すな―』の開発用です。
-作業前に必ず `docs/design.md`・`docs/characters.md`・`docs/roadmap.md`・`docs/mechanics.md` を読んでください。設計判断はそこに集約しています。
+作業前に必ず `docs/design.md`・`docs/characters.md`・`docs/roadmap.md`・`docs/mechanics.md` を読んでください。設計判断はそこに集約しています。症例ごとの仕様は `docs/case07.md` のように症例名で置く。
 
 ## 守ること
 - 医師パート・病名確定・治療選択は実装しない（検査室特化）
@@ -15,6 +15,8 @@
 - ナビは指導役（`data/mentors.json`）ごとに言い方を変えてよいが、教える中身は変えない。どちらを選んでも同じ判断にたどり着けること
 - 台詞の原文は `docs/dialogue.md`。実装に流すときは speaker と emotion を必ず付ける（emotion は `assets/portraits/{speaker}_{emotion}.png` に対応）
 - 報告後は「（あれば）指導役の講評 → 医師の返信」の順。医師の返信はどの分岐にも必ず付ける。指導役の講評はその症例で教えたい判断に関わる分岐だけで、分岐を埋めるためだけに台詞を書き足さない
+- 医師の差し戻し（`then` / `cap` / `followup`）は手書きの症例だけで起こす。ランダム化しない。医師を悪者にしない
+- 「医師に反論する」入力欄は作らない。プレイヤーが返すのは報告レベルであって言葉ではない
 - 異常表示の主はフラグ記号（H, L, HH, LL）。色は補助
 - **色を塗ってよいのは次の2か所だけ**
   1. フラグ欄のセル（H/L 淡い黄、HH/LL 淡い赤）

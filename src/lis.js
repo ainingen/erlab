@@ -27,7 +27,8 @@ export function renderWorklist(cases, state) {
     const scored = state.results[c.id];
     const statusLabel = scored
       ? `報告済 ${state.scoreLabel[scored.score] || ''}`
-      : { ready: '測定完了', current: '確認中' }[status] || status;
+      : { ready: '測定完了', current: '確認中', waiting: '再採血 待ち', recollect: '再採血' }[status] ||
+        status;
     const cutIn = isCutIn(c.id, state.interrupt);
     const urgent = cutIn || c.patient.from === 'ER';
     const selected = c.id === state.currentCaseId;
@@ -188,9 +189,12 @@ function renderSuspectRow(row, view) {
     </tr>`;
 }
 
-/** 再採血した検体の結果。再採血を依頼したときだけ、最初の検体の下に並べる。 */
-export function renderRecollect(caseDef, panel) {
-  const re = caseDef.recollect;
+/**
+ * 二本目の検体の結果。最初の検体の下に並べる。
+ * 自分で依頼した再採血（`caseDef.recollect`）でも、差し戻しで届いた二本目
+ * （`followup.recollect`）でも同じ見せ方をする。view を渡した表だけマークできる。
+ */
+export function renderRecollect(caseDef, panel, re = caseDef.recollect, view = null) {
   const sampleText = panel.sampleComment || '特記なし';
   return `
     <section class="recollect">
@@ -199,7 +203,8 @@ export function renderRecollect(caseDef, panel) {
         <dt>検体状態</dt><dd class="${panel.sampleComment ? 'is-flagged' : ''}">${esc(sampleText)}</dd>
         <dt>前回値欄</dt><dd>同じ患者の最初の検体（${esc(caseDef.accession)}）の値を並べています。</dd>
       </dl>
-      ${panel.panels.map((pn) => renderPanelTable(pn)).join('')}
+      ${panel.panels.map((pn) => renderPanelTable(pn, view)).join('')}
+      ${view && view.interactive ? '<p class="hint">報告するのはこの二本目です。行をタップしてマークしてください。</p>' : ''}
     </section>`;
 }
 

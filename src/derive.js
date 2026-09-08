@@ -207,16 +207,25 @@ export function buildPanel(caseDef, data) {
 }
 
 /**
- * 再採血した検体を組み立てる。中身（病態）はそのままで、検体トラブルだけ外す。
+ * 二本目の検体を組み立てる。中身（病態）はそのままで、検体トラブルだけ外す。
  * 前回値欄には最初の検体の値を入れ、どこが動いてどこが動かなかったかを並べて見せる。
+ *
+ * re は既定では症例の recollect（再採血を依頼したとき）。
+ * 差し戻しで届く二本目（followup.recollect）も同じ形なので、第4引数で渡して使い回す。
+ *   seed      … 根っこの値ごと差し替える
+ *   overrides … 一本目の根っこの値に重ねる（書かなかった項目は一本目と同じ値になる）
  */
-export function buildRecollect(caseDef, firstPanel, data) {
-  const re = caseDef.recollect;
+export function buildRecollect(caseDef, firstPanel, data, re = caseDef.recollect) {
   if (!re) return null;
+  const seed = re.seed
+    ? re.seed
+    : re.overrides
+      ? { ...caseDef.seed, overrides: { ...(caseDef.seed.overrides || {}), ...re.overrides } }
+      : caseDef.seed;
   return buildPanel(
     {
       ...caseDef,
-      seed: re.seed || caseDef.seed,
+      seed,
       artifact: re.artifact ?? null,
       previous: { date: re.received_at, note: '同日・最初の検体', values: firstPanel.values },
     },
