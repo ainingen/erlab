@@ -12,10 +12,16 @@ import { buildPanel, buildCommentOptions } from '../src/derive.js';
 
 const FOCUS_IDS = [
   'reception', 'patient', 'results', 'flags', 'sample_state', 'previous', 'messages', 'report',
+  // 「調べる」の行動ボタン。初出の操作なので、症例5だけ例外的に場所を教える
+  'investigate',
 ];
 
-/** 症例4以降は結論を言わない段階なので、指さしを書かない。 */
-const POINTING_CASES = ['n01', 'n02', 'n03'];
+/**
+ * 症例4以降は結論を言わない段階なので、指さしを書かない。
+ * 例外は症例5の行動ボタンだけ（初出の操作は場所を教える。マークのときと同じ扱い。
+ * docs/investigate.md §3-3）。
+ */
+const POINTING_CASES = ['n01', 'n02', 'n03', 'n05'];
 
 export function suite(data) {
   const glossary = data.glossary;

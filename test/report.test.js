@@ -409,9 +409,21 @@ export function suite(data) {
     const both = { marks: ['K'], suspects: { K: ['real', 'hemolysis'] } };
     eq(c.choices.filter((b) => b.score === 'best').length, 1, '最善の枝の数');
 
-    const best = evaluate(c, pick('emergency', { recheck: true, comment: note, ...both }));
+    const best = evaluate(c, pick('emergency', {
+      recheck: true, comment: note, actions: ['call'], ...both,
+    }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n05b_ok_kanae,msg_n05b_ok_yusuke');
+
+    // 電話をかけずに同じ判断をしたら許容どまり。点滴側でないことを確かめていない
+    const noCall = evaluate(c, pick('emergency', { recheck: true, comment: note, ...both }));
+    eq(noCall.score, 'ok', '電話なしで最善になっている');
+    eq(noCall.headline, '判断は適切。ただし点滴側でないことを確かめていません');
+    eq(ids(noCall.messageId).join(','), 'msg_n05b_nocall_kanae,msg_n05b_nocall_yusuke');
+    // 目視や塗抹では代わりにならない（確かめたのは検体であって採血の側ではない）
+    eq(evaluate(c, pick('emergency', {
+      recheck: true, comment: note, actions: ['look', 'smear'], ...both,
+    })).score, 'ok', '電話以外の行動で最善になっている');
 
     eq(evaluate(c, pick('emergency', { recheck: true, comment: note })).score,
        'ok', '見立てを残していない');
@@ -447,13 +459,19 @@ export function suite(data) {
     const c = caseById.n06;
     const note = '前回13.5から急激な低下、黒色便あり';
     const delta = { marks: ['Hb'], suspects: { Hb: ['delta'] } };
-    const best = evaluate(c, pick('urgent', { comment: note, ...delta }));
+    const best = evaluate(c, pick('urgent', { comment: note, actions: ['idcheck'], ...delta }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n06_ok_kanae,msg_n06_ok_yusuke');
     eq(best.doctorId, 'msg_n06_doctor_ok');
 
+    // 照合せずに同じ判断をしたら許容どまり。同じ人の検体か確かめていない
+    const noId = evaluate(c, pick('urgent', { comment: note, ...delta }));
+    eq(noId.score, 'ok', '照合なしで最善になっている');
+    eq(noId.headline, 'Δの指摘は適切。ただし同一患者の検体か照合していません');
+    eq(ids(noId.messageId).join(','), 'msg_n06_noid_kanae,msg_n06_noid_yusuke');
+
     eq(evaluate(c, pick('urgent', {
-      comment: note, marks: ['Hb'], suspects: { Hb: ['real', 'delta'] },
+      comment: note, actions: ['idcheck'], marks: ['Hb'], suspects: { Hb: ['real', 'delta'] },
     })).score, 'best', '本物の異常を一緒に付けてもよい');
     eq(evaluate(c, pick('urgent', { comment: note })).score, 'ok', 'マークなし');
     eq(evaluate(c, pick('emergency', { comment: note, ...delta })).score, 'ok', 'HHでない値に緊急回線');
@@ -786,7 +804,9 @@ export function suite(data) {
     eq(only.score, 'ok');
     eq(only.doctorId, 'msg_n05b_emergency_recheck', '値は伝わっているので医師の返信は best と同じ');
 
-    const written = evaluate(c, pick('emergency', { ...both, comment: [opt('hemolysis'), opt('real')] }));
+    const written = evaluate(c, pick('emergency', {
+      ...both, actions: ['call'], comment: [opt('hemolysis'), opt('real')],
+    }));
     eq(written.score, 'best', '両方書けば最善のまま');
   });
 
