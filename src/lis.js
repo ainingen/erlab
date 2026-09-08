@@ -164,7 +164,7 @@ export function renderResults(caseDef, panel, data, view = null) {
         <dd class="${sample ? 'is-flagged' : ''}" data-region="sample_state">${linkTerms(sampleText, glossary)}</dd>
         ${investigated
           ? `<dt>調べた結果</dt>
-        <dd class="is-investigated" data-region="investigate_log">${view.investigateHtml}</dd>`
+        <dd data-region="investigate_log">${view.investigateHtml}</dd>`
           : ''}
         <dt>前回検査</dt><dd>${esc(prevNote)}</dd>
       </dl>

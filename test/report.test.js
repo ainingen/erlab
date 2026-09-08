@@ -891,6 +891,45 @@ export function suite(data) {
     }
   });
 
+  test('全症例: actions の条件は must / forbid / max だけ。行動IDは実在する', () => {
+    const actionIds = new Set(['look', 'idcheck', 'smear', 'call']);
+    for (const c of data.cases) {
+      for (const branch of allBranches(c)) {
+        const rule = (branch.when || {}).actions;
+        if (!rule) continue;
+        for (const key of Object.keys(rule)) {
+          eq(['must', 'forbid', 'max'].includes(key), true, `${c.id} の actions に ${key}`);
+        }
+        for (const id of [].concat(rule.must || [], rule.forbid || [])) {
+          eq(actionIds.has(id), true, `${c.id} に知らない行動 ${id}`);
+        }
+        // 新人モードでは行動数の上限を使わない（全部押しても損をさせない）
+        eq(rule.max, undefined, `${c.id} の新人症例に actions.max がある`);
+      }
+    }
+  });
+
+  test('全症例: 塗抹を要求する枝は、その症例に血算の依頼があるときだけ', () => {
+    for (const c of data.cases) {
+      for (const branch of allBranches(c)) {
+        const must = ((branch.when || {}).actions || {}).must || [];
+        if (!must.includes('smear')) continue;
+        eq(c.order.includes('CBC'), true, `${c.id} は血算がないのに塗抹を求めている`);
+      }
+    }
+  });
+
+  test('全症例: ask を書いた症例の台詞は指導役ぶんそろっている', () => {
+    for (const c of data.cases) {
+      if (!c.ask) continue;
+      for (const id of mentorIds) {
+        const group = filterBySpeaker(resolveMessages(data, c.ask), id);
+        eq(group.length, 1, `${c.id} の ask に ${id} の台詞がない`);
+        eq(group[0].kind, 'nav', `${c.id} の ask は nav`);
+      }
+    }
+  });
+
   test('全症例: choices が参照する項目IDと疑いIDが実在する', () => {
     const testIds = new Set(data.tests.tests.map((t) => t.id));
     const suspectIds = new Set(data.suspects.suspects.map((s) => s.id));
