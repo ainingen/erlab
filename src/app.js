@@ -390,9 +390,14 @@ function renderWorklistPane() {
 }
 
 function renderMessagePane() {
+  // 新しいものを上に積む。届いたばかりの返信が、スクロールなしで目に入る位置に来る。
+  // state.messageIds は届いた順のまま持ち、描くときだけ逆にする。
   const pane = $('#pane-messages');
-  pane.innerHTML = renderMessages(visibleMessages(), currentMentor(), state.data.glossary);
-  pane.scrollTop = pane.scrollHeight; // 新しい申し送り・返信が見えるところまで送る
+  pane.innerHTML = renderMessages(
+    [...visibleMessages()].reverse(),
+    currentMentor(),
+    state.data.glossary,
+  );
 }
 
 function renderScore() {
