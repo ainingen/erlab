@@ -245,24 +245,17 @@
     background: var(--panel); border: 1px solid var(--head); color: var(--head);
     cursor: pointer; white-space: nowrap;
   }
-  .is-pointed {
-    outline: 3px solid var(--head); outline-offset: 1px;
-    animation: point-fade 2s ease-out 1 forwards;
-  }
-  @keyframes point-fade { from { outline-color: var(--head); } to { outline-color: rgba(43, 54, 70, 0); } }
-  @media (prefers-reduced-motion: reduce) { .is-pointed { animation: none; } }
-
-  /* 症例0だけの指さし。次の文に進むまで出したままにするので、消えるアニメーションは付けない。
-     初見でも目が行くよう、ナビの枠（3px）より太い黄色。点滅はさせず、
-     現れるときに0.3秒で線が引かれる動きを一度だけ。割り込みの赤とは別物 */
-  .is-pointed-hold { position: relative; }
-  .is-pointed-hold::after {
+  /* 指さし。枠は時間で消さない——症例0は次の文に進むまで、症例1〜3は次の「ここ」を押すまで。
+     初見でも目が行く黄色5px。点滅はさせず（割り込みの点滅と区別する）、
+     現れるときに0.3秒で線が引かれる動きを一度だけ。値の判定ではないので色ルールの外 */
+  .is-pointed { position: relative; }
+  .is-pointed::after {
     content: ""; position: absolute; inset: -3px; pointer-events: none;
     border: 5px solid var(--point);
     animation: point-draw .3s linear 1 both;
   }
   @keyframes point-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-  @media (prefers-reduced-motion: reduce) { .is-pointed-hold::after { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .is-pointed::after { animation: none; } }
 
   /* ---- messages ---- */
   .msg { border: 1px solid var(--line); border-left: 3px solid var(--line-strong); background: #fbfbf9; padding: 7px 9px; margin-bottom: 9px; }
