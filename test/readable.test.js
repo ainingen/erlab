@@ -2,7 +2,9 @@
 // 辞典・組み立て式コメントの画面側・指さし。値の計算は derive.test.js、判定は report.test.js。
 
 import { test, eq } from './harness.js';
-import { renderResults, renderGlossaryPanel, renderTermPanel, linkTerms, termLink } from '../src/lis.js';
+import {
+  renderResults, renderGlossaryPanel, renderTermPanel, linkTerms, termLink, renderWorklist,
+} from '../src/lis.js';
 import { renderReportDialog, renderCommentPicker } from '../src/report.js';
 import { renderMessages } from '../src/messages.js';
 import { renderTutorialPlaceholder, stepCount } from '../src/tutorial.js';
@@ -273,6 +275,56 @@ export function suite(data) {
       const inPlaceholder = html.includes(`data-region="${region}"`);
       const inShell = ['reception', 'messages', 'report'].includes(region);
       eq(inPlaceholder || inShell, true, `${region} を指す先がどこにもない`);
+    }
+  });
+
+  // ---- 受付一覧の並び ----
+  const worklist = (status = {}, interrupt = null) => {
+    const html = renderWorklist(data.cases, {
+      status, results: {}, scoreLabel: {}, currentCaseId: null, interrupt,
+    });
+    return [...html.matchAll(/data-case="([^"]+)"/g)].map((m) => m[1]);
+  };
+
+  test('受付一覧: 閉じた検体は灰色にして下へ流す。まだのものが上に残る', () => {
+    const ids = data.cases.map((c) => c.id);
+    eq(worklist().join(','), ids.join(','), '何も報告していなければ元の順');
+
+    // 先頭を閉じると、その1件だけが末尾へ。残りの順番は変えない
+    const done = { [ids[0]]: 'done' };
+    eq(worklist(done).join(','), [...ids.slice(1), ids[0]].join(','));
+
+    const html = renderWorklist(data.cases, {
+      status: done, results: {}, scoreLabel: {}, currentCaseId: null, interrupt: null,
+    });
+    eq((html.match(/wl-row is-done/g) || []).length, 1, '灰色は閉じた1件だけ');
+    eq(html.includes(`data-case="${ids[0]}"`), true, '閉じても一覧から消さない（開いて読み返せる）');
+  });
+
+  test('受付一覧: 割り込みは先頭のまま。灰色が下へ流れてもぶつからない', () => {
+    // 症例3を未報告のまま症例4を報告した形（割り込みは閉じると解除されるので interrupt は null）
+    const ids = data.cases.map((c) => c.id);
+    const order = worklist({ n04: 'done' });
+    eq(order[0], 'n01');
+    eq(order.indexOf('n03') < order.indexOf('n04'), true, '未報告の症例3が報告済の症例4より上');
+    eq(order[order.length - 1], 'n04', '閉じた症例4が末尾');
+
+    // 割り込みが立っている間（症例4はまだ閉じていない）は、その検体が先頭
+    const cutIn = worklist({ n01: 'done' }, { active: true, caseId: 'n04' });
+    eq(cutIn[0], 'n04', '割り込みが先頭');
+    eq(cutIn[cutIn.length - 1], 'n01', '閉じた検体は末尾のまま');
+  });
+
+  test('受付一覧: 症例7の一本目は報告しても閉じないので上に残る', () => {
+    // 差し戻し待ち（waiting）と二本目待ち（recollect）はどちらも「閉じていない」
+    for (const status of ['waiting', 'recollect']) {
+      const order = worklist({ n07: status, n01: 'done' });
+      eq(order.indexOf('n07') < order.indexOf('n01'), true, `${status} の症例7が下に流れている`);
+      const html = renderWorklist(data.cases, {
+        status: { n07: status }, results: {}, scoreLabel: {}, currentCaseId: null, interrupt: null,
+      });
+      eq(html.includes('is-done'), false, `${status} で灰色になっている`);
+      eq(html.includes(status === 'waiting' ? '再採血 待ち' : '再採血'), true, '状態の札が出ていない');
     }
   });
 

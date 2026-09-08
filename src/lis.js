@@ -73,9 +73,11 @@ const COLS_MARKED = 7;
 
 /** 3-2. 受付一覧。ER検体は「至急」を付けて先頭に寄せる。 */
 export function renderWorklist(cases, state) {
-  const ordered = orderForWorklist(cases, state.interrupt);
+  const isClosed = (id) => (state.status[id] || 'ready') === 'done';
+  const ordered = orderForWorklist(cases, state.interrupt, isClosed);
   const rows = ordered.map((c) => {
     const status = state.status[c.id] || 'ready';
+    const closed = isClosed(c.id);
     const scored = state.results[c.id];
     const statusLabel = scored
       ? `報告済 ${state.scoreLabel[scored.score] || ''}`
@@ -85,6 +87,8 @@ export function renderWorklist(cases, state) {
     const urgent = cutIn || c.patient.from === 'ER';
     const selected = c.id === state.currentCaseId;
     const classes = ['wl-row'];
+    // 閉じた検体は灰色にして下へ。開いて読み返せるので、消しはしない
+    if (closed) classes.push('is-done');
     if (selected) classes.push('is-selected');
     if (cutIn) classes.push('is-interrupt');
     if (cutIn && state.interrupt.blink) classes.push('is-blinking');
@@ -108,11 +112,20 @@ function isCutIn(caseId, interrupt) {
   return Boolean(interrupt && interrupt.active && interrupt.caseId === caseId);
 }
 
-/** 割り込みが入っている間だけ、その検体を一覧の先頭に上げる。 */
-function orderForWorklist(cases, interrupt) {
-  const cutIn = cases.find((c) => isCutIn(c.id, interrupt));
-  if (!cutIn) return cases;
-  return [cutIn, ...cases.filter((c) => c.id !== cutIn.id)];
+/**
+ * 一覧の並び。
+ *   1. 報告して閉じた検体は下へ流す（まだのものが上に残る）。それぞれの中の順番は変えない
+ *   2. 割り込みが入っている間だけ、その検体を先頭に上げる
+ * 割り込みは閉じると解除されるので、1と2がぶつかることはない。
+ * 症例7の一本目は報告しても閉じない（`waiting`）ので、上に残ったまま「再採血 待ち」が見える。
+ */
+function orderForWorklist(cases, interrupt, isClosed = () => false) {
+  const open = cases.filter((c) => !isClosed(c.id));
+  const closed = cases.filter((c) => isClosed(c.id));
+  const list = [...open, ...closed];
+  const cutIn = list.find((c) => isCutIn(c.id, interrupt));
+  if (!cutIn) return list;
+  return [cutIn, ...list.filter((c) => c.id !== cutIn.id)];
 }
 
 /** 3-1. LIS結果画面。 */

@@ -117,6 +117,11 @@
     padding: 6px 7px; margin-bottom: 5px; cursor: pointer;
   }
   .wl-row.is-selected { border-left-color: var(--head); background: #eef1f6; }
+  /* 報告して閉じた検体。値の判定ではなく「もう手を離してよい」という状態の表示。
+     一覧の下へ流れることと「報告済」の文字を併せて出し、色を消しても分かるようにする */
+  .wl-row.is-done { background: #e4e3df; color: var(--ink-dim); border-color: var(--line); border-left-color: var(--line); }
+  .wl-row.is-done .wl-pt { font-weight: 400; }
+  .wl-row.is-done.is-selected { border-left-color: var(--head); }
   /* 割り込みで先頭に上がった検体。文字（至急⚑・割り込み）を主にし、点滅は数秒でやめる */
   .wl-row.is-interrupt { border-left-color: var(--alert); border-left-width: 5px; }
   .wl-row.is-interrupt .wl-mark { font-weight: 700; }
