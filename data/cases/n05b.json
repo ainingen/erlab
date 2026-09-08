@@ -122,7 +122,7 @@
         "recheck": true
       },
       "score": "ok",
-      "headline": "手順は合っています。ただし本物か溶血かの見立てが残っていません",
+      "headline": "手順は合っています。ただし採血に問題なしか溶血かの見立てが残っていません",
       "reply": null,
       "doctor": "msg_n05b_emergency_recheck"
     },
@@ -178,7 +178,7 @@
     {
       "when": {},
       "score": "poor",
-      "headline": "溶血を理由に、本物のパニック値を流しています",
+      "headline": "溶血を理由に、患者由来のパニック値を流しています",
       "reply": null,
       "doctor": "msg_n05b_missed"
     }

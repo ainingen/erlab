@@ -6,9 +6,21 @@
   "_when_note": "候補を出す条件。文が成立するかだけを見る。always は常に出す。previous は前回値のある行だけ。sample_state / sample_state_clear / recheck / recollect_same / recollect_normal は事実の文で、その事実があるときだけ出す。",
   "max_lines": 3,
   "groups": [
-    { "id": "value", "label": "値について", "open": true },
-    { "id": "sample", "label": "検体について", "open": false },
-    { "id": "action", "label": "操作と再採血", "open": false }
+    {
+      "id": "value",
+      "label": "値について",
+      "open": true
+    },
+    {
+      "id": "sample",
+      "label": "検体について",
+      "open": false
+    },
+    {
+      "id": "action",
+      "label": "操作と再採血",
+      "open": false
+    }
   ],
   "templates": [
     {
@@ -16,8 +28,8 @@
       "group": "value",
       "scope": "mark",
       "when": "always",
-      "text": "{item}：本物の異常と判断",
-      "speech": "{item} {value}、本物の異常と判断します"
+      "text": "{item}：採血に問題なし、値は患者由来と判断",
+      "speech": "{item} {value}、採血に問題なく、患者由来の値と判断します"
     },
     {
       "id": "continued",

@@ -244,7 +244,7 @@ function renderSuspectRow(row, view) {
     .map((s) => {
       const on = chosen.has(s.id);
       // 疑いの語も辞典に開けるようにする。ボタンの入れ子は作れないので、
-      // 選ぶボタンの隣に小さな「?」を置く（real は辞典に持たない）
+      // 選ぶボタンの隣に小さな「?」を置く
       const help = view.glossary && view.glossary.terms[s.id]
         ? `<button type="button" class="term-help" data-term="${esc(s.id)}"
                    aria-label="${esc(s.label)}とは">?</button>`
@@ -264,7 +264,9 @@ function renderSuspectRow(row, view) {
     <tr class="suspect-row">
       <td colspan="${view ? COLS_MARKED : COLS_PLAIN}">
         <div class="suspects" role="group" aria-label="${esc(row.abbr)}の疑い">
-          <span class="suspects-label">${esc(row.abbr)} の疑い</span>
+          <span class="suspects-label">${esc(row.abbr)} の${
+            view.glossary ? termLink(view.glossary, 'suspect', '疑い') : '疑い'
+          }</span>
           ${chips}
         </div>
       </td>

@@ -102,7 +102,7 @@
       },
       "then": "followup",
       "cap": "ok",
-      "headline": "緊急報告は適切。ただし本物かどうかの見立てが残っていません",
+      "headline": "緊急報告は適切。ただし採血に問題がないかの見立てが残っていません",
       "reply": null,
       "doctor": "msg_n07_doctor_pushback"
     },

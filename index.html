@@ -203,9 +203,11 @@
 
   /* ---- 疑いタブ ---- */
   .suspect-row td { background: #eef1f6; padding: 6px 7px; text-align: left; }
-  .suspects { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .suspects-label { font-size: 13px; color: var(--ink-dim); }
+  /* 折り返す札があっても、同じ行の札は同じ高さにそろえる（背の高い札だけが重く見えないように） */
+  .suspects { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+  .suspects-label { display: flex; align-items: center; font-size: 13px; color: var(--ink-dim); }
   .suspect {
+    display: inline-flex; align-items: center; text-align: left;
     font: inherit; font-size: 14px; padding: 4px 9px; min-height: 34px;
     background: #fbfbf9; border: 1px solid var(--line-strong); cursor: pointer;
   }
@@ -385,9 +387,9 @@
   .term-help {
     font: inherit; font-size: 12px; line-height: 1; margin-left: 3px; padding: 2px 5px;
     background: #fbfbf9; border: 1px solid var(--line-strong); border-radius: 50%;
-    color: var(--ink-dim); cursor: pointer; min-height: 24px;
+    color: var(--ink-dim); cursor: pointer; min-height: 24px; align-self: center;
   }
-  .suspect-wrap { display: inline-flex; align-items: center; }
+  .suspect-wrap { display: inline-flex; align-items: stretch; }
 
   /* 語を指定して開くとその語まで送るので、タブと閉じるは上に貼り付けて always 押せるようにする */
   .gl-bar {

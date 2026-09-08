@@ -5,7 +5,7 @@ import { test, eq } from './harness.js';
 import {
   renderResults, renderGlossaryPanel, renderTermPanel, linkTerms, termLink, renderWorklist,
 } from '../src/lis.js';
-import { renderReportDialog, renderCommentPicker } from '../src/report.js';
+import { renderReportDialog, renderCommentPicker, markSummary } from '../src/report.js';
 import { renderMessages } from '../src/messages.js';
 import { renderTutorialPlaceholder, stepCount } from '../src/tutorial.js';
 import { buildPanel, buildCommentOptions } from '../src/derive.js';
@@ -27,7 +27,7 @@ export function suite(data) {
 
   // ---- 辞典 ----
   test('辞典: 16語あり、一語は三行以内', () => {
-    eq(Object.keys(terms).length, 16);
+    eq(Object.keys(terms).length, 18);
     for (const [id, def] of Object.entries(terms)) {
       eq(typeof def.term, 'string', `${id} の語`);
       eq(Array.isArray(def.lines), true, `${id} の lines`);
@@ -50,12 +50,14 @@ export function suite(data) {
     }
   });
 
-  test('辞典: 疑いタブの id（real 以外）が全部ある', () => {
+  test('辞典: 疑いタブの id が全部ある。見出しの「疑い」も引ける', () => {
     for (const s of data.suspects.suspects) {
-      if (s.id === 'real') continue;
       eq(Boolean(terms[s.id]), true, `疑い ${s.id} が辞典にない`);
     }
-    eq(Boolean(terms.real), false, 'real は辞典に持たない');
+    eq(Boolean(terms.suspect), true, 'タブの見出しの「疑い」が辞典にない');
+    // real は「採血に問題なし」。重さの話ではないことを辞典でも言う
+    eq(terms.real.term, '採血に問題なし');
+    eq(terms.real.lines.join('').includes('重'), false, 'real の説明で重さを言っている');
   });
 
   test('辞典: 別名は長いものから当てる（「溶血」が「溶血（3+）」を食わない）', () => {
@@ -80,7 +82,7 @@ export function suite(data) {
     }
     const html = renderTermPanel(glossary, null);
     eq(html.includes('見る順番'), true);
-    eq((html.match(/class="term-card/g) || []).length, 16, '辞典の語が全部並ぶ');
+    eq((html.match(/class="term-card/g) || []).length, 18, '辞典の語が全部並ぶ');
   });
 
   test('索引パネル: 項目と言葉のタブがあり、既存の索引は項目に入る', () => {
@@ -109,6 +111,52 @@ export function suite(data) {
       eq(html.includes('data-action="close-glossary"'), true, `${view.tab}: 閉じるが押せない`);
       // 帯より下が本文。閉じるは本文より前にあるので、どこまで送っても貼り付いたまま押せる
       eq(close < html.indexOf(marker), true, `${view.tab}: 閉じるが本文より後ろにある`);
+    }
+  });
+
+  // ---- 疑い「採血に問題なし」（docs/suspect-real.md）----
+  test('疑いタブ: どのラベルにも「本物」を使わない', () => {
+    for (const s of data.suspects.suspects) {
+      eq(`${s.label}${s.hint}`.includes('本物'), false, `${s.id} のラベル・ヒント`);
+    }
+    const real = data.suspects.suspects.find((s) => s.id === 'real');
+    eq(real.label, '採血に問題なし（値は患者由来）', '内部IDは real のまま、言い方だけ変える');
+  });
+
+  test('コメントの一覧: 「本物」も「検体に問題なし」も使わない', () => {
+    // 「検体に問題なし」は「体に異常なし」と読み違える。動作の言葉「採血」で言う
+    for (const t of data.commentTemplates.templates) {
+      for (const word of ['本物', '検体に問題なし']) {
+        eq(`${t.text}${t.speech}`.includes(word), false, `${t.id} に「${word}」がある`);
+      }
+    }
+    const real = data.commentTemplates.templates.find((t) => t.id === 'real');
+    eq(real.text, '{item}：採血に問題なし、値は患者由来と判断');
+  });
+
+  test('報告対象の並び: 疑いの札は末尾の補足を落として並べる', () => {
+    const sel = { marks: ['Hb'], suspects: { Hb: ['real'] } };
+    eq(markSummary(sel, data), 'Hb（採血に問題なし）', '括弧が入れ子にならない');
+    eq(markSummary({ marks: ['K'], suspects: { K: ['hemolysis'] } }, data), 'K（溶血）');
+    eq(markSummary({ marks: [] }, data).includes('なし'), true, 'マーク0件でも報告はできる');
+  });
+
+  test('ナビ: 症例2・3が「採血に問題なし」を選ぶ根拠を言う', () => {
+    for (const id of ['msg_n02_nav_kanae', 'msg_n02_nav_yusuke', 'msg_n03_nav_kanae', 'msg_n03_nav_yusuke']) {
+      const msg = data.messages.messages[id];
+      eq(msg.focus.length, msg.body.length, `${id} の focus は本文と同じ数`);
+      const said = msg.body.filter((line) => line.includes('採血に問題な'));
+      eq(said.length > 0, true, `${id} が疑いの選び方に触れていない`);
+      // 根拠は検体状態から見る。指さしは一文に一か所
+      const at = msg.body.findIndex((line) => line.includes('採血'));
+      eq(msg.focus[at], 'sample_state', `${id} は採血の話を検体状態から始めていない`);
+    }
+    // 症例3は三つの根拠（検体状態・関連項目・前回値）を並べる
+    for (const id of ['msg_n03_nav_kanae', 'msg_n03_nav_yusuke']) {
+      const text = data.messages.messages[id].body.join('');
+      for (const word of ['検体状態', 'MCV', '前回']) {
+        eq(text.includes(word), true, `${id} に根拠「${word}」がない`);
+      }
     }
   });
 

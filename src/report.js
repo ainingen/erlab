@@ -50,11 +50,15 @@ export function hasComment(choice) {
   return commentLines(choice).length > 0;
 }
 
-/** マークした項目を「K（本物の異常）／Cre」の形に並べる。0件でも報告はできる。 */
+/** マークした項目を「K（採血に問題なし）／Cre」の形に並べる。0件でも報告はできる。 */
 export function markSummary(selection, data) {
   const marks = (selection && selection.marks) || [];
   if (!marks.length) return 'なし（異常なしとして報告します）';
-  const labelById = new Map((data?.suspects?.suspects || []).map((s) => [s.id, s.label]));
+  // 「Hb（採血に問題なし（値は患者由来））」と括弧が入れ子になるので、
+  // 一覧に並べるときは末尾の補足を落として「Hb（採血に問題なし）」にする
+  const labelById = new Map(
+    (data?.suspects?.suspects || []).map((s) => [s.id, s.label.replace(/（[^（）]*）$/, '')]),
+  );
   const abbrById = new Map((data?.tests?.tests || []).map((t) => [t.id, t.abbr]));
   return marks
     .map((id) => {
