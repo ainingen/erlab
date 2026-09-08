@@ -303,9 +303,9 @@ export function suite(data) {
   });
 
   // ---- 症例0の指さし（自動発火） ----
-  test('症例0: 9ステップのまま、各文に指さしを持つ', () => {
+  test('症例0: 10ステップで、各文に指さしを持つ', () => {
     const tutorial = data.tutorial;
-    eq(stepCount(tutorial), 9);
+    eq(stepCount(tutorial), 10);
     for (const step of tutorial.steps) {
       for (const id of data.mentors.mentors.map((m) => m.id)) {
         const line = step.lines[id];
@@ -346,7 +346,7 @@ export function suite(data) {
 
   test('症例0の結果画面: 骨組みに指さしの的があり、検査値は出ない', () => {
     const html = renderTutorialPlaceholder(data);
-    for (const region of ['patient', 'sample_state', 'results', 'flags', 'previous']) {
+    for (const region of ['patient', 'sample_state', 'results', 'flags', 'previous', 'investigate']) {
       eq(html.includes(`data-region="${region}"`), true, `${region} の的がない`);
     }
     // 結果と前回値は「―」のまま。患者の値は一つも出さない

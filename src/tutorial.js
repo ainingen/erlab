@@ -4,6 +4,7 @@
 import { esc } from './lis.js';
 import { portraitUrl } from './messages.js';
 import { rangeFor, formatRange, formatPanic } from './derive.js';
+import { actionStates, renderActionBar } from './investigate.js';
 
 // 骨組みに並べる項目。性差のない項目だけにして、患者を決めなくても基準範囲が出せるようにする
 const SKELETON = [
@@ -70,7 +71,8 @@ export function renderTutorialPlaceholder(data = null) {
     <div data-region="results">${tables}</div>
     <p class="tut-placeholder">
       今日はまだ数字を出しません。画面の場所だけ覚えてください。
-    </p>`;
+    </p>
+    ${renderActionBar(actionStates({ order: ['CBC'], done: true }))}`;
 }
 
 function skeletonTable(panel, data) {
