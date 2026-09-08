@@ -3,7 +3,9 @@
 import { loadData } from './data.js';
 import { buildPanel, buildRecollect, buildCommentOptions, toggleCommentSelection } from './derive.js';
 import { renderWorklist, renderResults, renderRecollect, renderGlossaryPanel, esc } from './lis.js';
-import { renderMessages, resolveMessages, filterBySpeaker } from './messages.js';
+import {
+  renderMessages, newestFirst, freshGroup, resolveMessages, filterBySpeaker,
+} from './messages.js';
 import {
   renderReportDialog, renderCommentPicker, renderPhone, evaluate, evaluateFollowup, renderVerdict,
   SCORE_LABEL,
@@ -24,7 +26,8 @@ const state = {
   stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
   caps: {},      // 症例ID → 一本目の cap。最終評価の上限になる
   followups: {}, // 症例ID → 二本目のパネル
-  messageIds: [],
+  messageIds: [],   // 届いた順のID（重複を弾くためだけに持つ）
+  messageGroups: [], // 届いた順の「組」。同時に届いたものを一つにまとめる
   mentorId: null,
   currentCaseId: null,
   pendingChoice: null,
@@ -145,14 +148,28 @@ function advanceTutorial() {
 
 /* ---- メッセージ ---- */
 
+/** 別々の便として積む。ひとつずつ独立した組になる。 */
 function pushMessage(ids) {
-  for (const id of [].concat(ids ?? [])) {
-    if (!state.messageIds.includes(id)) state.messageIds.push(id);
-  }
+  for (const id of [].concat(ids ?? [])) pushGroup(id);
 }
 
-function visibleMessages() {
-  return filterBySpeaker(resolveMessages(state.data, state.messageIds), state.mentorId);
+/**
+ * 同時に届くものを一つの組として積む。組の中は書いた順のまま並び、
+ * 一覧では組ごと新しいものが上に来る（renderMessagePane）。
+ * 講評と医師の返信は同時に届くので、この形で積んで上下が入れ替わらないようにする。
+ */
+function pushGroup(ids) {
+  const fresh = freshGroup(ids, state.messageIds);
+  if (!fresh.length) return;
+  state.messageIds.push(...fresh);
+  state.messageGroups.push(fresh);
+}
+
+/** 選んでいる指導役に出すものだけ残した、組の配列（古い順）。 */
+function visibleMessageGroups() {
+  return state.messageGroups
+    .map((group) => filterBySpeaker(resolveMessages(state.data, group), state.mentorId))
+    .filter((group) => group.length);
 }
 
 /* ---- 症例 ---- */
@@ -413,7 +430,7 @@ function renderMessagePane() {
   // state.messageIds は届いた順のまま持ち、描くときだけ逆にする。
   const pane = $('#pane-messages');
   pane.innerHTML = renderMessages(
-    [...visibleMessages()].reverse(),
+    newestFirst(visibleMessageGroups()),
     currentMentor(),
     state.data.glossary,
   );
@@ -669,8 +686,8 @@ function finishReport(choice) {
     state.caps[caseDef.id] = res.cap;
     state.stage[caseDef.id] = 'waiting';
     state.status[caseDef.id] = 'waiting';
-    if (res.messageId) pushMessage(res.messageId);
-    if (res.doctorId) pushMessage(res.doctorId);
+    // 講評と医師の返信は同時に届く。一つの組にして、上下が入れ替わらないようにする
+    pushGroup([res.messageId, res.doctorId]);
     state.pendingChoice = null;
     $('#report-body').innerHTML = renderVerdict(res, choice, state.data);
     renderAll();
@@ -681,9 +698,8 @@ function finishReport(choice) {
   state.results[caseDef.id] = res;
   state.status[caseDef.id] = 'done';
   clearInterrupt(caseDef.id);
-  // 報告 → 指導役の講評 → 医師の返信、の順に届く
-  if (res.messageId) pushMessage(res.messageId);
-  if (res.doctorId) pushMessage(res.doctorId);
+  // 報告 → 指導役の講評 → 医師の返信、の順に届く。二本で一つの組にする
+  pushGroup([res.messageId, res.doctorId]);
 
   if (choice.recheck && caseDef.recollect) {
     state.recollected[caseDef.id] = buildRecollect(caseDef, currentPanel(), state.data);

@@ -1,7 +1,10 @@
-// 指導役の切り替え（speaker によるメッセージの出し分け）と、症例0のテスト。
+// 指導役の切り替え（speaker によるメッセージの出し分け）と、院内メッセージの並び順と、症例0のテスト。
 
 import { test, eq } from './harness.js';
-import { filterBySpeaker, resolveMessages, messageById, portraitUrl, renderMessages } from '../src/messages.js';
+import {
+  filterBySpeaker, resolveMessages, messageById, portraitUrl, renderMessages,
+  newestFirst, freshGroup,
+} from '../src/messages.js';
 import { mentorById } from '../src/mentor.js';
 import { renderTutorialStep, stepCount } from '../src/tutorial.js';
 
@@ -147,6 +150,78 @@ export function suite(data) {
         eq(typeof data.tutorial.focus_label[step.pane], 'string', `${step.id} の pane 表記`);
       }
     }
+  });
+
+  /* ---- 院内メッセージの並び順 ---- */
+
+  // app.js の pushGroup / visibleMessageGroups と同じ組み立て。
+  // 同時に届くIDを一つの組にして、選んでいる指導役のぶんだけ残す。
+  const groupFor = (ids, mentorId) =>
+    filterBySpeaker(resolveMessages(data, freshGroup(ids)), mentorId);
+
+  const allBranches = data.cases.flatMap((c) => [
+    ...(c.choices || []),
+    ...((c.followup && c.followup.choices) || []),
+  ]);
+
+  test('院内メッセージ: 新しい組が上、組の中は届いた順のまま', () => {
+    const groups = [[{ id: 'a' }], [{ id: 'b' }, { id: 'c' }], [{ id: 'd' }]];
+    eq(newestFirst(groups).map((m) => m.id).join(','), 'd,b,c,a');
+    eq(groups.map((g) => g.map((m) => m.id).join('')).join(','), 'a,bc,d', '元の組を壊さない');
+  });
+
+  test('院内メッセージ: 講評と医師の返信は一つの組で、講評が上・返信が下', () => {
+    let checked = 0;
+    for (const branch of allBranches) {
+      if (!branch.reply) continue;
+      for (const id of mentorIds) {
+        const group = groupFor([branch.reply, branch.doctor], id);
+        const where = `${branch.headline} / ${id}`;
+        eq(group.length, 2, `${where} の組は講評と医師の返信の二本`);
+        eq(group[0].kind, 'nav', `${where} は講評が先`);
+        eq(group[1].kind, 'reply', `${where} は医師の返信が後`);
+        eq(group[0].speaker, id, `${where} の講評は選んだ指導役のもの`);
+        checked += 1;
+      }
+    }
+    eq(checked > 0, true, '講評つきの枝が一つもない');
+  });
+
+  test('院内メッセージ: 組は入れ子のIDを平らにして、届き済みを落とす', () => {
+    // 講評は指導役ぶんの配列で書かれる。app.js は [reply, doctor] の形で渡す
+    eq(freshGroup([['a', 'b'], 'c']).join(','), 'a,b,c');
+    eq(freshGroup([null, 'c']).join(','), 'c', '空の講評は組に入れない');
+    eq(freshGroup([['a', 'b'], 'c'], ['a']).join(','), 'b,c', '届き済みは積み直さない');
+    eq(freshGroup(['a', 'a']).join(','), 'a', '同じ便の中の重複も落とす');
+  });
+
+  test('院内メッセージ: 講評のない枝は医師の返信だけが届く', () => {
+    const branch = allBranches.find((b) => !b.reply && b.doctor);
+    eq(Boolean(branch), true, '講評のない枝がない');
+    for (const id of mentorIds) {
+      const group = groupFor([branch.reply, branch.doctor], id);
+      eq(group.length, 1, `${branch.headline} / ${id} は返信一本だけ`);
+      eq(group[0].kind, 'reply', `${branch.headline} / ${id} は医師の返信`);
+    }
+  });
+
+  test('院内メッセージ: 描画も「新しい組が上／組の中は講評→返信」', () => {
+    const mentor = mentors[0];
+    const caseDef = caseById.n04;
+    const branch = caseDef.choices.find((c) => c.reply);
+    const groups = [
+      groupFor(caseDef.handover, mentor.id), // 申し送り（先に届く）
+      groupFor(caseDef.nav, mentor.id), // ナビ
+      groupFor([branch.reply, branch.doctor], mentor.id), // 講評＋返信（最後）
+    ].filter((g) => g.length);
+    const list = newestFirst(groups);
+    eq(list.map((m) => m.kind).join(','), 'nav,reply,nav,handover');
+
+    const html = renderMessages(list, mentor, data.glossary);
+    const praise = html.indexOf(list[0].subject);
+    const reply = html.indexOf(list[1].subject);
+    eq(list[0].subject === list[1].subject, false, '見出しが同じで位置を比べられない');
+    eq(praise >= 0 && reply > praise, true, '講評が医師の返信より上に描かれていない');
   });
 
   test('症例0: 検査値を出さない（台詞に数値を入れない）', () => {

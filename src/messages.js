@@ -49,6 +49,27 @@ export function resolveMessages(data, ids) {
   return [].concat(ids ?? []).map((id) => messageById(data, id)).filter(Boolean);
 }
 
+/**
+ * 同時に届いたIDを平らにして、まだ届いていないものだけ、書いた順に返す。
+ * 講評は指導役ぶんの配列で書かれている（症例JSONの reply）ので、入れ子を許す。
+ * seen … すでに届いているID。同じ便の中の重複も落とす。
+ */
+export function freshGroup(ids, seen = []) {
+  return [ids]
+    .flat(Infinity)
+    .filter((id, i, all) => id && !seen.includes(id) && all.indexOf(id) === i);
+}
+
+/**
+ * 一覧の並び順。新しく届いた組が上に来る。組の中は届いた順のまま置く。
+ * 指導役の講評と医師の返信は同時に届く一つの組なので、組の中では
+ * 設計どおり講評が上・返信が下のまま、組そのものが上に積み上がる。
+ * groups … 届いた順（古い順）の組の配列。組は1本でもよい。
+ */
+export function newestFirst(groups) {
+  return [...groups].reverse().flat();
+}
+
 export function renderMessages(list, mentor = null, glossary = null) {
   if (!list.length) return '<p class="empty">メッセージはありません。</p>';
   return list.map((m) => renderMessage(m, mentor, glossary)).join('');
