@@ -32,8 +32,8 @@ export function suite(data) {
   });
 
   // ---- 辞典 ----
-  test('辞典: 16語あり、一語は三行以内', () => {
-    eq(Object.keys(terms).length, 18);
+  test('辞典: 31語あり、一語は三行以内', () => {
+    eq(Object.keys(terms).length, 31);
     for (const [id, def] of Object.entries(terms)) {
       eq(typeof def.term, 'string', `${id} の語`);
       eq(Array.isArray(def.lines), true, `${id} の lines`);
@@ -88,7 +88,7 @@ export function suite(data) {
     }
     const html = renderTermPanel(glossary, null);
     eq(html.includes('見る順番'), true);
-    eq((html.match(/class="term-card/g) || []).length, 18, '辞典の語が全部並ぶ');
+    eq((html.match(/class="term-card/g) || []).length, Object.keys(terms).length, '辞典の語が全部並ぶ');
   });
 
   test('索引パネル: 項目と言葉のタブがあり、既存の索引は項目に入る', () => {

@@ -217,10 +217,38 @@ export function suite(data) {
   });
 
   test('調べた結果: 結果の語は下線で辞典に飛ぶ', () => {
-    const entry = { time: '10:44', name: '目視', text: '溶血（2+）の検体／量は十分' };
+    const entry = { time: '10:44', name: '目視', text: '血漿は淡赤／凝血・フィブリンなし／量は十分' };
     const html = renderInvestigateLog([entry], data.glossary);
-    eq(html.includes('data-term='), true, '辞典に飛べる語がない');
+    eq(html.includes('data-term="hemolysis_color"'), true, '溶血の色に飛べない');
+    eq(html.includes('data-term="clot_lump"'), true, '凝血塊に飛べない');
+    eq(html.includes('data-term="fibrin"'), true, 'フィブリンに飛べない');
     eq(renderInvestigateLog([entry], null).includes('data-term='), false, '辞典なしでも壊れない');
+  });
+
+  test('調べた結果: 目視・塗抹に出る語がすべて辞典で引ける', () => {
+    const wanted = ['淡黄色', '淡赤', '凝血', 'フィブリン', '凝集塊', '散在', '大小不同', '破砕赤血球',
+      '点滴側', '塗抹', '鏡検', '折り返し', 'ID照合'];
+    const known = new Set();
+    for (const def of Object.values(data.glossary.terms)) {
+      known.add(def.term);
+      for (const a of def.aliases) known.add(a);
+    }
+    for (const w of wanted) eq(known.has(w), true, `「${w}」が辞典にない`);
+  });
+
+  test('調べた結果: 実際に返る三行から、辞典に飛べる語が拾える', () => {
+    const sets = [
+      ['既定', data.artifacts.defaults.look, data.artifacts.defaults.smear],
+      ...Object.entries(data.artifacts.artifacts).map(([id, a]) => [id, a.look, a.smear]),
+    ];
+    for (const [id, look, smear] of sets) {
+      for (const [what, lines] of [['目視', look], ['塗抹', smear]]) {
+        const html = renderInvestigateLog(
+          [{ time: '10:00', name: what, text: lines.join('／') }], data.glossary,
+        );
+        eq(html.includes('data-term='), true, `${id} の${what}から辞典に飛べない`);
+      }
+    }
   });
 
   // ---- ボタン ----
