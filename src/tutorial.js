@@ -3,7 +3,7 @@
 
 import { esc } from './lis.js';
 import { portraitUrl } from './messages.js';
-import { rangeFor, formatRange } from './derive.js';
+import { rangeFor, formatRange, formatPanic } from './derive.js';
 
 // 骨組みに並べる項目。性差のない項目だけにして、患者を決めなくても基準範囲が出せるようにする
 const SKELETON = [
@@ -80,6 +80,8 @@ function skeletonTable(panel, data) {
       const test = testById.get(id);
       if (!test) return '';
       const ref = formatRange(rangeFor(data.hospital, 'reference', id), test.decimals);
+      // 基準範囲も危険域も当院の規定であって、患者の値ではない。骨組みでも出す
+      const danger = formatPanic(rangeFor(data.hospital, 'panic', id), test.decimals);
       return `
         <tr>
           <th scope="row" data-col="name">
@@ -88,7 +90,9 @@ function skeletonTable(panel, data) {
           </th>
           <td data-col="value">―</td>
           <td data-col="unit">${esc(test.unit)}</td>
-          <td data-col="ref"><span class="lbl">基準</span>${esc(ref)}</td>
+          <td data-col="ref"><span class="lbl">基準</span>${esc(ref)}${
+            danger ? `<span class="danger-range">${esc(danger)}</span>` : ''
+          }</td>
           <td data-col="flag" data-region="flags">―</td>
           <td data-col="prev" data-region="previous"><span class="lbl">前回</span>―</td>
         </tr>`;

@@ -195,8 +195,12 @@ function renderPanelTable(pn, view = null, glossary = null) {
         </th>
         <td data-col="value">${esc(r.display)}${deltaMark}</td>
         <td data-col="unit">${esc(r.unit)}</td>
-        <td data-col="ref"><span class="lbl">${termLink(glossary, 'reference', '基準')}</span>${esc(r.referenceDisplay)}</td>
-        <td data-col="flag"${cellClass} data-region="flags"><span class="${flagClass}">${flagMark}</span></td>
+        <td data-col="ref"><span class="lbl">${termLink(glossary, 'reference', '基準')}</span>${esc(r.referenceDisplay)}${
+          r.panicDisplay ? `<span class="danger-range">${esc(r.panicDisplay)}</span>` : ''
+        }</td>
+        <td data-col="flag"${cellClass} data-region="flags"><span class="${flagClass}">${flagMark}</span>${
+          r.panic ? '<span class="panic-note">パニック値</span>' : ''
+        }</td>
         <td data-col="prev" data-region="previous"><span class="lbl">${termLink(glossary, 'previous', '前回')}</span>${esc(r.previousDisplay)}</td>
       </tr>${view && marked ? renderSuspectRow(r, view) : ''}`;
   });

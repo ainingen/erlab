@@ -154,6 +154,20 @@ export function formatValue(value, decimals) {
   return Number(value).toFixed(decimals ?? 1);
 }
 
+/**
+ * 危険域（パニック値）の言い方。値の境目だけを言い、どうするかは書かない。
+ * 同じ HH でも、検体状態しだいで再採血にも電話にもなる（症例5と症例7）。
+ * 行動を決めるのは「見る順番」の1（検体状態）を見たあとで、フラグの欄ではない。
+ * パニック値の設定がない項目では空文字を返す。
+ */
+export function formatPanic(range, decimals) {
+  if (!range) return '';
+  const parts = [];
+  if (range.high !== undefined) parts.push(`${formatValue(range.high, decimals)}以上`);
+  if (range.low !== undefined) parts.push(`${formatValue(range.low, decimals)}以下`);
+  return parts.length ? `${parts.join('・')}は危険域` : '';
+}
+
 export function formatRange(range, decimals) {
   if (!range) return '';
   const lo = range.low === undefined ? '' : formatValue(range.low, decimals);
@@ -197,6 +211,8 @@ export function buildPanel(caseDef, data) {
         delta: deltaCheck(data.hospital, testId, value, prev),
         reference: rangeFor(data.hospital, 'reference', testId, sex),
         referenceDisplay: formatRange(rangeFor(data.hospital, 'reference', testId, sex), test.decimals),
+        panicRange: rangeFor(data.hospital, 'panic', testId, sex),
+        panicDisplay: formatPanic(rangeFor(data.hospital, 'panic', testId, sex), test.decimals),
       };
     });
     return { id: panelId, label: panel.label, rows };

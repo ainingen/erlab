@@ -17,6 +17,7 @@ import {
   toggleCommentSelection,
   withinHalfDelta,
   sampleStateText,
+  formatPanic,
 } from '../src/derive.js';
 
 export function suite(data) {
@@ -475,6 +476,29 @@ export function suite(data) {
       eq(panel.rows.length, expected, `${c.id} の行数`);
       for (const row of panel.rows) {
         if (!row.unmeasurable) eq(row.value === null, false, `${c.id} ${row.id} に値がない`);
+      }
+    }
+  });
+
+  test('危険域: 値の境目だけを言い、どうするかは書かない', () => {
+    eq(formatPanic({ low: 2.5, high: 6.0 }, 1), '6.0以上・2.5以下は危険域');
+    eq(formatPanic({ high: 500 }, 0), '500以上は危険域');
+    eq(formatPanic({ low: 20 }, 0), '20以下は危険域');
+    eq(formatPanic(null, 1), '', 'パニック値の設定がなければ空');
+    // 同じ HH でも検体状態しだいで再採血にも電話にもなる（症例5と症例7）。行動は画面に書かない
+    for (const id of Object.keys(data.hospital.panic)) {
+      const text = formatPanic(data.hospital.panic[id], 1);
+      for (const word of ['電話', '緊急', '報告', '再採血']) {
+        eq(text.includes(word), false, `${id} の危険域に「${word}」が入っている`);
+      }
+    }
+  });
+
+  test('危険域: パニック値の設定がある項目にだけ出る', () => {
+    const withPanic = new Set(Object.keys(data.hospital.panic));
+    for (const c of data.cases) {
+      for (const row of buildPanel(c, data).rows) {
+        eq(Boolean(row.panicDisplay), withPanic.has(row.id), `${c.id} ${row.id} の危険域`);
       }
     }
   });

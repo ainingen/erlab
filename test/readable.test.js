@@ -258,6 +258,36 @@ export function suite(data) {
     }
   });
 
+  // ---- 危険域（パニック値）の表示 ----
+  test('危険域: 結果の行に出る。行動（電話・緊急）は書かない', () => {
+    const c = caseById.n04; // K 6.8 の HH がある
+    const html = renderResults(c, buildPanel(c, data), data, view());
+    eq(html.includes('class="danger-range">6.0以上・2.5以下は危険域'), true, 'K の危険域が出ていない');
+    const notes = html.match(/<span class="danger-range">[^<]*<\/span>/g) || [];
+    eq(notes.length > 0, true);
+    for (const note of notes) {
+      for (const word of ['電話', '緊急', '報告']) {
+        eq(note.includes(word), false, `危険域に「${word}」が入っている: ${note}`);
+      }
+    }
+  });
+
+  test('危険域の札: HH / LL にだけ添える。H / L には付けない', () => {
+    for (const c of data.cases) {
+      const panel = buildPanel(c, data);
+      const html = renderResults(c, panel, data, view());
+      const badges = (html.match(/class="panic-note"/g) || []).length;
+      eq(badges, panel.rows.filter((r) => r.panic).length, `${c.id} の札の数`);
+      const flagged = panel.rows.filter((r) => r.flag && !r.panic).length;
+      if (flagged && !panel.rows.some((r) => r.panic)) eq(badges, 0, `${c.id} は H / L だけなので札は出ない`);
+    }
+    // 札は「パニック値」まで。次にどうするかは検体状態を見てから決める
+    const c = caseById.n04;
+    const html = renderResults(c, buildPanel(c, data), data, view());
+    const badge = html.match(/<span class="panic-note">([^<]*)<\/span>/);
+    eq(badge && badge[1], 'パニック値');
+  });
+
   test('指さし: 光らせる先が画面にある', () => {
     const c = caseById.n01;
     const html = renderResults(c, buildPanel(c, data), data, view());
