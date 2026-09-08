@@ -178,6 +178,27 @@ export function suite(data) {
     eq(renderCommentPicker(data, { commentOptions: [], commentSelected: [] }).includes('候補がありません'), true);
   });
 
+  test('コメント欄: 群ごとに畳む。既定で開くのは「値について」だけ', () => {
+    const c = caseById.n05;
+    const options = buildCommentOptions({ data, panel: buildPanel(c, data), marks: ['K'], recheck: true });
+    const html = renderCommentPicker(data, { commentOptions: options, commentSelected: [] });
+
+    for (const g of data.commentTemplates.groups) {
+      eq(html.includes(`data-comment-group="${g.id}"`), true, `${g.id} の群がない`);
+    }
+    // 既定で open が付くのは、一覧で open: true の群だけ
+    const opened = [...html.matchAll(/<details class="comment-group"( open)?>/g)].map((m) => Boolean(m[1]));
+    const wanted = data.commentTemplates.groups.map((g) => Boolean(g.open));
+    eq(opened.join(','), wanted.join(','), '既定の開き方');
+
+    // 一度開いた群は開いたまま渡せる
+    const all = renderCommentPicker(data, {
+      commentOptions: options, commentSelected: [], commentGroupsOpen: ['value', 'sample', 'action'],
+    });
+    eq((all.match(/class="comment-group" open/g) || []).length, 3);
+    eq(all.includes('検体について'), true, '群の見出し');
+  });
+
   // ---- 指さし ----
   test('指さし: focus は決まった8つの領域だけ', () => {
     for (const [id, msg] of Object.entries(data.messages.messages)) {

@@ -191,7 +191,9 @@
       {
         "when": {
           "report": "emergency",
-          "comment": true,
+          "comment": [
+            "recollect_same"
+          ],
           "marks": {
             "must": [
               "K"

@@ -34,7 +34,9 @@ export function portraitUrl(speaker, emotion) {
 }
 
 export function messageById(data, id) {
-  const msg = (data.messages.messages || {})[id];
+  // 同じ文面を症例をまたいでもう一度届けたものは `id#2` の形で持つ（repeat のメッセージ）
+  const [baseId] = String(id).split('#');
+  const msg = (data.messages.messages || {})[baseId];
   if (!msg) return null;
   return { id, ...msg };
 }

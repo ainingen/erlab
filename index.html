@@ -349,6 +349,17 @@
   .comment-opt:disabled { opacity: .5; cursor: default; }
   .comment-check { display: inline-block; min-width: 1.1em; font-family: var(--num); }
   .comment-count, .comment-empty { font-family: var(--sans); font-size: 13px; color: var(--ink-dim); margin: 6px 0 0; }
+  /* 所見一覧は全症例で同じで、常に全部出す。スマホで長くなるので群ごとに畳む。
+     既定で開くのは「値について」だけ。色は使わず、地色と枠だけで群を切る */
+  .comment-group { border: 1px solid var(--line); margin-bottom: 6px; }
+  .comment-group > summary {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    font-family: var(--sans); font-size: 14px; font-weight: 700;
+    background: #f0efeb; padding: 10px 9px; min-height: 44px; cursor: pointer;
+  }
+  .comment-group[open] > summary { border-bottom: 1px solid var(--line); }
+  .comment-group-count { font-weight: 400; font-size: 13px; color: var(--ink-dim); }
+  .comment-group .comment-options { padding: 6px; }
   .verdict-comment { list-style: none; margin: 6px 0 0; padding: 0; font-family: var(--sans); font-size: 14px; }
   .verdict-comment li { border-left: 3px solid var(--line-strong); padding: 2px 8px; margin-bottom: 3px; }
   .check { display: flex; gap: 6px; align-items: center; }

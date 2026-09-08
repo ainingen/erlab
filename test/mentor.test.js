@@ -195,6 +195,19 @@ export function suite(data) {
     eq(freshGroup(['a', 'a']).join(','), 'a', '同じ便の中の重複も落とす');
   });
 
+  test('院内メッセージ: 汎用の返信は症例をまたいでもう一度届く', () => {
+    const repeatable = Object.entries(data.messages.messages).filter(([, m]) => m.repeat);
+    eq(repeatable.length > 0, true, 'repeat のメッセージがない');
+    for (const [id, def] of repeatable) {
+      // 二度目は id#2 の形で積む。中身は同じものを引く
+      const again = messageById(data, `${id}#2`);
+      eq(again.subject, def.subject, `${id}#2 が引けない`);
+      eq(again.id, `${id}#2`, '通し番号は控えとして残す');
+      eq(messageById(data, id).subject, def.subject);
+    }
+    eq(messageById(data, 'msg_nope#2'), null, '無いIDは無いまま');
+  });
+
   test('院内メッセージ: 講評のない枝は医師の返信だけが届く', () => {
     const branch = allBranches.find((b) => !b.reply && b.doctor);
     eq(Boolean(branch), true, '講評のない枝がない');

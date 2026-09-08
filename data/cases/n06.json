@@ -70,6 +70,23 @@
     {
       "when": {
         "report": "urgent",
+        "comment": {
+          "must": [
+            "continued"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "継続ではなく変化です",
+      "reply": [
+        "msg_n06_comment_continued_kanae",
+        "msg_n06_comment_continued_yusuke"
+      ],
+      "doctor": "msg_comment_off"
+    },
+    {
+      "when": {
+        "report": "urgent",
         "comment": true,
         "marks": {
           "must": [

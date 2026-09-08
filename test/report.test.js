@@ -233,6 +233,39 @@ export function suite(data) {
     eq(evaluate(caseDef, pick('routine', { comment: [same] })).headline, '片方以下');
   });
 
+  test('evaluate: comment の { must, any, forbid }', () => {
+    const caseDef = {
+      choices: [
+        { when: { comment: { must: ['hemolysis'], forbid: ['real'] } }, score: 'ok', headline: '溶血だけ' },
+        { when: { comment: { any: ['clot', 'dilution'] } }, score: 'ok', headline: '検体側のどれか' },
+        { when: {}, score: 'best', headline: '受け皿' },
+      ],
+    };
+    const opt = (templateId, testId) => ({ id: `${templateId}:${testId}`, templateId, text: templateId });
+    const hemo = opt('hemolysis', 'K');
+    const real = opt('real', 'K');
+    eq(evaluate(caseDef, pick('routine', { comment: [hemo] })).headline, '溶血だけ');
+    eq(evaluate(caseDef, pick('routine', { comment: [hemo, real] })).headline, '受け皿', 'forbid に当たる');
+    eq(evaluate(caseDef, pick('routine', { comment: [real] })).headline, '受け皿', 'must がない');
+    eq(evaluate(caseDef, pick('routine', { comment: [opt('clot', 'PLT')] })).headline, '検体側のどれか');
+    eq(evaluate(caseDef, pick('routine', { comment: [opt('dilution', 'Na')] })).headline, '検体側のどれか');
+    eq(evaluate(caseDef, pick('routine', { comment: [] })).headline, '受け皿', 'any が一つもない');
+  });
+
+  test('evaluate: 素のIDは「どの項目でも」、項目付きのIDは「その項目で」', () => {
+    const caseDef = {
+      choices: [
+        { when: { comment: { must: ['continued:Hb'] } }, score: 'ok', headline: 'Hbで継続' },
+        { when: { comment: { must: ['continued'] } }, score: 'ok', headline: 'どれかで継続' },
+        { when: {}, score: 'best', headline: '受け皿' },
+      ],
+    };
+    const line = (testId) => ({ id: `continued:${testId}`, templateId: 'continued', text: testId });
+    eq(evaluate(caseDef, pick('routine', { comment: [line('Hb')] })).headline, 'Hbで継続');
+    eq(evaluate(caseDef, pick('routine', { comment: [line('K')] })).headline, 'どれかで継続');
+    eq(evaluate(caseDef, pick('routine', { comment: [] })).headline, '受け皿');
+  });
+
   test('evaluate: どれにも当たらなければ poor で落とす', () => {
     const res = evaluate({ choices: [{ when: { report: 'urgent' }, score: 'best', headline: 'x' }] }, pick('routine'));
     eq(res.score, 'poor');
@@ -422,7 +455,9 @@ export function suite(data) {
 
   test('症例n07: 二本目はKをマークして本物の異常、コメント付きの緊急報告が最善', () => {
     const c = caseById.n07;
-    const again = { comment: '一本目6.4、二本目6.2。いずれも溶血なし。', marks: ['K'], suspects: { K: ['real'] } };
+    // 二本目の最善は「再採血で同値」を選んだところまで見る（docs/comment-list.md）
+    const same = { id: 'recollect_same:K', templateId: 'recollect_same', text: 'K：再採血で同値（6.2）' };
+    const again = { comment: [same], marks: ['K'], suspects: { K: ['real'] } };
     const best = evaluateFollowup(c, pick('emergency', again), 'best');
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n07_ok_kanae,msg_n07_ok_yusuke');
@@ -431,6 +466,10 @@ export function suite(data) {
     const thin = evaluateFollowup(c, pick('emergency', { marks: ['K'], suspects: { K: ['real'] } }), 'best');
     eq(thin.score, 'ok', 'コメントなし');
     eq(thin.messageId, null);
+
+    const other = [{ id: 'real:K', templateId: 'real', text: 'K：本物の異常と判断' }];
+    const off = evaluateFollowup(c, pick('emergency', { ...again, comment: other }), 'best');
+    eq(off.score, 'ok', '何か書いただけでは足りない（同値と書いたかを見る）');
 
     const down = evaluateFollowup(c, pick('urgent', again), 'best');
     eq(down.score, 'poor', '医師に否定されてレベルを下げた');
@@ -447,7 +486,11 @@ export function suite(data) {
     const c = caseById.n07;
     const bestFirst = { marks: ['K'], suspects: { K: ['real'] } };
     const many = { marks: ['K', 'Na', 'BUN', 'Cre', 'CRP'], suspects: { K: ['real'] } };
-    const bestSecond = { comment: '二本とも同じ値、溶血なし。', marks: ['K'], suspects: { K: ['real'] } };
+    const bestSecond = {
+      comment: [{ id: 'recollect_same:K', templateId: 'recollect_same', text: 'K：再採血で同値（6.2）' }],
+      marks: ['K'],
+      suspects: { K: ['real'] },
+    };
 
     // docs/case07.md 4-3 の表をそのまま
     const table = [
@@ -659,12 +702,63 @@ export function suite(data) {
     }
   });
 
-  test('全症例: comment を配列で書いている枝はまだ無い（既存症例は true のまま）', () => {
+  test('外れの所見: 症例3〜6の枝は best より上にあり、外れを選ぶと当たる', () => {
+    const opt = (templateId, testId) => ({ id: `${templateId}:${testId}`, templateId, text: templateId });
+    const table = [
+      ['n03', 'routine', { comment: [opt('delta', 'Hb')], marks: ['Hb'], suspects: { Hb: ['real'] } },
+        '急な変化ではありません', 'msg_comment_off'],
+      ['n04', 'emergency', { comment: [opt('hemolysis', 'K')], marks: ['K'], suspects: { K: ['real'] } },
+        '検体に問題はありません', 'msg_comment_off_emergency'],
+      ['n06', 'urgent', { comment: [opt('continued', 'Hb')], marks: ['Hb'], suspects: { Hb: ['delta'] } },
+        '継続ではなく変化です', 'msg_comment_off'],
+    ];
+    for (const [caseId, level, choice, headline, doctor] of table) {
+      const c = caseById[caseId];
+      const at = c.choices.findIndex((b) => b.headline === headline);
+      const best = c.choices.findIndex((b) => b.score === 'best');
+      eq(at >= 0 && at < best, true, `${caseId} の外れの枝が best より上にない`);
+      const res = evaluate(c, pick(level, choice));
+      eq(res.headline, headline, `${caseId} で外れの枝に当たらない`);
+      eq(res.score, 'ok', `${caseId} は減点しすぎない`);
+      eq(res.doctorId, doctor, `${caseId} の医師の返信`);
+      eq(ids(res.messageId).length, 2, `${caseId} の講評が指導役ぶんそろっていない`);
+    }
+  });
+
+  test('外れの所見: 症例5-bは「溶血だけ書いて本物を書かない」を拾う', () => {
+    const c = caseById.n05b;
+    const opt = (templateId) => ({ id: `${templateId}:K`, templateId, text: templateId });
+    const both = { marks: ['K'], suspects: { K: ['real', 'hemolysis'] }, recheck: true };
+    const at = c.choices.findIndex((b) => b.headline === '溶血だけでは説明がつきません');
+    eq(at >= 0 && at < c.choices.findIndex((b) => b.score === 'best'), true, 'best より上にない');
+
+    const only = evaluate(c, pick('emergency', { ...both, comment: [opt('hemolysis')] }));
+    eq(only.headline, '溶血だけでは説明がつきません');
+    eq(only.score, 'ok');
+    eq(only.doctorId, 'msg_n05b_emergency_recheck', '値は伝わっているので医師の返信は best と同じ');
+
+    const written = evaluate(c, pick('emergency', { ...both, comment: [opt('hemolysis'), opt('real')] }));
+    eq(written.score, 'best', '両方書けば最善のまま');
+  });
+
+  test('全症例: comment の条件は真偽値・配列・{must, any, forbid} のどれか。IDは一覧に実在する', () => {
+    const templateIds = new Set(data.commentTemplates.templates.map((t) => t.id));
+    const testIds = new Set(data.tests.tests.map((t) => t.id));
+    const okId = (id) => {
+      const [templateId, testId] = String(id).split(':');
+      return templateIds.has(templateId) && (testId === undefined || testIds.has(testId));
+    };
     for (const c of data.cases) {
       for (const branch of allBranches(c)) {
         const expected = (branch.when || {}).comment;
         if (expected === undefined) continue;
-        eq(typeof expected, 'boolean', `${c.id} の comment 条件`);
+        if (typeof expected === 'boolean') continue;
+        const rule = Array.isArray(expected) ? { must: expected } : expected;
+        eq(typeof rule, 'object', `${c.id} の comment 条件`);
+        for (const key of Object.keys(rule)) {
+          eq(['must', 'any', 'forbid'].includes(key), true, `${c.id} の comment に知らない条件 ${key}`);
+          for (const id of rule[key]) eq(okId(id), true, `${c.id} の comment に知らない候補ID ${id}`);
+        }
       }
     }
   });

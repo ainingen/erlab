@@ -23,6 +23,7 @@ const state = {
   marks: {},
   suspects: {},
   comments: {}, // 選択キー → 選んだコメント候補のID（打つものはゼロ）
+  commentGroups: {}, // 選択キー → 開いている所見の群。既定は comment_templates.json の open
   stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
   caps: {},      // 症例ID → 一本目の cap。最終評価の上限になる
   followups: {}, // 症例ID → 二本目のパネル
@@ -159,10 +160,21 @@ function pushMessage(ids) {
  * 講評と医師の返信は同時に届くので、この形で積んで上下が入れ替わらないようにする。
  */
 function pushGroup(ids) {
-  const fresh = freshGroup(ids, state.messageIds);
+  const fresh = freshGroup(ids, []).map(deliveryKey).filter((id) => !state.messageIds.includes(id));
   if (!fresh.length) return;
   state.messageIds.push(...fresh);
   state.messageGroups.push(fresh);
+}
+
+/**
+ * 届いたときの控え。ふつうはメッセージIDそのもので、一度届いたものは二度積まない。
+ * 汎用の返信（`repeat: true`）だけは症例をまたいで何度でも届くので、通し番号を付けて別の便にする。
+ */
+function deliveryKey(id) {
+  const msg = (state.data.messages.messages || {})[id];
+  if (!msg || !msg.repeat) return id;
+  const sent = state.messageIds.filter((x) => x === id || x.startsWith(`${id}#`)).length;
+  return sent ? `${id}#${sent + 1}` : id;
 }
 
 /** 選んでいる指導役に出すものだけ残した、組の配列（古い順）。 */
@@ -245,7 +257,28 @@ function reportSelection(recheck = false) {
   const commentSelected = (state.comments[key] || []).filter((id) =>
     commentOptions.some((o) => o.id === id),
   );
-  return { ...selection(key), commentOptions, commentSelected };
+  return {
+    ...selection(key),
+    commentOptions,
+    commentSelected,
+    commentGroupsOpen: openCommentGroups(key),
+  };
+}
+
+/** 開いている所見の群。一度開いた群は、その症例の間は開いたまま。 */
+function openCommentGroups(key) {
+  if (!state.commentGroups[key]) {
+    state.commentGroups[key] = (state.data.commentTemplates.groups || [])
+      .filter((g) => g.open)
+      .map((g) => g.id);
+  }
+  return state.commentGroups[key];
+}
+
+function toggleCommentGroup(groupId, open) {
+  const key = selectionKey(state.currentCaseId);
+  const list = openCommentGroups(key).filter((id) => id !== groupId);
+  state.commentGroups[key] = open ? [...list, groupId] : list;
 }
 
 function toggleComment(optionId) {
@@ -547,6 +580,14 @@ function bindEvents() {
     const testBtn = ev.target.closest('[data-test]');
     if (testBtn) {
       openGlossary(testBtn.dataset.test);
+      return;
+    }
+
+    // 所見の群の開閉。details の既定動作は止めず、開いた状態だけ覚えておく
+    const groupSummary = ev.target.closest('[data-comment-group]');
+    if (groupSummary) {
+      const details = groupSummary.closest('details');
+      toggleCommentGroup(groupSummary.dataset.commentGroup, !(details && details.open));
       return;
     }
 

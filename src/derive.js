@@ -278,76 +278,79 @@ export function withinHalfDelta(hospital, testId, value, previous) {
 
 /**
  * 報告に添えるコメントの候補を組み立てる。DOM には触らない。
- * プレイヤーが画面で選んだもの（マーク・疑い・検体状態・再採血・操作）からだけ作る。
+ * 候補は `comment_templates.json` の**所見一覧をそのまま出す**。全症例で同じ一覧で、
+ * マークや検体状態で絞らない（毎回同じ一覧を読むこと自体が学習になる）。
+ * 出す・出さないを決めるのは「その文が成立するか」だけで、正しいかどうかは見ない——
+ * それは判定の仕事。ただし事実の文（検体状態・再採血・二本目）は事実どおりにしか出さない。
  *
- * ctx = { data, panel, firstPanel, marks, suspects, recheck, sex }
+ * ctx = { data, panel, firstPanel, marks, recheck }
  *   panel      … 報告の対象になっている検体。差し戻しの二本目ならそちら
- *   firstPanel … 二本目を報告するときだけ渡す。渡すと再採血の候補が出る
+ *   firstPanel … 二本目を報告するときだけ渡す。渡すと再採血の結果の候補が出る
  *
- * 並び順は「マークした項目の順 → 検体状態 → 再採血の結果 → 操作」。
+ * 並び順は群（値 → 検体 → 操作）→ 一覧の順 → マークした順。
+ * 候補ID は scope=mark なら `templateId:testId`、scope=all なら `templateId`。
  */
 export function buildCommentOptions(ctx) {
-  const { data, panel, firstPanel = null, marks = [], suspects = {}, recheck = false } = ctx;
-  const templates = new Map(
-    (data.commentTemplates.templates || []).map((t) => [t.id, t]),
-  );
+  const { data, panel, firstPanel = null, marks = [], recheck = false } = ctx;
+  const all = data.commentTemplates.templates || [];
+  const groups = data.commentTemplates.groups || [{ id: null }];
   const rowById = new Map(panel.rows.map((r) => [r.id, r]));
   const firstById = firstPanel ? new Map(firstPanel.rows.map((r) => [r.id, r])) : null;
-  const suspectOrder = (data.suspects.suspects || []).map((s) => s.id);
   const sample = sampleStateText(panel);
   const grade = hemolysisGrade(panel);
   const out = [];
 
-  const add = (templateId, key, fill) => {
-    const t = templates.get(templateId);
-    if (!t) return;
+  const add = (t, key, fill) => {
     out.push({
       id: key,
-      templateId,
+      templateId: t.id,
+      group: t.group || null,
       text: format(t.text, fill),
       speech: format(t.speech, fill),
     });
   };
 
-  // 1. マーク × 疑い。マークした順に並べる
-  for (const testId of marks) {
-    const row = rowById.get(testId);
-    if (!row) continue;
-    const fill = {
-      item: row.abbr,
-      value: row.display,
-      now: row.display,
-      prev: row.previousDisplay,
-      grade,
-    };
-    for (const suspectId of suspectOrder) {
-      if (!(suspects[testId] || []).includes(suspectId)) continue;
-      // 前回値のない項目に「前回値から急な変化」は出さない
-      if (suspectId === 'delta' && row.previous === null) continue;
-      add(suspectId, `${suspectId}:${testId}`, fill);
+  /** その文が成立するか。事実の文だけ、事実を見る。 */
+  const holds = (when, row, first) => {
+    switch (when) {
+      case 'previous':
+        return row ? row.previous !== null : false;
+      case 'sample_state':
+        return Boolean(sample);
+      case 'sample_state_clear':
+        return !sample;
+      case 'recheck':
+        return Boolean(recheck);
+      case 'recollect_same':
+        return Boolean(first) && withinHalfDelta(data.hospital, row.id, row.value, first.value);
+      case 'recollect_normal':
+        return Boolean(first) && row.flag === '' && first.flag !== '';
+      default:
+        return true;
     }
-  }
+  };
 
-  // 2. 検体状態欄。コメントがあるときと、空のときで文が変わる
-  if (sample) add('sample_state', 'sample_state', { sample });
-  else add('sample_state_clear', 'sample_state_clear', {});
-
-  // 3. 再採血の結果。二本目を報告するときだけ
-  if (firstById) {
-    for (const testId of marks) {
-      const row = rowById.get(testId);
-      const first = firstById.get(testId);
-      if (!row || !first) continue;
-      const fill = { item: row.abbr, value: row.display, now: row.display, prev: row.previousDisplay };
-      if (row.flag === '' && first.flag !== '') add('recollect_normal', `recollect_normal:${testId}`, fill);
-      else if (withinHalfDelta(data.hospital, testId, row.value, first.value)) {
-        add('recollect_same', `recollect_same:${testId}`, fill);
+  for (const group of groups) {
+    for (const t of all.filter((x) => (group.id ? x.group === group.id : true))) {
+      if (t.scope === 'mark') {
+        for (const testId of marks) {
+          const row = rowById.get(testId);
+          if (!row) continue;
+          const first = firstById ? firstById.get(testId) : null;
+          if (!holds(t.when, row, first)) continue;
+          add(t, `${t.id}:${testId}`, {
+            item: row.abbr,
+            value: row.display,
+            now: row.display,
+            prev: row.previousDisplay,
+            grade,
+          });
+        }
+      } else if (holds(t.when, null, null)) {
+        add(t, t.id, { sample, grade });
       }
     }
   }
-
-  // 4. 操作
-  if (recheck) add('recheck', 'recheck', {});
 
   return out;
 }

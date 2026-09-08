@@ -28,9 +28,22 @@ export function commentLines(choice) {
   return [];
 }
 
-/** その報告に付いているコメントの候補ID（`when.comment` の配列と突き合わせる）。 */
+/** その報告に付いているコメントの候補ID（`when.comment` と突き合わせる）。 */
 export function commentTemplateIds(choice) {
   return commentLines(choice).map((line) => line.templateId).filter(Boolean);
+}
+
+/**
+ * 突き合わせに使うID全部。素のID（`continued`＝どの項目でも）と、
+ * 項目付きのID（`continued:Hb`＝その項目で）の両方を入れる。
+ */
+export function commentIdSet(choice) {
+  const ids = new Set();
+  for (const line of commentLines(choice)) {
+    if (line.templateId) ids.add(line.templateId);
+    if (line.id) ids.add(line.id);
+  }
+  return ids;
 }
 
 export function hasComment(choice) {
@@ -90,38 +103,59 @@ export function renderReportDialog(caseDef, data, selection = null, accession = 
 }
 
 /**
- * コメントは打つものをゼロにする。画面で選んだマークと疑いから作った候補を、
- * タップで一〜三行選ぶだけ。自由記述の欄は置かない。
- * selection = { commentOptions, comment（選んだID）, ... }
+ * コメントは打つものをゼロにする。所見の一覧をタップで一〜三行選ぶだけ。
+ * 一覧は全症例で同じで、常に全部出す。自由記述の欄は置かない。
+ * スマホで縦に長くなるので群ごとに畳む。既定で開くのは「値について」だけ。
+ * selection = { commentOptions, commentSelected, commentGroupsOpen }
  */
 export function renderCommentPicker(data, selection = null) {
   const options = (selection && selection.commentOptions) || [];
   const selected = (selection && selection.commentSelected) || [];
+  const opened = (selection && selection.commentGroupsOpen) || null;
   const max = data.commentTemplates.max_lines ?? 3;
 
   if (!options.length) {
     return `
       <span>${termLink(data.glossary, 'comment', '検査室コメント')}</span>
-      <p class="comment-empty">添えられる候補がありません。行をマークすると候補が出ます。</p>`;
+      <p class="comment-empty">添えられる候補がありません。</p>`;
   }
 
-  const items = options
-    .map((o) => {
-      const on = selected.includes(o.id);
-      const full = !on && selected.length >= max;
+  const full = (o) => !selected.includes(o.id) && selected.length >= max;
+  const item = (o) => {
+    const on = selected.includes(o.id);
+    return `
+      <li>
+        <button type="button" class="comment-opt${on ? ' is-on' : ''}" data-comment="${esc(o.id)}"
+                aria-pressed="${on}"${full(o) ? ' disabled' : ''}>
+          <span class="comment-check">${on ? '✓' : ''}</span>${esc(o.text)}
+        </button>
+      </li>`;
+  };
+
+  const groups = (data.commentTemplates.groups || [])
+    .map((g) => {
+      const items = options.filter((o) => o.group === g.id);
+      if (!items.length) return '';
+      const picked = items.filter((o) => selected.includes(o.id)).length;
+      const open = opened ? opened.includes(g.id) : Boolean(g.open);
       return `
-        <li>
-          <button type="button" class="comment-opt${on ? ' is-on' : ''}" data-comment="${esc(o.id)}"
-                  aria-pressed="${on}"${full ? ' disabled' : ''}>
-            <span class="comment-check">${on ? '✓' : ''}</span>${esc(o.text)}
-          </button>
-        </li>`;
+        <details class="comment-group"${open ? ' open' : ''}>
+          <summary data-comment-group="${esc(g.id)}">
+            <span class="comment-group-label">${esc(g.label)}</span>
+            <span class="comment-group-count">${picked ? `${picked}行選択` : `${items.length}件`}</span>
+          </summary>
+          <ul class="comment-options">${items.map(item).join('')}</ul>
+        </details>`;
     })
     .join('');
 
+  // 群に入らない候補（古いデータ）は畳まずそのまま出す
+  const loose = options.filter((o) => !(data.commentTemplates.groups || []).some((g) => g.id === o.group));
+
   return `
     <span>${termLink(data.glossary, 'comment', '検査室コメント')}（任意・最大${max}行）</span>
-    <ul class="comment-options">${items}</ul>
+    ${groups}
+    ${loose.length ? `<ul class="comment-options">${loose.map(item).join('')}</ul>` : ''}
     <p class="comment-count">選択 ${selected.length} / ${max} 行${
       selected.length >= max ? '（上限です。外すと選び直せます）' : ''
     }</p>`;
@@ -223,14 +257,23 @@ function matches(when, choice) {
 /**
  * コメントの条件。
  *   true / false … 一行以上選んだか（中身は見ない）
- *   ["recollect_same", ...] … 指定した候補が全部選ばれていれば一致（指定外は不問）
+ *   ["recollect_same", ...] … 配列は { must: [...] } の略記
+ *   { must, any, forbid } … must は全部・any は一つでも選ばれていれば一致、
+ *                           forbid は一つでも選ばれていれば不一致
+ * IDは `continued` と素で書けば「どの項目でも」、`continued:Hb` と書けば「その項目で」。
  */
 function matchesComment(expected, choice) {
-  if (Array.isArray(expected)) {
-    const picked = commentTemplateIds(choice);
-    return expected.every((id) => picked.includes(id));
-  }
+  if (Array.isArray(expected)) return matchesCommentRule({ must: expected }, choice);
+  if (expected && typeof expected === 'object') return matchesCommentRule(expected, choice);
   return hasComment(choice) === expected;
+}
+
+function matchesCommentRule(rule, choice) {
+  const picked = commentIdSet(choice);
+  if (rule.must && !rule.must.every((id) => picked.has(id))) return false;
+  if (rule.any && !rule.any.some((id) => picked.has(id))) return false;
+  if (rule.forbid && rule.forbid.some((id) => picked.has(id))) return false;
+  return true;
 }
 
 /**

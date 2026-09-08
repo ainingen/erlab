@@ -85,6 +85,23 @@
     {
       "when": {
         "report": "routine",
+        "comment": {
+          "must": [
+            "delta"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "急な変化ではありません",
+      "reply": [
+        "msg_n03_comment_delta_kanae",
+        "msg_n03_comment_delta_yusuke"
+      ],
+      "doctor": "msg_comment_off"
+    },
+    {
+      "when": {
+        "report": "routine",
         "comment": true,
         "marks": {
           "must": [

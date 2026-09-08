@@ -72,6 +72,25 @@
     {
       "when": {
         "report": "emergency",
+        "comment": {
+          "any": [
+            "hemolysis",
+            "clot",
+            "dilution"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "検体に問題はありません",
+      "reply": [
+        "msg_n04_comment_sample_kanae",
+        "msg_n04_comment_sample_yusuke"
+      ],
+      "doctor": "msg_comment_off_emergency"
+    },
+    {
+      "when": {
+        "report": "emergency",
         "marks": {
           "must": [
             "K"

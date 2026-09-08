@@ -72,6 +72,27 @@
     {
       "when": {
         "report": "emergency",
+        "comment": {
+          "must": [
+            "hemolysis"
+          ],
+          "forbid": [
+            "real"
+          ]
+        },
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "溶血だけでは説明がつきません",
+      "reply": [
+        "msg_n05b_comment_hemo_only_kanae",
+        "msg_n05b_comment_hemo_only_yusuke"
+      ],
+      "doctor": "msg_n05b_emergency_recheck"
+    },
+    {
+      "when": {
+        "report": "emergency",
         "comment": true,
         "recheck": true,
         "marks": {

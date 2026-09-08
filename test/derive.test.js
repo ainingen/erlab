@@ -329,73 +329,103 @@ export function suite(data) {
   const optionIds = (opts) => opts.map((o) => o.id).join(',');
   const templateIds = (opts) => opts.map((o) => o.templateId);
 
-  test('候補: マーク × 疑いの組み合わせすべてで候補が出る', () => {
-    const c = caseById.n06; // 前回値があるので delta の候補も出せる
-    const panel = buildPanel(c, data);
-    for (const s of data.suspects.suspects) {
-      const opts = buildCommentOptions({ data, panel, marks: ['Hb'], suspects: { Hb: [s.id] } });
-      eq(templateIds(opts).includes(s.id), true, `疑い ${s.id} の候補が出ない`);
-      for (const o of opts) {
-        eq(o.text.includes('{'), false, `${o.id} に埋め残しがある: ${o.text}`);
-        eq(o.speech.includes('{'), false, `${o.id} の読み上げに埋め残しがある: ${o.speech}`);
-      }
+  test('候補: 所見一覧は全症例で同じ。項目なしの文はマーク0件でも全部出る', () => {
+    for (const c of data.cases) {
+      const panel = buildPanel(c, data);
+      const ids = optionIds(buildCommentOptions({ data, panel, marks: [] }));
+      // 事実の文（検体状態）だけ検体で入れ替わる。他は全症例で同じ並び
+      const expected = [
+        'microcytic', 'macrocytic', 'inflammation', 'renal', 'mismatch',
+        sampleStateText(panel) ? 'sample_state' : 'sample_state_clear',
+      ].join(',');
+      eq(ids, expected, `${c.id} の一覧`);
     }
-    // 疑いを全部付ければ、その項目のぶんが全部並ぶ
-    const all = data.suspects.suspects.map((s) => s.id);
-    const opts = buildCommentOptions({ data, panel, marks: ['Hb'], suspects: { Hb: all } });
-    eq(templateIds(opts).slice(0, all.length).join(','), all.join(','), '疑いの並び順');
+  });
+
+  test('候補: 項目付きの文はマークした行ごとに出る。マーク0件なら出ない', () => {
+    const panel = buildPanel(caseById.n06, data); // 全項目に前回値がある
+    const perMark = ['real', 'continued', 'delta', 'hemolysis', 'clot', 'dilution'];
+
+    const none = buildCommentOptions({ data, panel, marks: [] });
+    for (const id of perMark) {
+      eq(templateIds(none).includes(id), false, `マーク0件で ${id} が出ている`);
+    }
+
+    const two = buildCommentOptions({ data, panel, marks: ['Hb', 'WBC'] });
+    for (const id of perMark) {
+      const got = two.filter((o) => o.templateId === id).map((o) => o.id).join(',');
+      eq(got, `${id}:Hb,${id}:WBC`, `${id} がマークした順に出ていない`);
+    }
+    for (const o of two) {
+      eq(o.text.includes('{'), false, `${o.id} に埋め残しがある: ${o.text}`);
+      eq(o.speech.includes('{'), false, `${o.id} の読み上げに埋め残しがある: ${o.speech}`);
+    }
   });
 
   test('候補: 溶血の段階と前回値が文面に入る', () => {
-    const n05 = caseById.n05;
-    const hemo = buildCommentOptions({
-      data, panel: buildPanel(n05, data), marks: ['K'], suspects: { K: ['hemolysis'] },
-    });
-    eq(hemo[0].text, 'K：溶血（3+）の影響を疑う');
-    eq(hemo[0].speech, 'K 6.8、溶血（3+）の影響を疑います');
+    const hemo = buildCommentOptions({ data, panel: buildPanel(caseById.n05, data), marks: ['K'] });
+    eq(hemo.find((o) => o.id === 'hemolysis:K').text, 'K：溶血（3+）の影響を疑う');
+    eq(hemo.find((o) => o.id === 'hemolysis:K').speech, 'K 6.8、溶血（3+）の影響を疑います');
 
-    const n06 = caseById.n06;
-    const delta = buildCommentOptions({
-      data, panel: buildPanel(n06, data), marks: ['Hb'], suspects: { Hb: ['delta'] },
-    });
-    eq(delta[0].text, 'Hb：前回値から急な変化（13.5→9.8）');
+    const n06 = buildCommentOptions({ data, panel: buildPanel(caseById.n06, data), marks: ['Hb'] });
+    eq(n06.find((o) => o.id === 'delta:Hb').text, 'Hb：前回値から急な変化（13.5→9.8）');
+    eq(n06.find((o) => o.id === 'continued:Hb').text, 'Hb：前回（13.5）から継続、急な変化なし');
 
     // 溶血のない検体では段階を書かない
-    const n07 = caseById.n07;
-    const noGrade = buildCommentOptions({
-      data, panel: buildPanel(n07, data), marks: ['K'], suspects: { K: ['hemolysis'] },
-    });
-    eq(noGrade[0].text, 'K：溶血の影響を疑う');
+    const n07 = buildCommentOptions({ data, panel: buildPanel(caseById.n07, data), marks: ['K'] });
+    eq(n07.find((o) => o.id === 'hemolysis:K').text, 'K：溶血の影響を疑う');
   });
 
-  test('候補: 前回値のない項目に「前回値から急な変化」は出さない', () => {
-    const c = caseById.n01; // 前回値なし
-    const opts = buildCommentOptions({
-      data, panel: buildPanel(c, data), marks: ['K'], suspects: { K: ['delta'] },
-    });
+  test('候補: 前回値のない行に「前回から継続」「急な変化」は出さない', () => {
+    const opts = buildCommentOptions({ data, panel: buildPanel(caseById.n01, data), marks: ['K'] });
+    eq(templateIds(opts).includes('continued'), false);
     eq(templateIds(opts).includes('delta'), false);
+    eq(templateIds(opts).includes('real'), true, '前回値がなくても本物の判断は言える');
   });
 
-  test('候補: マーク0件でも検体状態の候補は出る', () => {
-    const withComment = buildCommentOptions({ data, panel: buildPanel(caseById.n05, data), marks: [] });
-    eq(optionIds(withComment), 'sample_state');
-    eq(withComment[0].text, '検体状態：溶血（3+）');
+  test('候補: 事実の文は事実どおりにしか出さない', () => {
+    const hemolysed = buildPanel(caseById.n05, data);
+    const withComment = buildCommentOptions({ data, panel: hemolysed, marks: [] });
+    eq(withComment.find((o) => o.id === 'sample_state').text, '検体状態：溶血（3+）');
+    eq(templateIds(withComment).includes('sample_state_clear'), false, '空でないのに「特記なし」が出る');
 
-    const clear = buildCommentOptions({ data, panel: buildPanel(caseById.n01, data), marks: [] });
-    eq(optionIds(clear), 'sample_state_clear');
-    eq(clear[0].text, '検体状態に特記なし');
+    const clean = buildPanel(caseById.n01, data);
+    const clear = buildCommentOptions({ data, panel: clean, marks: [] });
+    eq(clear.find((o) => o.id === 'sample_state_clear').text, '検体状態に特記なし');
+    eq(templateIds(clear).includes('sample_state'), false);
+
+    eq(templateIds(buildCommentOptions({ data, panel: clean, marks: [] })).includes('recheck'), false);
+    const asked = buildCommentOptions({ data, panel: clean, marks: [], recheck: true });
+    eq(templateIds(asked).includes('recheck'), true, '再採血を依頼したら出る');
   });
 
-  test('候補: 並びはマークした項目の順 → 検体状態 → 再採血 → 操作', () => {
-    const c = caseById.n04;
+  test('候補: 並びは群（値 → 検体 → 操作）→ 一覧の順 → マークした順', () => {
     const opts = buildCommentOptions({
-      data,
-      panel: buildPanel(c, data),
-      marks: ['K', 'Cre'],
-      suspects: { K: ['real'], Cre: ['real'] },
-      recheck: true,
+      data, panel: buildPanel(caseById.n04, data), marks: ['K', 'Cre'], recheck: true,
     });
-    eq(optionIds(opts), 'real:K,real:Cre,sample_state_clear,recheck');
+    eq(optionIds(opts), [
+      'real:K', 'real:Cre', 'continued:K', 'continued:Cre', 'delta:K', 'delta:Cre',
+      'microcytic', 'macrocytic', 'inflammation', 'renal',
+      'hemolysis:K', 'hemolysis:Cre', 'clot:K', 'clot:Cre', 'dilution:K', 'dilution:Cre',
+      'mismatch', 'sample_state_clear', 'recheck',
+    ].join(','));
+    // 群は前に戻らない
+    const order = data.commentTemplates.groups.map((g) => g.id);
+    let at = 0;
+    for (const o of opts) {
+      const i = order.indexOf(o.group);
+      eq(i >= at, true, `${o.id} で群が前に戻っている`);
+      at = i;
+    }
+  });
+
+  test('一覧: 文に行動（電話・緊急）を書かない', () => {
+    // 危険域と同じ理由。どうするかは検体状態を見てから決める
+    for (const t of data.commentTemplates.templates) {
+      for (const word of ['電話', '緊急']) {
+        eq(`${t.text}${t.speech}`.includes(word), false, `${t.id} に「${word}」が入っている`);
+      }
+    }
   });
 
   test('候補: 再採血の候補は二本目があるときだけ出る', () => {
