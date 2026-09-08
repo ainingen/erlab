@@ -36,6 +36,11 @@ const state = {
 };
 
 let interruptTimer = null;
+let pointTimer = null;
+
+// 指さし。枠が点いて2秒で消える。演出だけで、判定には一切効かない
+const POINT_MS = 2000;
+const POINT_VIEW = { reception: 'worklist', messages: 'messages' };
 
 // 差し戻しの返信が返ってから二本目が届くまでの間。演出だけで、時間制限は入れない。
 const FOLLOWUP_DELAY_MS = 4000;
@@ -409,6 +414,22 @@ function setView(view) {
   }
 }
 
+/* ---- 指さし ---- */
+
+/** ナビの一文から、画面のその場所を光らせる。一度に一か所だけ。 */
+function pointAt(region) {
+  for (const el of document.querySelectorAll('.is-pointed')) el.classList.remove('is-pointed');
+  clearTimeout(pointTimer);
+  setView(POINT_VIEW[region] || 'lis');
+  const targets = [...document.querySelectorAll(`[data-region="${region}"]`)];
+  if (!targets.length) return;
+  for (const el of targets) el.classList.add('is-pointed');
+  targets[0].scrollIntoView({ block: 'center' });
+  pointTimer = setTimeout(() => {
+    for (const el of targets) el.classList.remove('is-pointed');
+  }, POINT_MS);
+}
+
 /* ---- イベント ---- */
 
 function bindEvents() {
@@ -429,6 +450,12 @@ function bindEvents() {
     const caseBtn = ev.target.closest('[data-case]');
     if (caseBtn) {
       selectCase(caseBtn.dataset.case);
+      return;
+    }
+
+    const pointBtn = ev.target.closest('[data-point]');
+    if (pointBtn) {
+      pointAt(pointBtn.dataset.point);
       return;
     }
 

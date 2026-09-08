@@ -11,10 +11,21 @@ const KIND_LABEL = {
 
 const PORTRAIT_DIR = new URL('../assets/portraits/', import.meta.url);
 
-/** 本文。ナビと申し送りだけ、辞典の語を自動でリンクにする。 */
+/**
+ * 本文。ナビと申し送りだけ、辞典の語を自動でリンクにする。
+ * focus のある文には「ここ」を付ける。押すと画面のその場所が光る（一文に一つだけ）。
+ */
 function renderBody(m, glossary) {
   const link = glossary && LINKED_KINDS.has(m.kind);
-  return m.body.map((p) => `<p>${link ? linkTerms(p, glossary) : esc(p)}</p>`).join('');
+  const focus = Array.isArray(m.focus) ? m.focus : [];
+  return m.body
+    .map((p, i) => {
+      const point = focus[i]
+        ? `<button type="button" class="point" data-point="${esc(focus[i])}">ここ</button>`
+        : '';
+      return `<p>${link ? linkTerms(p, glossary) : esc(p)}${point}</p>`;
+    })
+    .join('');
 }
 
 /** 立ち絵のURL。ファイル名は {speaker}_{emotion}.png で固定。 */

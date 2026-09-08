@@ -230,6 +230,21 @@
   .btn:disabled { opacity: .5; cursor: default; }
   .btn-primary { background: var(--head); color: var(--head-ink); border-color: #101620; font-weight: 700; }
 
+  /* ---- 指さし ---- */
+  /* ナビの一文から、画面のどこを見るかを示す。枠が点いて2秒でゆっくり消える。
+     点滅させない（割り込みの点滅と区別する） */
+  .point {
+    font: inherit; font-size: 12px; margin-left: 6px; padding: 1px 7px; vertical-align: 1px;
+    background: var(--panel); border: 1px solid var(--head); color: var(--head);
+    cursor: pointer; white-space: nowrap;
+  }
+  .is-pointed {
+    outline: 3px solid var(--head); outline-offset: 1px;
+    animation: point-fade 2s ease-out 1 forwards;
+  }
+  @keyframes point-fade { from { outline-color: var(--head); } to { outline-color: rgba(43, 54, 70, 0); } }
+  @media (prefers-reduced-motion: reduce) { .is-pointed { animation: none; } }
+
   /* ---- messages ---- */
   .msg { border: 1px solid var(--line); border-left: 3px solid var(--line-strong); background: #fbfbf9; padding: 7px 9px; margin-bottom: 9px; }
   .msg-nav { border-left-color: var(--head); background: #eef1f6; }
@@ -429,21 +444,21 @@
 <main class="cols">
   <section class="col col-worklist">
     <h2 class="col-title">受付一覧</h2>
-    <div id="pane-worklist"></div>
+    <div id="pane-worklist" data-region="reception"></div>
   </section>
 
   <section class="col col-lis">
     <h2 class="col-title">検査結果<span id="case-title"></span></h2>
     <div id="pane-lis"><p>読み込み中…</p></div>
     <div class="lis-actions">
-      <button class="btn btn-primary" id="btn-report" type="button" data-action="open-report">報告する</button>
+      <button class="btn btn-primary" id="btn-report" type="button" data-action="open-report" data-region="report">報告する</button>
       <button class="btn" id="btn-next" type="button" hidden>次の症例へ</button>
     </div>
   </section>
 
   <section class="col col-messages">
     <h2 class="col-title">院内メッセージ</h2>
-    <div id="pane-messages"></div>
+    <div id="pane-messages" data-region="messages"></div>
   </section>
 </main>
 

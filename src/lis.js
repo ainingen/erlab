@@ -130,7 +130,7 @@ export function renderResults(caseDef, panel, data, view = null) {
   const tables = panel.panels.map((pn) => renderPanelTable(pn, v, glossary)).join('');
 
   return `
-    <div class="pt-head">
+    <div class="pt-head" data-region="patient">
       <div class="pt-line">
         <span class="pt-acc">受付 ${esc(caseDef.accession)}</span>
         <span class="pt-time">受付時刻 ${esc(caseDef.received_at)}</span>
@@ -149,7 +149,7 @@ export function renderResults(caseDef, panel, data, view = null) {
         <dt>前回検査</dt><dd>${esc(prevNote)}</dd>
       </dl>
     </div>
-    ${tables}
+    <div data-region="results">${tables}</div>
     <p class="hint">
       項目名をタップすると索引が開きます。${
         view && view.interactive ? '行をタップするとマークが付き、その行だけが報告に載ります。' : ''
