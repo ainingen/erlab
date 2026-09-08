@@ -37,9 +37,12 @@ const state = {
 
 let interruptTimer = null;
 let pointTimer = null;
+let pointSeqTimer = null;
 
 // 指さし。枠が点いて2秒で消える。演出だけで、判定には一切効かない
 const POINT_MS = 2000;
+// 症例0は自動で順に光らせる。次の一文へ移るまでの間
+const POINT_GAP_MS = 400;
 const POINT_VIEW = { reception: 'worklist', messages: 'messages' };
 
 // 差し戻しの返信が返ってから二本目が届くまでの間。演出だけで、時間制限は入れない。
@@ -103,8 +106,10 @@ function startShift() {
   state.tutorialStep = 0;
   renderAll();
   setView('lis');
-  renderTutorial();
+  // 帯の下に隠れないよう、光らせる先を上寄りに送る
+  document.documentElement.dataset.tutorial = 'open';
   $('#tutorial-dialog').showModal();
+  renderTutorial();
 }
 
 /* ---- 症例0（チュートリアル） ---- */
@@ -115,6 +120,14 @@ function renderTutorial() {
     state.tutorialStep,
     currentMentor(),
   );
+  // 症例0は自動。「次へ」で進むたび、その文の該当箇所が順に光る
+  pointSequence(stepFocuses(state.data.tutorial, state.tutorialStep, state.mentorId));
+}
+
+/** そのステップの各文の指さし先。書いていない文（null）は飛ばす。 */
+function stepFocuses(tutorial, index, mentorId) {
+  const line = tutorial.steps[index]?.lines?.[mentorId];
+  return (line && Array.isArray(line.focus) ? line.focus : []).filter(Boolean);
 }
 
 function advanceTutorial() {
@@ -124,6 +137,8 @@ function advanceTutorial() {
     return;
   }
   state.phase = 'cases';
+  clearPoint();
+  delete document.documentElement.dataset.tutorial;
   $('#tutorial-dialog').close();
   selectCase(state.cases[0].id);
 }
@@ -324,9 +339,13 @@ function renderAll() {
   renderScore();
 
   if (state.phase !== 'cases') {
+    // 帯の後ろに骨組みの結果画面を出す。指さしの的になり、欄の位置が覚えられる
     $('#case-title').textContent = `${state.data.tutorial.title}（画面の見方）`;
-    $('#pane-lis').innerHTML = renderTutorialPlaceholder();
-    $('.lis-actions').hidden = true;
+    $('#pane-lis').innerHTML = renderTutorialPlaceholder(state.data);
+    $('.lis-actions').hidden = false;
+    $('#btn-report').disabled = true;
+    $('#btn-report').textContent = '報告する';
+    $('#btn-next').hidden = true;
     return;
   }
 
@@ -421,6 +440,29 @@ function setView(view) {
 
 /* ---- 指さし ---- */
 
+/** 光っているものを消して、予約も取り消す。 */
+function clearPoint() {
+  clearTimeout(pointTimer);
+  clearTimeout(pointSeqTimer);
+  for (const el of document.querySelectorAll('.is-pointed')) el.classList.remove('is-pointed');
+}
+
+/**
+ * 症例0の指さし。一文ずつ順に光らせる。押させない（まだ何を押せばいいか分からない段階）。
+ * 一度に一か所だけ。2秒光って消え、少し置いて次の一文へ移る。
+ */
+function pointSequence(regions) {
+  clearPoint();
+  if (!regions.length) return;
+  let i = 0;
+  const next = () => {
+    pointAt(regions[i]);
+    i += 1;
+    if (i < regions.length) pointSeqTimer = setTimeout(next, POINT_MS + POINT_GAP_MS);
+  };
+  next();
+}
+
 /** ナビの一文から、画面のその場所を光らせる。一度に一か所だけ。 */
 function pointAt(region) {
   for (const el of document.querySelectorAll('.is-pointed')) el.classList.remove('is-pointed');
@@ -429,7 +471,9 @@ function pointAt(region) {
   const targets = [...document.querySelectorAll(`[data-region="${region}"]`)];
   if (!targets.length) return;
   for (const el of targets) el.classList.add('is-pointed');
-  targets[0].scrollIntoView({ block: 'center' });
+  // 症例0は下に帯があるので、光らせる先を画面の上に寄せる。ナビの「ここ」は中央のまま
+  const banded = document.documentElement.dataset.tutorial === 'open';
+  targets[0].scrollIntoView({ block: banded ? 'start' : 'center' });
   pointTimer = setTimeout(() => {
     for (const el of targets) el.classList.remove('is-pointed');
   }, POINT_MS);

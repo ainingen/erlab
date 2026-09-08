@@ -277,6 +277,24 @@
     border: 1px dashed var(--line-strong); padding: 22px 12px; margin: 0 0 10px;
   }
 
+  /* 症例0の説明は画面を覆わない。下に寄せた帯にして、上半分に受付一覧と結果画面を見せる。
+     指さしが帯の裏に隠れないよう、送り先を上寄りにする（scroll-padding） */
+  #tutorial-dialog {
+    position: fixed; inset: auto 0 0 0; width: 100%; max-width: none; margin: 0;
+    max-height: 46vh; overflow-y: auto;
+    border-width: 3px 0 0; box-shadow: 0 -6px 18px rgba(20, 24, 32, .22);
+  }
+  #tutorial-dialog::backdrop { background: transparent; }
+  html[data-tutorial="open"] { scroll-padding: 12px 0 52vh; }
+  /* 帯のぶんの逃げを作る。これがないと、画面の下にあるもの（報告ボタン）を
+     上へ送れず、帯の裏に入ったままになる */
+  html[data-tutorial="open"] .cols { padding-bottom: 52vh; }
+
+  /* チュートリアル中の骨組み。数字は入らない */
+  .lis-table.is-skeleton td[data-col="value"],
+  .pt-head.is-skeleton .pt-name { color: var(--ink-dim); font-weight: 400; }
+  .lis-table.is-skeleton td[data-col="flag"] { min-width: 2.6em; }
+
   /* ---- dialogs ---- */
   dialog { border: 2px solid var(--head); background: var(--panel); color: var(--ink); padding: 0; width: min(600px, 94vw); }
   dialog::backdrop { background: rgba(20, 24, 32, .55); }

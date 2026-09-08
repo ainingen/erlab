@@ -143,8 +143,8 @@ export function suite(data) {
         eq(emotionsOf[id].includes(line.emotion), true,
            `${step.id} ${id} の emotion ${line.emotion} は ${id} にない`);
       }
-      if (step.focus) {
-        eq(typeof data.tutorial.focus_label[step.focus], 'string', `${step.id} の focus 表記`);
+      if (step.pane) {
+        eq(typeof data.tutorial.focus_label[step.pane], 'string', `${step.id} の pane 表記`);
       }
     }
   });

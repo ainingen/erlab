@@ -5,6 +5,7 @@ import { test, eq } from './harness.js';
 import { renderResults, renderGlossaryPanel, renderTermPanel, linkTerms, termLink } from '../src/lis.js';
 import { renderReportDialog, renderCommentPicker } from '../src/report.js';
 import { renderMessages } from '../src/messages.js';
+import { renderTutorialPlaceholder, stepCount } from '../src/tutorial.js';
 import { buildPanel, buildCommentOptions } from '../src/derive.js';
 
 const FOCUS_IDS = [
@@ -186,6 +187,70 @@ export function suite(data) {
     // 段落ごとに多くても1つ
     for (const p of html.split('</p>')) {
       eq((p.match(/data-point=/g) || []).length <= 1, true, '一文に二か所光らせている');
+    }
+  });
+
+  // ---- 症例0の指さし（自動発火） ----
+  test('症例0: 9ステップのまま、各文に指さしを持つ', () => {
+    const tutorial = data.tutorial;
+    eq(stepCount(tutorial), 9);
+    for (const step of tutorial.steps) {
+      for (const id of data.mentors.mentors.map((m) => m.id)) {
+        const line = step.lines[id];
+        eq(Array.isArray(line.focus), true, `${step.id} ${id} に focus がない`);
+        eq(line.focus.length, line.body.length, `${step.id} ${id} の focus は本文と同じ数`);
+        for (const f of line.focus) {
+          if (f === null) continue;
+          eq(FOCUS_IDS.includes(f), true, `${step.id} ${id} の focus に知らない領域 ${f}`);
+        }
+      }
+    }
+  });
+
+  test('症例0: 同じ場所を続けて光らせない（点滅に見えるため）', () => {
+    for (const step of data.tutorial.steps) {
+      for (const id of data.mentors.mentors.map((m) => m.id)) {
+        const focus = step.lines[id].focus;
+        for (let i = 1; i < focus.length; i += 1) {
+          if (!focus[i]) continue;
+          eq(focus[i] === focus[i - 1], false, `${step.id} ${id} で ${focus[i]} が続いている`);
+        }
+      }
+    }
+  });
+
+  test('症例0: 見出しの pane と各文の focus は別もの', () => {
+    for (const step of data.tutorial.steps) {
+      eq(step.focus, undefined, `${step.id} に古い step.focus が残っている`);
+      if (step.pane) {
+        eq(typeof data.tutorial.focus_label[step.pane], 'string', `${step.id} の pane`);
+      }
+    }
+  });
+
+  test('症例0の結果画面: 骨組みに指さしの的があり、検査値は出ない', () => {
+    const html = renderTutorialPlaceholder(data);
+    for (const region of ['patient', 'sample_state', 'results', 'flags', 'previous']) {
+      eq(html.includes(`data-region="${region}"`), true, `${region} の的がない`);
+    }
+    // 結果と前回値は「―」のまま。患者の値は一つも出さない
+    eq(/<td data-col="value">―<\/td>/.test(html), true, '結果が「―」でない');
+    eq(html.includes('<td data-col="value">'), true);
+    eq(/<td data-col="value">(?!―)/.test(html), false, '結果に数字が入っている');
+    for (const c of data.cases) {
+      eq(html.includes(c.patient.id), false, `${c.id} の患者が出ている`);
+    }
+    // 骨組みでも指さしの先が全部そろっている（症例0で使う領域）
+    const used = new Set();
+    for (const step of data.tutorial.steps) {
+      for (const id of data.mentors.mentors.map((m) => m.id)) {
+        for (const f of step.lines[id].focus) if (f) used.add(f);
+      }
+    }
+    for (const region of used) {
+      const inPlaceholder = html.includes(`data-region="${region}"`);
+      const inShell = ['reception', 'messages', 'report'].includes(region);
+      eq(inPlaceholder || inShell, true, `${region} を指す先がどこにもない`);
     }
   });
 
