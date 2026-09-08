@@ -24,7 +24,7 @@ export function renderTutorialStep(tutorial, index, mentor) {
     ${focus ? `<p class="tut-focus">${esc(focus)}</p>` : ''}
     <div class="tut-body">
       <img class="tut-portrait" src="${esc(portraitUrl(mentor.id, line.emotion))}"
-           width="928" height="1232" alt="${esc(mentor.name)}">
+           alt="${esc(mentor.name)}">
       <div class="tut-lines">
         <p class="tut-from">${esc(mentor.name)} / ${esc(mentor.role)}</p>
         ${line.body.map((p) => `<p>${esc(p)}</p>`).join('')}

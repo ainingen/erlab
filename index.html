@@ -241,17 +241,19 @@
   .msg p { font-family: var(--sans); font-size: 16px; line-height: 1.75; margin: 0 0 7px; }
   .empty { font-family: var(--sans); color: var(--ink-dim); }
 
-  /* 指導役の台詞は立ち絵を左、台詞を右に置く */
-  .msg.has-portrait { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 9px; align-items: start; }
-  .msg-portrait { width: 84px; height: auto; display: block; background: #fff; border: 1px solid var(--line); }
+  /* 指導役の台詞は立ち絵を左、台詞を右に置く。
+     大きさは高さで決める。絵の幅（かなえ306px・悠介928px）が変わっても人物の大きさは変えない。
+     左の列は絵の幅なりに広がる（auto）ので、幅の違う絵が混ざっても崩れない */
+  .msg.has-portrait { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; }
+  .msg-portrait { height: 112px; width: auto; display: block; background: #fff; border: 1px solid var(--line); }
   .msg-main { min-width: 0; }
 
   /* ---- 症例0（チュートリアル） ---- */
   .tut-title { display: flex; align-items: baseline; gap: 8px; }
   .tut-step { font-size: 13px; font-weight: 400; color: var(--ink-dim); border: 1px solid var(--line-strong); padding: 0 5px; }
   .tut-focus { font-family: var(--sans); font-size: 13px; color: var(--ink-dim); margin: -4px 0 10px; }
-  .tut-body { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: start; }
-  .tut-portrait { width: 130px; height: auto; display: block; background: #fff; border: 1px solid var(--line); }
+  .tut-body { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+  .tut-portrait { height: 173px; width: auto; display: block; background: #fff; border: 1px solid var(--line); }
   .tut-lines { font-family: var(--sans); font-size: 16px; line-height: 1.8; }
   .tut-lines p { margin: 0 0 9px; }
   .tut-from { font-family: var(--num); font-size: 13px; color: var(--ink-dim); margin: 0 0 8px; }
@@ -353,10 +355,9 @@
     .t-name { display: none; }
     .wl-title { display: none; }
     .pt-meta { grid-template-columns: 5.5em 1fr; }
-    .tut-body { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
-    .tut-portrait { width: 96px; }
-    .msg.has-portrait { grid-template-columns: 72px minmax(0, 1fr); }
-    .msg-portrait { width: 72px; }
+    .tut-body { gap: 10px; }
+    .tut-portrait { height: 127px; }
+    .msg-portrait { height: 96px; }
   }
 </style>
 </head>

@@ -46,7 +46,7 @@ function renderMessage(m, mentor) {
   const portrait =
     speaker && m.emotion
       ? `<img class="msg-portrait" src="${esc(portraitUrl(speaker, m.emotion))}"
-              width="928" height="1232" alt="${esc(mentor ? mentor.name : '')}">`
+              alt="${esc(mentor ? mentor.name : '')}">`
       : '';
 
   return `
