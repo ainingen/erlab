@@ -578,6 +578,65 @@ export function suite(data) {
     eq(evaluate(c, pick('routine')).score, 'poor');
   });
 
+  // ---- 指導役に聞く（docs/investigate.md §8） ----
+  test('ask: 聞いた症例の最終評価は許容どまり（枝は書き換えない）', () => {
+    const caseDef = {
+      choices: [
+        { when: { report: 'emergency' }, score: 'best', headline: '最善' },
+        { when: { report: 'urgent' }, score: 'ok', headline: '許容' },
+        { when: {}, score: 'poor', headline: '要改善' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('emergency')).score, 'best', '聞かなければ最善のまま');
+    eq(evaluate(caseDef, pick('emergency', { asked: true })).score, 'ok', '聞いたのに最善');
+    // 当たる枝は変わらない。落ちるのは評価だけ
+    eq(evaluate(caseDef, pick('emergency', { asked: true })).headline, '最善');
+    eq(evaluate(caseDef, pick('urgent', { asked: true })).score, 'ok');
+    eq(evaluate(caseDef, pick('routine', { asked: true })).score, 'poor', '許容まで上げてはいけない');
+  });
+
+  test('ask: actions には含めない（別扱い）', () => {
+    const caseDef = {
+      choices: [
+        { when: { actions: { must: ['call'] } }, score: 'best', headline: '電話した' },
+        { when: {}, score: 'poor', headline: '受け皿' },
+      ],
+    };
+    // 聞いても行動を押したことにはならない
+    eq(evaluate(caseDef, pick('routine', { asked: true })).headline, '受け皿');
+    eq(evaluate(caseDef, pick('routine', { asked: true, actions: ['call'] })).headline, '電話した');
+  });
+
+  test('ask: 差し戻しのある症例でも頭打ちになる（一本目で聞いても二本目で聞いても）', () => {
+    const c = caseById.n07;
+    const first = pick('emergency', { marks: ['K'], suspects: { K: ['real'] } });
+    // 一本目で聞くと cap が ok に落ち、二本目の最善が許容どまりになる
+    const asked = evaluate(c, { ...first, asked: true });
+    eq(asked.then, 'followup', '差し戻しの枝に当たっていない');
+    eq(asked.cap, 'ok', '聞いたのに cap が best のまま');
+    const second = pick('emergency', {
+      comment: [{ id: 'recollect_same:K', templateId: 'recollect_same', text: 'K：再採血で同値' }],
+      marks: ['K'], suspects: { K: ['real'] },
+    });
+    eq(evaluateFollowup(c, second, asked.cap).score, 'ok');
+    // 二本目で聞いた場合も同じ
+    eq(evaluateFollowup(c, { ...second, asked: true }, 'best').score, 'ok');
+    eq(evaluateFollowup(c, second, 'best').score, 'best', '聞かなければ最善');
+  });
+
+  test('全症例: 聞いた報告に最善は出ない', () => {
+    for (const c of data.cases) {
+      const suspectIds = data.suspects.suspects.map((x) => x.id);
+      for (const choice of combosFor(c, suspectIds)) {
+        const asked = { ...choice, asked: true, actions: ['look', 'idcheck', 'smear', 'call'] };
+        const res = c.followup
+          ? evaluateFollowup(c, asked, evaluate(c, asked).cap)
+          : evaluate(c, asked);
+        eq(res.score === 'best', false, `${labelOf(c.id, choice)} が聞いても最善`);
+      }
+    }
+  });
+
   test('worseScore: 悪いほうを採る', () => {
     eq(worseScore('best', 'best'), 'best');
     eq(worseScore('best', 'ok'), 'ok');

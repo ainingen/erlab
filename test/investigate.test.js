@@ -7,6 +7,8 @@ import {
   idCheckLines, sampleLines, renderActionBar, renderInvestigateLog,
 } from '../src/investigate.js';
 import { renderResults } from '../src/lis.js';
+import { renderMessages, askMessageIds, DEFAULT_ASK_IDS } from '../src/messages.js';
+import { renderVerdict } from '../src/report.js';
 import { buildPanel } from '../src/derive.js';
 
 const ids = (states) => states.map((s) => s.id).join(',');
@@ -229,6 +231,61 @@ export function suite(data) {
     eq(html.includes('血算の依頼なし'), true);
     // 指さしの的（症例5のナビが指す）
     eq(html.includes('data-region="investigate"'), true);
+  });
+
+  // ---- 指導役に聞く（§8） ----
+  test('聞く: 手書き症例は自前の台詞、書いていない症例は既定の「見る順番」', () => {
+    eq(askMessageIds(caseById.n05).join(','), 'msg_n05_ask_kanae,msg_n05_ask_yusuke');
+    // 書いていない症例（生成症例もここに落ちる）
+    eq(askMessageIds(caseById.n01).join(','), DEFAULT_ASK_IDS.join(','));
+    eq(askMessageIds({}).join(','), DEFAULT_ASK_IDS.join(','));
+    for (const id of [...DEFAULT_ASK_IDS, 'msg_n05_ask_kanae', 'msg_n05_ask_yusuke']) {
+      eq(Boolean(data.messages.messages[id]), true, `${id} がない`);
+    }
+  });
+
+  test('聞く: 既定の台詞は「見る順番」の五行そのままで、答えを言わない', () => {
+    const steps = data.glossary.reading_order.steps;
+    for (const id of DEFAULT_ASK_IDS) {
+      const msg = data.messages.messages[id];
+      eq(msg.kind, 'nav');
+      eq(msg.repeat, true, `${id} は症例をまたいで届くので repeat が要る`);
+      const text = msg.body.join('');
+      for (const s of steps) {
+        eq(text.includes(s.term), true, `${id} に「${s.term}」がない`);
+        eq(text.includes(s.hint), true, `${id} に「${s.hint}」がない`);
+      }
+      // 見どころを指すだけ。報告レベルの結論は言わない
+      eq(/通常報告|至急報告|緊急報告|再採血して/.test(text), false, `${id} が結論を言っている`);
+    }
+  });
+
+  test('聞く: ナビ枠の末尾に出る。押したら「聞いた」になる', () => {
+    const mentor = data.mentors.mentors[0];
+    const nav = { id: 'msg_n05_nav_kanae', ...data.messages.messages.msg_n05_nav_kanae };
+    const ask = { navIds: ['msg_n05_nav_kanae'], asked: false, enabled: true };
+    const html = renderMessages([nav], mentor, data.glossary, ask);
+    eq(html.includes('data-action="ask"'), true, '「聞く」が出ていない');
+    eq(html.includes('許容どまり'), true, '押す前に評価に出ることを言っていない');
+    eq(html.indexOf('msg-ask') > html.indexOf('msg-main'), true, 'ナビ枠の末尾でない');
+
+    const done = renderMessages([nav], mentor, data.glossary, { ...ask, asked: true });
+    eq(done.includes('data-action="ask"'), false, '二度押せる');
+    eq(done.includes('聞いた'), true);
+
+    // 他の症例のナビや、ナビ以外の枠には出さない
+    eq(renderMessages([nav], mentor, data.glossary, { ...ask, navIds: ['msg_n06_nav_kanae'] })
+      .includes('data-action="ask"'), false);
+    eq(renderMessages([nav], mentor, data.glossary).includes('data-action="ask"'), false);
+  });
+
+  test('聞く: 判定画面の見出しの下に一行出る', () => {
+    const res = { score: 'ok', headline: 'x' };
+    const choice = { level: 'urgent', marks: [], suspects: {}, comment: [], asked: true };
+    const html = renderVerdict(res, choice, data);
+    eq(html.includes('指導役に聞いたため、許容どまりです'), true);
+    eq(html.indexOf('</h2>') < html.indexOf('verdict-ask'), true, '見出しより上に出ている');
+    eq(renderVerdict(res, { ...choice, asked: false }, data).includes('verdict-ask'), false);
   });
 
   test('行動ボタン: 表記は一段に収まる短いもの。色で状態を伝えない', () => {

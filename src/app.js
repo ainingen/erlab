@@ -4,7 +4,7 @@ import { loadData } from './data.js';
 import { buildPanel, buildRecollect, buildCommentOptions, toggleCommentSelection } from './derive.js';
 import { renderWorklist, renderResults, renderRecollect, renderGlossaryPanel, esc } from './lis.js';
 import {
-  renderMessages, newestFirst, freshGroup, resolveMessages, filterBySpeaker,
+  renderMessages, newestFirst, freshGroup, resolveMessages, filterBySpeaker, askMessageIds,
 } from './messages.js';
 import {
   renderReportDialog, renderCommentPicker, renderPhone, evaluate, evaluateFollowup, renderVerdict,
@@ -25,6 +25,7 @@ const state = {
   marks: {},
   suspects: {},
   actions: {},  // 症例ID → 押した行動（調べる）。押した順に積む。取り消しはない
+  asked: {},    // 症例ID → 指導役に聞いたか。聞いた症例は最終評価が許容どまりになる
   comments: {}, // 選択キー → 選んだコメント候補のID（打つものはゼロ）
   commentGroups: {}, // 選択キー → 開いている所見の群。既定は comment_templates.json の open
   stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
@@ -309,6 +310,29 @@ function investigate(actionId) {
   renderAll();
 }
 
+/* ---- 指導役に聞く ---- */
+
+/** ナビ枠に「聞く」を置く。1症例1回で、押すと最終評価が許容どまりになる。 */
+function askState() {
+  const caseDef = currentCase();
+  if (!caseDef) return null;
+  return {
+    navIds: [].concat(caseDef.nav ?? []),
+    asked: Boolean(state.asked[caseDef.id]),
+    enabled: canMark(),
+  };
+}
+
+function ask() {
+  const caseDef = currentCase();
+  if (!caseDef || state.asked[caseDef.id] || !canMark()) return;
+  state.asked[caseDef.id] = true;
+  // 症例が台詞を書いていなければ既定の「見る順番」が出る（生成症例でも動く）
+  pushMessage(askMessageIds(caseDef));
+  sound.play('message');
+  renderAll();
+}
+
 /* ---- コメントの候補 ---- */
 
 /**
@@ -553,6 +577,7 @@ function renderMessagePane() {
     newestFirst(visibleMessageGroups()),
     currentMentor(),
     state.data.glossary,
+    askState(),
   );
 }
 
@@ -718,6 +743,7 @@ function bindEvents() {
     if (action === 'toggle-sound') toggleSound();
     if (action === 'close-mentor') $('#mentor-dialog').close();
     if (action === 'tutorial-next') advanceTutorial();
+    if (action === 'ask') ask();
     if (action === 'readback') {
       sound.stop('dial');
       sound.play('pickup');
@@ -756,6 +782,7 @@ function bindEvents() {
       marks: sel.marks,
       suspects: sel.suspects,
       actions: takenActionIds(currentCase().id),
+      asked: Boolean(state.asked[currentCase().id]),
     };
     if (choice.level === 'emergency') {
       state.pendingChoice = choice;

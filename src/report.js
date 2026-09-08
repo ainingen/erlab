@@ -222,7 +222,21 @@ export function renderPhone(caseDef, panel, selection = null, accession = caseDe
  * doctor … 医師からの返信。どの枝にも必ずある。報告 → 講評 → 医師の返信、の順で流す
  */
 export function evaluate(caseDef, choice) {
-  return pickBranch(caseDef.choices, choice);
+  return applyAskCap(pickBranch(caseDef.choices, choice), choice);
+}
+
+/**
+ * 「指導役に聞く」（docs/investigate.md §8）。聞いた症例の最終評価は上限 ok。
+ * 症例側の枝は書き換えず、エンジンで min を取る。`actions` には含めない別扱い。
+ */
+function applyAskCap(res, choice) {
+  if (!choice || !choice.asked) return res;
+  return {
+    ...res,
+    cap: worseScore(res.cap, 'ok'),
+    // then を持つ枝（差し戻し）は score を持たない。頭打ちは cap のほうに残る
+    score: res.score ? worseScore(res.score, 'ok') : res.score,
+  };
 }
 
 /**
@@ -231,7 +245,7 @@ export function evaluate(caseDef, choice) {
  * followup の枝に then は書けない（入れ子にしない）。
  */
 export function evaluateFollowup(caseDef, choice, cap = 'best') {
-  const res = pickBranch(caseDef.followup && caseDef.followup.choices, choice);
+  const res = applyAskCap(pickBranch(caseDef.followup && caseDef.followup.choices, choice), choice);
   return { ...res, branchScore: res.score, score: worseScore(res.score, cap), then: null, cap };
 }
 
@@ -356,6 +370,7 @@ export function renderVerdict(res, choice, data) {
       }</span>
       ${esc(res.headline)}
     </h2>
+    ${choice.asked ? '<p class="verdict-ask">指導役に聞いたため、許容どまりです。</p>' : ''}
     <p class="verdict-choice">${esc(bits.join(' ／ '))}</p>
     ${lines.length ? `<ul class="verdict-comment">${lines.map((l) => `<li>${esc(l.text)}</li>`).join('')}</ul>` : ''}
     <p class="verdict-note">${
