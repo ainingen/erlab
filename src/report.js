@@ -1,7 +1,7 @@
 // 報告ダイアログと判定。
 // 「必要十分な判断で正解に到達したか」を見るので、過剰報告も減点にする。
 
-import { esc } from './lis.js';
+import { esc, termLink } from './lis.js';
 
 export const SCORE_LABEL = { best: '最善', ok: '許容', poor: '要改善' };
 
@@ -52,13 +52,13 @@ export function renderReportDialog(caseDef, data, selection = null) {
     <p class="report-marks"><span class="report-marks-label">報告対象</span>${esc(markSummary(selection, data))}</p>
     <form id="report-form">
       <fieldset>
-        <legend>報告レベル</legend>
+        <legend>${termLink(data.glossary, 'levels', '報告レベル')}</legend>
         ${levels}
       </fieldset>
-      <label class="field">
-        <span>検査室コメント（任意）</span>
+      <div class="field">
+        <span>${termLink(data.glossary, 'comment', '検査室コメント')}（任意）</span>
         <textarea name="comment" rows="3" placeholder="例）小球性低色素性。前回値と比べゆるやかに低下。"></textarea>
-      </label>
+      </div>
       <label class="check">
         <input type="checkbox" name="recheck">
         <span>再検・再採血を依頼する</span>

@@ -301,6 +301,43 @@
   .verdict-note, .gl-foot, .gl-derived { font-family: var(--sans); font-size: 13px; color: var(--ink-dim); }
 
   /* ---- glossary ---- */
+  /* 語のリンク。項目名の索引と同じ見た目にそろえる（点線の下線） */
+  .term {
+    font: inherit; color: inherit; background: none; border: 0; padding: 0;
+    cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px;
+  }
+  .term-help {
+    font: inherit; font-size: 12px; line-height: 1; margin-left: 3px; padding: 2px 5px;
+    background: #fbfbf9; border: 1px solid var(--line-strong); border-radius: 50%;
+    color: var(--ink-dim); cursor: pointer; min-height: 24px;
+  }
+  .suspect-wrap { display: inline-flex; align-items: center; }
+
+  .gl-tabs { display: flex; gap: 0; margin: -14px -14px 12px; background: #dcdad4; border-bottom: 1px solid var(--line-strong); }
+  .gl-tab {
+    flex: 1; padding: 9px 4px; font: inherit; font-size: 15px; cursor: pointer;
+    background: transparent; border: 0; border-bottom: 3px solid transparent; color: var(--ink-dim);
+  }
+  .gl-tab.is-selected { color: var(--ink); font-weight: 700; border-bottom-color: var(--head); background: var(--panel); }
+  .gl-empty { font-family: var(--sans); color: var(--ink-dim); }
+
+  /* 見る順番。答えではなく手順なので、どの症例でも同じ五行を出す */
+  .reading-order { border: 2px solid var(--head); background: #eef1f6; padding: 9px 11px; margin-bottom: 14px; }
+  .reading-order h2 { font-size: 15px; margin: 0 0 7px; border: 0; padding: 0; letter-spacing: .1em; }
+  .reading-order ol { list-style: none; margin: 0; padding: 0; }
+  .reading-order li { display: grid; grid-template-columns: 1.6em 6.5em 1fr; gap: 0 6px; align-items: baseline; padding: 3px 0; }
+  .ro-no { font-size: 13px; color: var(--ink-dim); }
+  .ro-term { font-weight: 700; }
+  .ro-hint { font-family: var(--sans); font-size: 14px; color: var(--ink-dim); }
+  .ro-note { font-family: var(--sans); font-size: 13px; color: var(--ink-dim); margin: 7px 0 0; }
+
+  .term-card { border-bottom: 1px dotted var(--line); padding: 8px 6px; }
+  .term-card:last-child { border-bottom: 0; }
+  .term-card h3 { font-size: 16px; margin: 0 0 4px; }
+  .term-card.is-current { background: var(--warn); border-left: 4px solid var(--ink); padding-left: 8px; }
+  .term-alias { font-size: 12px; font-weight: 400; color: var(--ink-dim); margin-left: 8px; }
+  .term-card p { font-family: var(--sans); font-size: 15px; line-height: 1.7; margin: 0 0 3px; }
+
   .gl-title { font-size: 17px; }
   .gl-unit { font-size: 13px; color: var(--ink-dim); margin-left: 8px; }
   .glossary { margin: 0; }

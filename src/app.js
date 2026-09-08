@@ -2,7 +2,7 @@
 
 import { loadData } from './data.js';
 import { buildPanel, buildRecollect } from './derive.js';
-import { renderWorklist, renderResults, renderRecollect, renderGlossary, esc } from './lis.js';
+import { renderWorklist, renderResults, renderRecollect, renderGlossaryPanel, esc } from './lis.js';
 import { renderMessages, resolveMessages, filterBySpeaker } from './messages.js';
 import {
   renderReportDialog, renderPhone, evaluate, evaluateFollowup, renderVerdict, SCORE_LABEL,
@@ -28,6 +28,7 @@ const state = {
   pendingChoice: null,
   phase: 'mentor', // mentor → tutorial → cases
   tutorialStep: 0,
+  glossary: { tab: 'tests', testId: null, termId: null }, // 索引パネルの開き方
   interrupt: null, // { caseId, from, at } … ERからの至急が入っている間だけ立つ
   interruptDone: false, // 新人研修では1回だけ（上級モードでランダム化する）
 };
@@ -278,11 +279,13 @@ function renderAll() {
   const waiting = state.status[caseDef.id] === 'waiting';
   const stage = stageOf(caseDef.id);
   const suspectDefs = state.data.suspects.suspects;
+  const glossary = state.data.glossary;
 
   // 一本目。差し戻しに入ったら読むだけになる（マークは残す）
   const firstView = {
     ...selection(selectionKey(caseDef.id, 'first')),
     suspectDefs,
+    glossary,
     interactive: !done && stage === 'first',
   };
   let html = renderResults(caseDef, currentPanel(), state.data, firstView);
@@ -293,6 +296,7 @@ function renderAll() {
     html += renderRecollect(caseDef, followup, caseDef.followup.recollect, {
       ...selection(selectionKey(caseDef.id, 'followup')),
       suspectDefs,
+      glossary,
       interactive: !done,
     });
   }
@@ -328,7 +332,7 @@ function renderWorklistPane() {
 
 function renderMessagePane() {
   const pane = $('#pane-messages');
-  pane.innerHTML = renderMessages(visibleMessages(), currentMentor());
+  pane.innerHTML = renderMessages(visibleMessages(), currentMentor(), state.data.glossary);
   pane.scrollTop = pane.scrollHeight; // 新しい申し送り・返信が見えるところまで送る
 }
 
@@ -371,6 +375,18 @@ function bindEvents() {
     const caseBtn = ev.target.closest('[data-case]');
     if (caseBtn) {
       selectCase(caseBtn.dataset.case);
+      return;
+    }
+
+    const termBtn = ev.target.closest('[data-term]');
+    if (termBtn) {
+      openTerm(termBtn.dataset.term);
+      return;
+    }
+
+    const glTab = ev.target.closest('[data-gl-tab]');
+    if (glTab) {
+      switchGlossaryTab(glTab.dataset.glTab);
       return;
     }
 
@@ -439,11 +455,31 @@ function bindEvents() {
   });
 }
 
+/* ---- 索引パネル（項目 ／ 言葉） ---- */
+
 function openGlossary(testId) {
   if (state.phase !== 'cases') return;
-  const sex = currentCase().patient.sex;
-  $('#glossary-body').innerHTML = renderGlossary(testId, state.data, sex);
-  $('#glossary-dialog').showModal();
+  state.glossary = { tab: 'tests', testId, termId: null };
+  showGlossary();
+}
+
+/** 画面の言葉をタップしたとき。症例を開いていなくても引ける。 */
+function openTerm(termId) {
+  state.glossary = { ...state.glossary, tab: 'terms', termId };
+  showGlossary();
+}
+
+function switchGlossaryTab(tab) {
+  state.glossary = { ...state.glossary, tab };
+  showGlossary();
+}
+
+function showGlossary() {
+  const sex = currentCase()?.patient.sex || 'F';
+  $('#glossary-body').innerHTML = renderGlossaryPanel(state.data, state.glossary, sex);
+  if (!$('#glossary-dialog').open) $('#glossary-dialog').showModal();
+  const current = $('#glossary-body .term-card.is-current');
+  if (current) current.scrollIntoView({ block: 'center' });
 }
 
 function openReport() {
