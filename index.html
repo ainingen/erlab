@@ -340,7 +340,11 @@
   }
   .suspect-wrap { display: inline-flex; align-items: center; }
 
-  .gl-tabs { display: flex; gap: 0; margin: -14px -14px 12px; background: #dcdad4; border-bottom: 1px solid var(--line-strong); }
+  /* 語を指定して開くとその語まで送るので、タブは上に貼り付けて always 押せるようにする */
+  .gl-tabs {
+    display: flex; gap: 0; margin: -14px -14px 12px; background: #dcdad4;
+    border-bottom: 1px solid var(--line-strong); position: sticky; top: -14px; z-index: 2;
+  }
   .gl-tab {
     flex: 1; padding: 9px 4px; font: inherit; font-size: 15px; cursor: pointer;
     background: transparent; border: 0; border-bottom: 3px solid transparent; color: var(--ink-dim);
