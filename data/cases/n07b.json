@@ -1,0 +1,265 @@
+{
+  "id": "n07b",
+  "mode": "rookie",
+  "title": "7-b. IDは合っている、中身が違う",
+  "goal": "前回値との乖離が「患者の変化」か「別人の値」かを、MCVと横の連絡で見分ける",
+  "accession": "26-0907-091",
+  "received_at": "13:20",
+  "patient": {
+    "id": "P-0009",
+    "label": "患者I",
+    "age": 78,
+    "sex": "M",
+    "from": "整形外科病棟",
+    "vitals": {
+      "pulse": 78,
+      "bp": "132/76"
+    },
+    "note": "右大腿骨骨折、術後3日目"
+  },
+  "handover": "msg_n07b_intro",
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
+  "_seed_note": "届いた値は同室の45歳女性のもの。sex は患者I（M）だが、根っこは overrides で全部置き換えてあるので男性の base_roots は結果に出ない。派生（Hb・Ht・MCHC・AG）は derive.js に任せる。",
+  "seed": {
+    "condition": "iron_deficiency_anemia",
+    "severity": 2,
+    "overrides": {
+      "RBC": 3.92,
+      "MCV": 76.0,
+      "MCH": 24.0,
+      "PLT": 336,
+      "WBC": 6.2,
+      "K": 3.8,
+      "BUN": 9,
+      "Cre": 0.55,
+      "ALT": 16,
+      "CRP": 0.06
+    }
+  },
+  "artifact": null,
+  "previous": {
+    "date": "2026-09-04",
+    "note": "3日前・術前・同病棟",
+    "values": {
+      "WBC": 7.8,
+      "RBC": 3.95,
+      "Hb": 12.2,
+      "Ht": 36.3,
+      "MCV": 92.0,
+      "MCH": 30.9,
+      "MCHC": 33.6,
+      "PLT": 198,
+      "Na": 139,
+      "K": 4.6,
+      "Cl": 103,
+      "HCO3": 23.0,
+      "BUN": 24,
+      "Cre": 1.32,
+      "Glu": 104,
+      "AST": 22,
+      "ALT": 18,
+      "LD": 190,
+      "CRP": 1.2,
+      "Ca": 9.0,
+      "AG": 13.0
+    }
+  },
+  "nav": [
+    "msg_n07b_nav_kanae",
+    "msg_n07b_nav_yusuke"
+  ],
+  "ask": [
+    "msg_n07b_ask_kanae",
+    "msg_n07b_ask_yusuke"
+  ],
+  "investigate": {
+    "call": "msg_n07b_call"
+  },
+  "recollect": {
+    "accession": "26-0907-091R",
+    "received_at": "14:05",
+    "artifact": null,
+    "reply": "msg_n07b_recollect",
+    "seed": {
+      "condition": "normal",
+      "overrides": {
+        "RBC": 3.7,
+        "MCV": 92.0,
+        "MCH": 30.9,
+        "PLT": 205,
+        "WBC": 9.1,
+        "K": 4.5,
+        "BUN": 25,
+        "Cre": 1.35,
+        "CRP": 3.8,
+        "ALT": 18,
+        "AST": 22,
+        "LD": 190,
+        "Ca": 9.0,
+        "Glu": 110
+      }
+    }
+  },
+  "choices": [
+    {
+      "when": {
+        "report": "urgent",
+        "comment": {
+          "must": [
+            "mismatch"
+          ]
+        },
+        "recheck": true,
+        "marks": {
+          "must": [
+            "MCV"
+          ]
+        },
+        "suspects": {
+          "MCV": [
+            "mismatch"
+          ]
+        },
+        "actions": {
+          "must": [
+            "idcheck",
+            "call"
+          ]
+        }
+      },
+      "score": "best",
+      "headline": "別人の値を止め、病棟に伝えて再採血まで出せています",
+      "reply": [
+        "msg_n07b_ok_kanae",
+        "msg_n07b_ok_yusuke"
+      ],
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {
+        "report": "urgent",
+        "comment": {
+          "must": [
+            "mismatch"
+          ]
+        },
+        "recheck": true,
+        "marks": {
+          "must": [
+            "MCV"
+          ]
+        },
+        "suspects": {
+          "MCV": [
+            "mismatch"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "見立ては正しい。ただし照合と電話で裏を取っていません",
+      "reply": [
+        "msg_n07b_noact_kanae",
+        "msg_n07b_noact_yusuke"
+      ],
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "comment": {
+          "must": [
+            "mismatch"
+          ]
+        },
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "止めたのは正しい。ただしHHでない場面に緊急回線を使っています",
+      "reply": null,
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {
+        "comment": {
+          "must": [
+            "mismatch"
+          ]
+        },
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "取り違えを疑って止めたのは正しい。ただし病棟へは至急で伝えます",
+      "reply": null,
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {
+        "recheck": true,
+        "suspects": {
+          "MCV": [
+            "mismatch"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "疑いは正しい。ただし理由がコメントに残っていません",
+      "reply": null,
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {
+        "report": [
+          "urgent",
+          "emergency"
+        ],
+        "suspects": {
+          "Hb": [
+            "delta"
+          ]
+        }
+      },
+      "score": "poor",
+      "headline": "別人の値を、出血として報告しています",
+      "reply": [
+        "msg_n07b_delta_kanae",
+        "msg_n07b_delta_yusuke"
+      ],
+      "doctor": "msg_n07b_doctor_delta"
+    },
+    {
+      "when": {
+        "report": [
+          "urgent",
+          "emergency"
+        ],
+        "comment": true
+      },
+      "score": "poor",
+      "headline": "急いだのは分かります。ただし報告した値は別人のものです",
+      "reply": null,
+      "doctor": "msg_n07b_doctor_delta"
+    },
+    {
+      "when": {
+        "recheck": true
+      },
+      "score": "ok",
+      "headline": "再採血は正しい。ただし理由が伴っていません",
+      "reply": null,
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {},
+      "score": "poor",
+      "headline": "別人の値をそのまま流しています",
+      "reply": [
+        "msg_n07b_routine_kanae",
+        "msg_n07b_routine_yusuke"
+      ],
+      "doctor": "msg_n07b_doctor_routine"
+    }
+  ]
+}

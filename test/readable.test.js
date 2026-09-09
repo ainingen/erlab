@@ -35,8 +35,8 @@ export function suite(data, sources = {}) {
   });
 
   // ---- 辞典 ----
-  test('辞典: 31語あり、一語は三行以内', () => {
-    eq(Object.keys(terms).length, 31);
+  test('辞典: 34語あり、一語は三行以内', () => {
+    eq(Object.keys(terms).length, 34);
     for (const [id, def] of Object.entries(terms)) {
       eq(typeof def.term, 'string', `${id} の語`);
       eq(Array.isArray(def.lines), true, `${id} の lines`);
@@ -67,6 +67,27 @@ export function suite(data, sources = {}) {
     // real は「採血に問題なし」。重さの話ではないことを辞典でも言う
     eq(terms.real.term, '採血に問題なし');
     eq(terms.real.lines.join('').includes('重'), false, 'real の説明で重さを言っている');
+  });
+
+  test('辞典: 症例7-bの三語が引ける。MCVの型はナビの本文から飛べる', () => {
+    for (const [id, term] of [
+      ['mcv_stable', 'MCVは変わらない'], ['hold_report', '報告保留'], ['bedside_label', 'ベッドサイドで貼る'],
+    ]) {
+      eq(Boolean(terms[id]), true, `${id} が辞典にない`);
+      eq(terms[id].term, term);
+      eq(terms[id].lines.length <= 3, true, `${id} が三行を超えている`);
+    }
+    // 「MCVは変わらない」は語そのものが本文に出ないので、別名から拾えるようにしてある
+    eq(linkTerms('赤血球の寿命は約120日です。', glossary).includes('data-term="mcv_stable"'), true);
+    eq(linkTerms('報告保留にします。', glossary).includes('data-term="hold_report"'), true);
+    // 症例7-bの台詞から実際に飛べる
+    const mentor = data.mentors.mentors[1]; // 悠介
+    const nav = data.messages.messages.msg_n07b_nav_yusuke;
+    eq(renderMessages([{ id: 'a', ...nav }], mentor, glossary).includes('data-term="mcv_stable"'), true,
+       'ナビから MCV の型に飛べない');
+    const praise = data.messages.messages.msg_n07b_ok_yusuke;
+    eq(renderMessages([{ id: 'b', ...praise }], mentor, glossary).includes('data-term="hold_report"'), true,
+       '講評から報告保留に飛べない');
   });
 
   test('辞典: 別名は長いものから当てる（「溶血」が「溶血（3+）」を食わない）', () => {

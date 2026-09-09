@@ -24,6 +24,13 @@ function pick(level, opts = {}) {
 
 const ids = (reply) => [].concat(reply ?? []);
 
+/** 所見一覧から選んだ一行。項目付きの文は `templateId:testId` が候補ID。 */
+function cmt(templateId, testId = null) {
+  return testId
+    ? { id: `${templateId}:${testId}`, templateId, text: `${templateId}:${testId}` }
+    : { id: templateId, templateId, text: templateId };
+}
+
 /** 一本目と二本目、両方の枝。二本立てでない症例では choices だけ。 */
 function allBranches(caseDef) {
   return [...caseDef.choices, ...((caseDef.followup && caseDef.followup.choices) || [])];
@@ -161,6 +168,23 @@ export function suite(data) {
     const caseDef = { choices: [{ when: { report: 'routine' }, score: 'best', headline: 'x' }] };
     eq(evaluate(caseDef, pick('routine')).score, 'best');
     eq(evaluate(caseDef, pick('routine', { marks: ['K', 'Hb', 'CRP'] })).score, 'best');
+  });
+
+  test('evaluate: report は配列で書くと「そのどれか」（枝を二本に割らない）', () => {
+    const caseDef = {
+      choices: [
+        { when: { report: ['urgent', 'emergency'] }, score: 'poor', headline: '急いだ' },
+        { when: {}, score: 'ok', headline: '受け皿' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('urgent')).headline, '急いだ');
+    eq(evaluate(caseDef, pick('emergency')).headline, '急いだ');
+    eq(evaluate(caseDef, pick('routine')).headline, '受け皿');
+    // 文字列で書いた既存の枝はそのまま
+    const single = { choices: [{ when: { report: 'urgent' }, score: 'ok', headline: '至急' },
+                               { when: {}, score: 'ok', headline: '受け皿' }] };
+    eq(evaluate(single, pick('urgent')).headline, '至急');
+    eq(evaluate(single, pick('emergency')).headline, '受け皿');
   });
 
   test('evaluate: actions は must / forbid / max だけを見る（marks と同じ形）', () => {
@@ -486,6 +510,99 @@ export function suite(data) {
     eq(bad.score, 'poor');
     eq(ids(bad.messageId).join(','), 'msg_n06_routine_kanae,msg_n06_routine_yusuke');
     eq(bad.doctorId, 'msg_n06_doctor_poor');
+  });
+
+  // ---- 症例7-b（取り違え。docs/case07b.md）----
+
+  /** その枝に落ちる操作。上から順に見るので、下の枝ほど「上の枝に当たらない操作」を書く。 */
+  const N07B_PATHS = [
+    ['別人の値を止め、病棟に伝えて再採血まで出せています', 'best', 'urgent', {
+      comment: [cmt('mismatch')], recheck: true,
+      marks: ['MCV'], suspects: { MCV: ['mismatch'] }, actions: ['idcheck', 'call'],
+    }],
+    ['見立ては正しい。ただし照合と電話で裏を取っていません', 'ok', 'urgent', {
+      comment: [cmt('mismatch')], recheck: true, marks: ['MCV'], suspects: { MCV: ['mismatch'] },
+    }],
+    ['止めたのは正しい。ただしHHでない場面に緊急回線を使っています', 'ok', 'emergency', {
+      comment: [cmt('mismatch')], recheck: true,
+    }],
+    ['取り違えを疑って止めたのは正しい。ただし病棟へは至急で伝えます', 'ok', 'routine', {
+      comment: [cmt('mismatch')], recheck: true,
+    }],
+    ['疑いは正しい。ただし理由がコメントに残っていません', 'ok', 'routine', {
+      recheck: true, marks: ['MCV'], suspects: { MCV: ['mismatch'] },
+    }],
+    ['別人の値を、出血として報告しています', 'poor', 'urgent', {
+      comment: [cmt('delta', 'Hb')], marks: ['Hb'], suspects: { Hb: ['delta'] },
+    }],
+    ['急いだのは分かります。ただし報告した値は別人のものです', 'poor', 'urgent', {
+      comment: [cmt('real', 'Hb')],
+    }],
+    ['再採血は正しい。ただし理由が伴っていません', 'ok', 'routine', { recheck: true }],
+    ['別人の値をそのまま流しています', 'poor', 'routine', {}],
+  ];
+
+  test('症例n07b: 全部の枝に、そこへ落ちる操作がある', () => {
+    const c = caseById.n07b;
+    eq(N07B_PATHS.length, c.choices.length, '枝の数と操作の数が合っていない');
+    for (let i = 0; i < c.choices.length; i += 1) {
+      const [headline, score, level, opts] = N07B_PATHS[i];
+      eq(c.choices[i].headline, headline, `${i}番目の枝の見出し`);
+      const res = evaluate(c, pick(level, opts));
+      eq(res.headline, headline, `${i}番目の枝に落ちていない`);
+      eq(res.score, score, `${headline} の評価`);
+    }
+  });
+
+  test('症例n07b: 最善は「至急＋取り違えのコメント＋再採血＋MCVに取り違え＋照合と電話」', () => {
+    const c = caseById.n07b;
+    eq(c.choices.filter((b) => b.score === 'best').length, 1, '最善の枝の数');
+    const full = {
+      comment: [cmt('mismatch')], recheck: true,
+      marks: ['MCV'], suspects: { MCV: ['mismatch'] }, actions: ['idcheck', 'call'],
+    };
+    const best = evaluate(c, pick('urgent', full));
+    eq(best.score, 'best');
+    eq(ids(best.messageId).join(','), 'msg_n07b_ok_kanae,msg_n07b_ok_yusuke');
+    eq(best.doctorId, 'msg_n07b_doctor_ok');
+
+    // 照合だけ・電話だけでは足りない（どちらも must）
+    for (const actions of [['idcheck'], ['call'], ['look', 'smear']]) {
+      const res = evaluate(c, pick('urgent', { ...full, actions }));
+      eq(res.score, 'ok', `${actions} で最善になっている`);
+      eq(ids(res.messageId).join(','), 'msg_n07b_noact_kanae,msg_n07b_noact_yusuke');
+    }
+  });
+
+  test('症例n07b: 症例6の反射（HbをΔで至急）は、至急でも緊急でも要改善', () => {
+    const c = caseById.n07b;
+    const reflex = {
+      comment: [cmt('delta', 'Hb')], marks: ['Hb'], suspects: { Hb: ['delta'] },
+      actions: ['idcheck', 'call'],
+    };
+    for (const level of ['urgent', 'emergency']) {
+      const res = evaluate(c, pick(level, reflex));
+      eq(res.score, 'poor', `${level} が要改善になっていない`);
+      eq(res.headline, '別人の値を、出血として報告しています');
+      eq(ids(res.messageId).join(','), 'msg_n07b_delta_kanae,msg_n07b_delta_yusuke');
+      eq(res.doctorId, 'msg_n07b_doctor_delta');
+    }
+    // 症例6は同じ操作が最善。反射が効かないのはこの症例だけ、という形になっている
+    eq(evaluate(caseById.n06, pick('urgent', {
+      comment: [cmt('delta', 'Hb')], marks: ['Hb'], suspects: { Hb: ['delta'] }, actions: ['idcheck'],
+    })).score, 'best', '症例6の型が壊れている');
+    // 通常報告に落とせば「そのまま流した」の受け皿
+    eq(evaluate(c, pick('routine', reflex)).headline, '別人の値をそのまま流しています');
+  });
+
+  test('症例n07b: 取り違えを疑って止めれば、報告レベルが違っても許容で受ける', () => {
+    const c = caseById.n07b;
+    const held = { comment: [cmt('mismatch')], recheck: true };
+    for (const level of ['routine', 'urgent', 'emergency']) {
+      const res = evaluate(c, pick(level, held));
+      eq(res.score, 'ok', `${level} で止めた報告`);
+      eq(res.doctorId, 'msg_n07b_doctor_ok', `${level} の医師の返信`);
+    }
   });
 
   test('症例n07: 一本目の緊急報告は症例を閉じず、医師の差し戻しだけが返る', () => {
@@ -886,6 +1003,22 @@ export function suite(data) {
         for (const key of Object.keys(rule)) {
           eq(['must', 'any', 'forbid'].includes(key), true, `${c.id} の comment に知らない条件 ${key}`);
           for (const id of rule[key]) eq(okId(id), true, `${c.id} の comment に知らない候補ID ${id}`);
+        }
+      }
+    }
+  });
+
+  test('全症例: when.report は文字列か、報告レベルの配列', () => {
+    const levels = new Set(data.hospital.report_levels.map((l) => l.id));
+    for (const c of data.cases) {
+      for (const branch of allBranches(c)) {
+        const expected = (branch.when || {}).report;
+        if (expected === undefined) continue;
+        for (const id of [].concat(expected)) {
+          eq(levels.has(id), true, `${c.id} の report に知らない報告レベル ${id}`);
+        }
+        if (Array.isArray(expected)) {
+          eq(expected.length > 1, true, `${c.id} の report が一つだけの配列（文字列で書く）`);
         }
       }
     }

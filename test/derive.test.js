@@ -292,6 +292,65 @@ export function suite(data) {
     eq(panel.hasPanic, false);
   });
 
+  test('症例n07b: 一本目は別人の値。Hb は落ちるが MCV と Cre も一緒に別人になる', () => {
+    const panel = buildPanel(caseById.n07b, data);
+    const byId = Object.fromEntries(panel.rows.map((r) => [r.id, r]));
+    eq(panel.sampleComment, null, '検体状態欄は空（装置は何も言わない）');
+    eq(byId.Hb.display, '9.4');
+    eq(byId.Hb.flag, 'L');
+    eq(byId.Hb.previousDisplay, '12.2');
+    eq(byId.Hb.delta, true, '症例6と同じ形に見える');
+    eq(panel.hasPanic, false, 'パニック値はない（緊急回線の場面ではない）');
+
+    // 決め手。MCV は数日で動かないのに 92 → 76
+    eq(byId.MCV.display, '76.0');
+    eq(byId.MCV.previousDisplay, '92.0');
+    eq(byId.MCV.flag, 'L');
+    // 裏付け。Cre は逆向きに、規定幅を超えて動いている
+    eq(byId.Cre.display, '0.55');
+    eq(byId.Cre.previousDisplay, '1.32');
+    eq(byId.Cre.flag, 'L');
+    eq(byId.Cre.delta, true, 'Cre も乖離する');
+    // 向きがばらばら（下がるものと上がるものが混ざる）
+    eq(byId.PLT.value > byId.PLT.previous, true, 'PLT は上がっている');
+    eq(byId.BUN.value < byId.BUN.previous, true, 'BUN は下がっている');
+    eq(byId.CRP.value < byId.CRP.previous, true, 'CRP も下がっている');
+    // 派生値は derive.js に任せる（症例JSONには書かない）
+    eq(byId.Ht.display, '29.8');
+    eq(byId.MCHC.display, '31.6');
+    eq(byId.AG.display, '12.0');
+  });
+
+  test('症例n07b: 二本目は recollect.seed から作られ、MCV が術前どおりに戻る', () => {
+    const caseDef = caseById.n07b;
+    const first = buildPanel(caseDef, data);
+    const re = buildRecollect(caseDef, first, data);
+    const byId = Object.fromEntries(re.rows.map((r) => [r.id, r]));
+
+    eq(byId.MCV.display, '92.0', '本人の指紋に戻る');
+    eq(byId.MCV.flag, '');
+    eq(byId.Hb.display, '11.4', '術後らしい軽い低下');
+    eq(byId.Hb.flag, 'L');
+    eq(byId.Cre.display, '1.35', '術前 1.32 と揃う');
+    eq(byId.CRP.display, '3.80', '術後3日目として自然');
+    eq(re.sampleComment, null, '二本目にも検体トラブルはない');
+    eq(re.hasPanic, false);
+    // 前回値欄は一本目（別人の値）。どこが動いてどこが動かなかったかを並べて見せる
+    eq(byId.MCV.previousDisplay, '76.0');
+  });
+
+  test('recollect.seed: 書かない症例（n05b）の二本目は今までどおり一本目の seed で作る', () => {
+    const caseDef = caseById.n05b;
+    eq(caseDef.recollect.seed, undefined, 'n05b は seed を書いていない');
+    const first = buildPanel(caseDef, data);
+    const byId = Object.fromEntries(buildRecollect(caseDef, first, data).rows.map((r) => [r.id, r]));
+    eq(byId.K.display, '6.0', '溶血の上乗せだけが外れる');
+    eq(byId.K.flag, 'HH', 'パニック値のまま残る');
+    eq(byId.Cre.display, '3.20', '根っこは一本目と同じ');
+    eq(byId.LD.flag, '', '溶血で持ち上がっていた項目は戻る');
+    eq(byId.AST.flag, '');
+  });
+
   test('症例n07: 一本目は溶血の指紋がないパニック値。Kだけが動いている', () => {
     const panel = buildPanel(caseById.n07, data);
     const byId = Object.fromEntries(panel.rows.map((r) => [r.id, r]));

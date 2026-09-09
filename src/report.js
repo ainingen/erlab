@@ -209,7 +209,7 @@ export function renderPhone(caseDef, panel, selection = null, accession = caseDe
  *
  * choice = { level, comment, recheck, readback, marks, suspects }
  * when に書かれた項目だけを見る（書かれていない項目は不問）。
- *   report   … 報告レベル（routine / urgent / emergency）
+ *   report   … 報告レベル（routine / urgent / emergency）。配列で書くと「そのどれか」
  *   recheck  … 再検・再採血を依頼したか
  *   comment  … コメントを書いたか（真偽値。中身は見ない）
  *   readback … 読み返し確認をとったか
@@ -276,13 +276,21 @@ function pickBranch(choices, choice) {
 
 function matches(when, choice) {
   return Object.entries(when).every(([key, expected]) => {
-    if (key === 'report') return choice.level === expected;
+    if (key === 'report') return matchesReport(expected, choice.level);
     if (key === 'comment') return matchesComment(expected, choice);
     if (key === 'marks') return matchesMarks(expected, choice.marks || []);
     if (key === 'suspects') return matchesSuspects(expected, choice.suspects || {});
     if (key === 'actions') return matchesActions(expected, choice.actions || []);
     return Boolean(choice[key]) === expected;
   });
+}
+
+/**
+ * 報告レベルの条件。文字列なら一致、配列なら「そのどれか」。
+ * 「至急でも緊急でも同じ講評になる」枝を、同じ文面の枝を二本書かずに拾うため（docs/case07b.md §3）。
+ */
+function matchesReport(expected, level) {
+  return Array.isArray(expected) ? expected.includes(level) : level === expected;
 }
 
 /**

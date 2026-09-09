@@ -299,7 +299,7 @@ export function renderRecollect(caseDef, panel, re = caseDef.recollect, view = n
       <h3 class="recollect-head">再採血検体　${esc(re.accession)}　採取 ${esc(re.received_at)}</h3>
       <dl class="pt-meta">
         <dt>検体状態</dt><dd class="${panel.sampleComment ? 'is-flagged' : ''}">${esc(sampleText)}</dd>
-        <dt>前回値欄</dt><dd>同じ患者の最初の検体（${esc(caseDef.accession)}）の値を並べています。</dd>
+        <dt>前回値欄</dt><dd>この依頼の最初の検体（${esc(caseDef.accession)}）の値を並べています。</dd>
       </dl>
       ${panel.panels.map((pn) => renderPanelTable(pn, view, view ? view.glossary : null)).join('')}
       ${view && view.interactive ? '<p class="hint">報告するのはこの二本目です。行をタップしてマークしてください。</p>' : ''}
