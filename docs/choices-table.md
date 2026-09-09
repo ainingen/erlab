@@ -47,9 +47,9 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 |---|---|---|---|---|
 | 1 | recheck=true | poor | 再検の理由がありません | 通常 ／ 再採血 |
 | 2 | report=routine, comment.must=[delta] | ok | 急な変化ではありません | 通常 ／ コメント[delta] |
-| 3 | report=routine, comment=true, marks.must=[Hb], suspects.Hb=[real] | best | 適切な報告です | 通常 ／ コメント[real] ／ マーク Hb(real) |
-| 4 | report=routine, comment=true, marks.forbid=[Hb] | ok | Hbに印がありません | 通常 ／ コメント[real] |
-| 5 | report=routine, comment=true, marks.must=[Hb] | ok | Hbに疑いが付いていません | 通常 ／ コメント[real] ／ マーク Hb |
+| 3 | report=routine, comment=true, marks.must=[Hb], suspects.Hb=[real] | best | 適切な報告です | 通常 ／ コメント[microcytic] ／ マーク Hb(real) |
+| 4 | report=routine, comment=true, marks.forbid=[Hb] | ok | Hbに印がありません | 通常 ／ コメント[microcytic] |
+| 5 | report=routine, comment=true, marks.must=[Hb] | ok | Hbに疑いが付いていません | 通常 ／ コメント[microcytic] ／ マーク Hb |
 | 6 | report=routine, comment=false | ok | 報告レベルは適切。ただしコメントを付けたい場面でした | 通常 |
 | 7 | （なし・受け皿） | poor | 過剰報告です | 至急 |
 
@@ -77,7 +77,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 1 | report=emergency, recheck=true | ok | 再採血の判断は正しい。ただし信用していない値で電話はかけません | 緊急 ／ 再採血 |
 | 2 | recheck=true, marks.must=[K], suspects.K=[hemolysis] | best | 再採血の依頼が最善です | 通常 ／ 再採血 ／ マーク K(hemolysis) |
 | 3 | recheck=true | ok | 再採血の判断は正しい。ただし何を疑ったのかが残っていません | 通常 ／ 再採血 |
-| 4 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません | 至急 ／ コメント[real] |
+| 4 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません | 至急 ／ コメント[microcytic] |
 | 5 | report=emergency | poor | 溶血した検体の値で電話をかけています | 緊急 |
 | 6 | （なし・受け皿） | poor | 検体状態に触れないまま報告しています | 通常 |
 
@@ -88,13 +88,13 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | # | when | score | headline | 落ちる操作の例 |
 |---|---|---|---|---|
 | 1 | report=emergency, comment.must=[hemolysis], comment.forbid=[real], recheck=true | ok | 溶血だけでは説明がつきません | 緊急 ／ 再採血 ／ コメント[hemolysis] |
-| 2 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis], actions.must=[call] | best | 溶血を付記したうえで緊急報告し、再採血まで出せています | 緊急 ／ 再採血 ／ コメント[continued] ／ マーク K(real+hemolysis) ／ 行動[call] |
-| 3 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis] | ok | 判断は適切。ただし点滴側でないことを確かめていません | 緊急 ／ 再採血 ／ コメント[continued] ／ マーク K(real+hemolysis) |
-| 4 | report=emergency, comment=true, recheck=true | ok | 手順は合っています。ただし採血に問題なしか溶血かの見立てが残っていません | 緊急 ／ 再採血 ／ コメント[continued] |
-| 5 | report=urgent, comment=true, recheck=true | ok | 至急どまりです。HHは電話で読み返しまで取ります | 至急 ／ 再採血 ／ コメント[continued] |
+| 2 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis], actions.must=[call] | best | 溶血を付記したうえで緊急報告し、再採血まで出せています | 緊急 ／ 再採血 ／ コメント[microcytic] ／ マーク K(real+hemolysis) ／ 行動[call] |
+| 3 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis] | ok | 判断は適切。ただし点滴側でないことを確かめていません | 緊急 ／ 再採血 ／ コメント[microcytic] ／ マーク K(real+hemolysis) |
+| 4 | report=emergency, comment=true, recheck=true | ok | 手順は合っています。ただし採血に問題なしか溶血かの見立てが残っていません | 緊急 ／ 再採血 ／ コメント[microcytic] |
+| 5 | report=urgent, comment=true, recheck=true | ok | 至急どまりです。HHは電話で読み返しまで取ります | 至急 ／ 再採血 ／ コメント[microcytic] |
 | 6 | report=routine, recheck=true | poor | 再採血だけで、報告が伴っていません | 通常 ／ 再採血 |
 | 7 | report=emergency | ok | 緊急報告は妥当。ただし溶血の付記がありません | 緊急 |
-| 8 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい。あと一歩、再採血まで出しておきたい場面です | 至急 ／ コメント[continued] |
+| 8 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい。あと一歩、再採血まで出しておきたい場面です | 至急 ／ コメント[microcytic] |
 | 9 | （なし・受け皿） | poor | 溶血を理由に、患者由来のパニック値を流しています | 通常 |
 
 ### n06 — 6. 数字は動いた、検体は正しい
@@ -104,10 +104,10 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | # | when | score | headline | 落ちる操作の例 |
 |---|---|---|---|---|
 | 1 | report=urgent, comment.must=[continued] | ok | 継続ではなく変化です | 至急 ／ コメント[continued] |
-| 2 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta], actions.must=[idcheck] | best | 変化の速さを理由に至急報告できています | 至急 ／ コメント[real] ／ マーク Hb(delta) ／ 行動[idcheck] |
-| 3 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta] | ok | Δの指摘は適切。ただし同一患者の検体か照合していません | 至急 ／ コメント[real] ／ マーク Hb(delta) |
-| 4 | report=urgent, comment=true | ok | 至急報告は適切。ただし何が変わったのかが残っていません | 至急 ／ コメント[real] |
-| 5 | report=emergency, comment=true | ok | 向きは正しい。ただしHHでない値に緊急回線を使っています | 緊急 ／ コメント[real] |
+| 2 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta], actions.must=[idcheck] | best | 変化の速さを理由に至急報告できています | 至急 ／ コメント[microcytic] ／ マーク Hb(delta) ／ 行動[idcheck] |
+| 3 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta] | ok | Δの指摘は適切。ただし同一患者の検体か照合していません | 至急 ／ コメント[microcytic] ／ マーク Hb(delta) |
+| 4 | report=urgent, comment=true | ok | 至急報告は適切。ただし何が変わったのかが残っていません | 至急 ／ コメント[microcytic] |
+| 5 | report=emergency, comment=true | ok | 向きは正しい。ただしHHでない値に緊急回線を使っています | 緊急 ／ コメント[microcytic] |
 | 6 | recheck=true, suspects.Hb=[mismatch] | ok | 取り違えを疑う姿勢は正しい。ただし報告が先です | 通常 ／ 再採血 ／ マーク Hb(mismatch) |
 | 7 | recheck=true | ok | 再採血の判断は分かります。ただし報告が先です | 通常 ／ 再採血 |
 | 8 | report=urgent | ok | 至急報告は適切。ただしコメントがありません | 至急 |
@@ -126,7 +126,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 4 | comment.must=[mismatch], recheck=true | ok | 取り違えを疑って止めたのは正しい。ただし病棟へは至急で伝えます | 通常 ／ 再採血 ／ コメント[mismatch] |
 | 5 | recheck=true, suspects.MCV=[mismatch] | ok | 疑いは正しい。ただし理由がコメントに残っていません | 通常 ／ 再採血 ／ マーク MCV(mismatch) |
 | 6 | report=[urgent, emergency], suspects.Hb=[delta] | poor | 別人の値を、出血として報告しています | 至急 ／ マーク Hb(delta) |
-| 7 | report=[urgent, emergency], comment=true | poor | 急いだのは分かります。ただし報告した値は別人のものです | 至急 ／ コメント[real] |
+| 7 | report=[urgent, emergency], comment=true | poor | 急いだのは分かります。ただし報告した値は別人のものです | 至急 ／ コメント[microcytic] |
 | 8 | recheck=true | ok | 再採血は正しい。ただし理由が伴っていません | 通常 ／ 再採血 |
 | 9 | （なし・受け皿） | poor | 別人の値をそのまま流しています | 通常 |
 

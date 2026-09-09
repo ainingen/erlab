@@ -2,6 +2,7 @@
 // 「必要十分な判断で正解に到達したか」を見るので、過剰報告も減点にする。
 
 import { esc, termLink } from './lis.js';
+import { judge } from './judge.js';
 
 export const SCORE_LABEL = { best: '最善', ok: '許容', poor: '要改善' };
 
@@ -221,8 +222,32 @@ export function renderPhone(caseDef, panel, selection = null, accession = caseDe
  * reply  … 指導役の講評（無い枝もある。その症例で教えたい判断に関わる分岐だけ付ける）
  * doctor … 医師からの返信。どの枝にも必ずある。報告 → 講評 → 医師の返信、の順で流す
  */
-export function evaluate(caseDef, choice) {
+export function evaluate(caseDef, choice, ctx = null) {
+  // 手書き症例は今までどおり choices で判定する。judge に渡すのは choices の無い
+  // 症例（生成症例）だけで、手書きの挙動は変えない（docs/judge-rules.md §6）
+  if (!(caseDef.choices || []).length && ctx && ctx.facts) {
+    return applyAskCap(judgedBranch(ctx.facts, choice), choice);
+  }
   return applyAskCap(pickBranch(caseDef.choices, choice), choice);
+}
+
+/**
+ * 規則で判定した結果を、choices の枝と同じ形に包む（docs/judge-rules.md）。
+ * 講評（reply）と医師の返信（doctor）の共通化は §6-5 の仕事なので、ここでは付けない。
+ */
+function judgedBranch(facts, choice) {
+  const res = judge(facts, choice);
+  return {
+    score: res.score,
+    headline: res.headline,
+    messageId: null,
+    doctorId: null,
+    matched: null,
+    then: null,
+    cap: 'best',
+    deviation: res.deviation,
+    key: res.key,
+  };
 }
 
 /**

@@ -1,0 +1,32 @@
+{
+  "_note": "判定ルール（docs/judge-rules.md）のしきい値。規則そのものは src/judge.js、Δ の幅は hospital.json の delta_check を使う。ここに書くのは『どこで線を引くか』だけで、コードに埋めない。",
+  "stable_tests": {
+    "_note": "『変わらないはずの項目』。ここが動いていたら患者の変化より先に検体（別人）を疑う。abs は絶対差、ratio_low / ratio_high は前回値との比。",
+    "MCV": {
+      "abs": 6.0,
+      "why": "赤血球の寿命は約120日。数日でMCVは動かない（docs/case07b.md）"
+    },
+    "Cre": {
+      "ratio_low": 0.5,
+      "ratio_high": 2.0,
+      "why": "腎機能は数日で半分・2倍にはならない"
+    }
+  },
+  "mixed_delta_directions": true,
+  "_mixed_note": "Δ のある項目が2つ以上あって向きがそろっていなければ M（別人）を疑う。手書き9本ではどれも当たらない（n07b は Hb・Cre とも下向き）。",
+  "moderate_flag_count": 2,
+  "_moderate_note": "フラグの点いた行がこの数以上なら『中等度』としてコメントを求める（T2）。1行だけの軽いH/Lは通常報告のまま（T1）。n02（CRPのみ）とn03（小球性の5行）を分ける線。",
+  "artifacts": {
+    "_note": "usable＝値はまだ使える（A₁）、broken＝値が使えない（A₂）。suspect は疑いタブのID、key は判断を決めている項目。key が null ならフラグの最も強い行を鍵にする。",
+    "hemolysis_1plus": { "grade": "usable", "suspect": "hemolysis", "key": "K" },
+    "hemolysis_2plus": { "grade": "usable", "suspect": "hemolysis", "key": "K" },
+    "hemolysis_3plus": { "grade": "broken", "suspect": "hemolysis", "key": "K" },
+    "platelet_clump_edta": { "grade": "broken", "suspect": "clot", "key": "PLT" },
+    "fibrin": { "grade": "broken", "suspect": "clot", "key": "PLT" },
+    "iv_line_dilution": { "grade": "broken", "suspect": "dilution", "key": null },
+    "edta_contamination": { "grade": "broken", "suspect": null, "key": "K" },
+    "short_sample": { "grade": "broken", "suspect": null, "key": null }
+  },
+  "_suspect_gap": "edta_contamination（採血管間違い）と short_sample（量不足）に当たる疑いの札が data/suspects.json に無い。suspect: null のときは『key に何か疑いを付けていれば足りる』として扱う。札を足すかは §6-5 で決める。",
+  "levels": ["routine", "urgent", "emergency"]
+}
