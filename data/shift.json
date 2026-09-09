@@ -1,0 +1,15 @@
+{
+  "_note": "シフト制と信頼度の数字（docs/shift.md §2-1）。ここに書くのは『どこで線を引くか』だけで、コードに埋めない。",
+  "cases_per_night": 5,
+  "window": 10,
+  "_window_note": "直近この件数だけを見る。累積にしない——序盤の要改善が一生残らず、稼ぎ切ったあとも緩められない（§2-2）。",
+  "points": { "best": 2, "ok": 1, "poor": -3 },
+  "display_scale": 5,
+  "_scale_note": "窓の合計は 0〜（window × best点）に切ってから ×5 して 0〜100 で見せる。",
+  "absent_threshold": 80,
+  "_absent_note": "退勤の集計でこの値以上なら、次の晩は指導役が休み（§3-1）。不在の晩に要改善が出た翌晩は、この値を超えていても指導役の晩にする。",
+  "night_start": "20:00",
+  "case_interval_min": 30,
+  "_time_note": "シフトの受付時刻は出勤からこの間隔で引き直して見せる。症例JSONの received_at は研修専用の値なので触らない（§4）。",
+  "save_key": "erlab.save"
+}

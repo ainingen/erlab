@@ -15,7 +15,7 @@ import { buildDefaultAskMessages } from './messages.js';
 export async function loadData() {
   const [
     tests, hospital, conditions, artifacts, caseIndex, messages, mentors, tutorial, suspects,
-    glossary, commentTemplates, judge, common,
+    glossary, commentTemplates, judge, common, shift,
   ] = await Promise.all([
       readJson('data/tests.json'),
       readJson('data/hospital.json'),
@@ -30,6 +30,7 @@ export async function loadData() {
       readJson('data/comment_templates.json'),
       readJson('data/judge.json'),
       readJson('data/messages/common.json'),
+      readJson('data/shift.json'),
     ]);
 
   const cases = await Promise.all(
@@ -46,6 +47,6 @@ export async function loadData() {
 
   return {
     tests, hospital, conditions, artifacts, messages, mentors, tutorial, suspects, glossary,
-    commentTemplates, judge, cases,
+    commentTemplates, judge, shift, cases,
   };
 }

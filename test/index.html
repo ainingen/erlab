@@ -17,7 +17,7 @@
 </style>
 </head>
 <body>
-<h1>ERLAB — 派生値 ・ 判定 ・ 指導役 ・ 調べる ・ 読める画面 ・ 音 ・ 判定ルール ・ 講評 のテスト</h1>
+<h1>ERLAB — 派生値 ・ 判定 ・ 指導役 ・ 調べる ・ 読める画面 ・ 音 ・ 判定ルール ・ 講評 ・ シフト のテスト</h1>
 <p id="summary">実行中…</p>
 <ul id="list"></ul>
 <script type="module">
@@ -31,6 +31,7 @@
   import { suite as soundSuite } from './sound.test.js';
   import { suite as judgeSuite } from './judge.test.js';
   import { suite as reviewSuite } from './review.test.js';
+  import { suite as shiftSuite } from './shift.test.js';
 
   const list = document.getElementById('list');
   const summary = document.getElementById('summary');
@@ -41,6 +42,7 @@
     const sources = {
       app: await (await fetch('../src/app.js')).text(),
       index: await (await fetch('../index.html')).text(),
+      shift: await (await fetch('../src/shift.js')).text(),
     };
     deriveSuite(data);
     reportSuite(data);
@@ -50,6 +52,7 @@
     soundSuite(sources);
     judgeSuite(data);
     reviewSuite(data);
+    shiftSuite(data, sources);
     const failed = results.filter((r) => !r.ok);
     summary.textContent = `${results.length} 件中 ${results.length - failed.length} 件 PASS / ${failed.length} 件 FAIL`;
     document.title = `${failed.length ? 'FAIL' : 'PASS'} — ERLAB テスト`;

@@ -310,11 +310,15 @@ export function renderRecollect(caseDef, panel, re = caseDef.recollect, view = n
  * 索引パネル。上に「項目」「言葉」のタブを二つ持つ。
  * 項目＝検査項目の索引（5枠固定）。言葉＝画面に出る言葉の辞典（三行）。
  * view = { tab: 'tests' | 'terms', testId, termId }
+ * show = { tests } … false にすると「項目」タブを出さない（指導役不在の晩）
  */
-export function renderGlossaryPanel(data, view, sex = 'F') {
-  const tab = view.tab === 'terms' ? 'terms' : 'tests';
+export function renderGlossaryPanel(data, view, sex = 'F', show = {}) {
+  // 指導役不在の晩は「項目」の索引を外す（docs/shift.md §3-2）。
+  // 「言葉」と「見る順番」は残す——調べるのが常に損にならない線（roadmap 8章）
+  const withTests = show.tests !== false;
+  const tab = !withTests || view.tab === 'terms' ? 'terms' : 'tests';
   const tabs = [
-    ['tests', '項目'],
+    ...(withTests ? [['tests', '項目']] : []),
     ['terms', '言葉'],
   ]
     .map(

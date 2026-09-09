@@ -37,7 +37,11 @@ export function askButtonState({ mentor = null, used = null, open = true } = {})
   };
 }
 
-export function renderMentorPicker(data, currentId) {
+/**
+ * 指導役を選ぶ画面。`saved` に進行があるときは「最初から」を出す（docs/shift.md §5）。
+ * 消すのは押したあとに一度だけ確認を取ってから（確認は app.js）。
+ */
+export function renderMentorPicker(data, currentId, saved = null) {
   const items = (data.mentors.mentors || [])
     .map(
       (m) => `
@@ -60,6 +64,13 @@ export function renderMentorPicker(data, currentId) {
       あとから変えられます。
     </p>
     <ul class="mentor-list">${items}</ul>
-    ${currentId ? '<div class="dlg-actions"><button type="button" class="btn" data-action="close-mentor">やめる</button></div>' : ''}
+    ${saved && saved.night > 1 ? `
+      <p class="mentor-saved">${esc(saved.night)}晩目の途中から始まります。${
+        saved.cleared ? '（指導役なしの晩は通過済み）' : ''
+      }</p>` : ''}
+    <div class="dlg-actions">
+      ${saved ? '<button type="button" class="btn" data-action="restart">最初から</button>' : ''}
+      ${currentId ? '<button type="button" class="btn" data-action="close-mentor">やめる</button>' : ''}
+    </div>
   `;
 }

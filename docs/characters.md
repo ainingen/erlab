@@ -128,15 +128,16 @@
   `when.report` に配列を書けるようにした（docs/case07b.md）
 - 判定ルールの言語化（`src/judge.js`・`data/judge.json`）。事実7つ → 正解の型9つ → ずれ19種。
   `choices` を持たない症例だけが通る（docs/judge-rules.md）
-- 講評の共通化（`src/review.js`・`data/messages/common.json`）。講評40本と医師の返事22本を
+- 講評の共通化（`src/review.js`・`data/messages/common.json`）。講評42本と医師の返事22本を
   ずれの種類と「正解レベル×届き方」で引く。生成症例の一本目 `g01` を足した（docs/review-common.md）
+- シフト制と信頼度（`src/shift.js`・`data/shift.json`）。1周＝一晩5件、信頼度は直近10件の窓、
+  80以上で指導役不在の晩。研修は一晩目。保存は localStorage（docs/shift.md）
 
 ### 未着手
 
 - 通しで遊んでテンポを確認する（症例1〜3のナビが重すぎないか）
 - 症例7の最善に `comment: ["recollect_same"]` を足すか決める（readable.md 2章の宿題）
-- シフト制と信頼度の仕様（roadmap.md 1章。次はここ）
-- 生成症例（conditions.json を厚くする）
+- 生成症例（conditions.json を厚くする。roadmap の進め方 6。次はここ）
 - 逆引き辞典（roadmap.md 4章）
 - 上級モード（ナビ・索引を外す、時間制限、キュー管理）
 - PLiCy向けの1ファイル結合（立ち絵は10枚で約1MBに収まったので、リサイズは不要）

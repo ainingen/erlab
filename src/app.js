@@ -15,6 +15,10 @@ import {
 } from './report.js';
 import { renderMentorPicker, mentorById, mentorForCase, askButtonState } from './mentor.js';
 import { fillMessage } from './review.js';
+import {
+  pushScore, trust, summarize, isAbsentNight, closeNight, pickNightCases, nightReceivedAt,
+  summaryBody, toSave, fromSave, newShift,
+} from './shift.js';
 import { actionStates, runAction, renderInvestigatePanel } from './investigate.js';
 import { deriveFacts } from './judge.js';
 import * as sound from './sound.js';
@@ -43,7 +47,14 @@ const state = {
   mentorId: null,
   currentCaseId: null,
   pendingChoice: null,
-  phase: 'mentor', // mentor → tutorial → cases
+  // シフト（docs/shift.md）。1周＝一晩。信頼度は直近10件の窓で、集計のときだけ見せる
+  shift: newShift(),
+  absentNight: false, // その晩、指導役が休みか（症例JSONは触らず、晩の状態で持つ）
+  nightScores: [],    // その晩に閉じた症例の最終評価。退勤の集計に使う
+  trustShown: null,   // 前の退勤で見せた信頼度。集計の「60 → 65」の左側
+  saveBroken: false,  // localStorage が読み書きできない環境
+  started: false,     // 一晩目（または続きの晩）を開いたか。保存から指導役を復元しても出勤はここで見る
+  phase: 'mentor', // mentor → tutorial → cases → summary
   tutorialStep: 0,
   glossary: { tab: 'tests', testId: null, termId: null }, // 索引パネルの開き方
   interrupt: null, // { caseId, from, at } … ERからの至急が入っている間だけ立つ
@@ -80,11 +91,7 @@ async function main() {
     return;
   }
 
-  state.cases = state.data.cases;
-  for (const c of state.cases) {
-    state.panels.set(c.id, buildPanel(c, state.data));
-    state.status[c.id] = 'ready';
-  }
+  loadSave();
 
   const h = state.data.hospital.hospital;
   $('#hospital-name').textContent = `${h.name}（架空）${h.lab}`;
@@ -93,6 +100,140 @@ async function main() {
   renderSoundButton();
   renderAskButton(); // 指導役を選ぶ前は押せない状態で出しておく（位置は最初から固定）
   openMentorPicker();
+}
+
+/* ---- シフト（docs/shift.md） ---- */
+
+const shiftCfg = () => state.data.shift;
+
+/** その晩に流す症例を組む。**症例JSONは触らない**——晩の状態で写しを作る（§6）。 */
+function openNight() {
+  const cfg = shiftCfg();
+  const night = state.shift.night;
+  state.absentNight = night > 1 && isAbsentNight(state.shift, cfg);
+  // 一晩目は研修。既存の症例を全部、書いてある受付時刻のまま流す
+  const list = night === 1
+    ? state.data.cases
+    : pickNightCases(night, state.data.cases, cfg)
+      .map((id) => state.data.cases.find((c) => c.id === id))
+      .map((c, i) => ({ ...c, received_at: nightReceivedAt(i, cfg) }));
+  state.cases = list.map((c) => (state.absentNight ? { ...c, mentor: false } : c));
+
+  state.panels = new Map();
+  state.status = {};
+  state.nightScores = [];
+  state.currentCaseId = null;
+  state.interrupt = null;
+  state.interruptDone = false;
+  for (const c of state.cases) {
+    state.panels.set(c.id, buildPanel(c, state.data));
+    state.status[c.id] = 'ready';
+  }
+  state.phase = night === 1 ? 'tutorial' : 'cases';
+}
+
+/** 出勤の申し送り。不在の晩は中央検査部の名義で、指導役の姓を埋める。 */
+function pushNightHandover() {
+  if (state.shift.night === 1) return; // 研修の申し送りは既存の msg_shift_start
+  const id = state.absentNight ? 'msg_shift_absent_start' : 'msg_shift_night_start';
+  const sent = pushMessage(id);
+  const extra = { body: nightHandoverBody(id) };
+  for (const key of sent) state.reviewValues[key] = extra;
+}
+
+/** 申し送りの本文。`{mentor}` を姓で埋め、保存できない環境では一行足す（§5）。 */
+function nightHandoverBody(id) {
+  const mentor = currentMentor();
+  const family = mentor ? mentor.name.split(/[  ]/)[0] : '指導役';
+  const body = state.data.messages.messages[id].body
+    .map((line) => line.replace(/\{mentor\}/g, family));
+  if (state.saveBroken) body.push('※この環境では進行が保存されません。');
+  return body;
+}
+
+/** その晩の症例が全部閉じたか。差し戻し待ちは閉じていない。 */
+function nightFinished() {
+  return state.cases.length > 0 && state.cases.every((c) => state.status[c.id] === 'done');
+}
+
+/** 退勤。集計を院内メッセージの枡で出す（別UIを作らない）。 */
+function endNight() {
+  if (state.phase !== 'cases' || !nightFinished()) return;
+  const cfg = shiftCfg();
+  const before = state.trustShown; // 最初の晩は null（「— → 45」の形）
+  const after = trust(state.shift.window, cfg);
+  const closed = closeNight(state.shift, { absent: state.absentNight, scores: state.nightScores }, cfg);
+
+  pushMessage('msg_shift_night_end');
+  const sent = pushMessage('msg_shift_summary');
+  for (const key of sent) {
+    state.reviewValues[key] = { body: summaryBody(closed.tally, before, after) };
+  }
+  if (state.absentNight) {
+    const id = closed.clearedNow ? 'msg_shift_absent_clear' : 'msg_shift_absent_fail';
+    const done = pushMessage(id);
+    for (const key of done) state.reviewValues[key] = { body: nightHandoverBody(id) };
+  }
+  state.trustShown = after;
+  state.shift = closed.shift;
+  state.phase = 'summary';
+  saveNow();
+  renderAll();
+  setView('messages');
+  sound.play('message');
+}
+
+/** 「次の晩へ」。集計を読んだあと、次の出勤に進む。 */
+function nextNight() {
+  if (state.phase !== 'summary') return;
+  openNight();
+  pushNightHandover();
+  saveNow();
+  renderAll();
+  setView('lis');
+  if (state.cases.length) selectCase(state.cases[0].id);
+}
+
+/* ---- 保存（§5。読み書きはこの二つだけ） ---- */
+
+function saveNow() {
+  if (state.saveBroken) return;
+  try {
+    window.localStorage.setItem(shiftCfg().save_key, JSON.stringify(toSave(state.shift, state.mentorId)));
+  } catch (err) {
+    state.saveBroken = true; // 塞がれている環境ではメモリだけで動く
+  }
+}
+
+function loadSave() {
+  const cfg = state.data.shift;
+  let raw = null;
+  try {
+    raw = JSON.parse(window.localStorage.getItem(cfg.save_key) || 'null');
+  } catch (err) {
+    state.saveBroken = true;
+  }
+  const { shift, mentorId } = fromSave(raw, cfg);
+  state.shift = shift;
+  if (mentorId && mentorById(state.data, mentorId)) state.mentorId = mentorId;
+}
+
+/** 「最初から」。確認を一度だけ取ってから消す。 */
+function restart() {
+  if (!window.confirm('進行を消して最初からやり直しますか。この操作は戻せません。')) return;
+  clearSave();
+}
+
+function clearSave() {
+  try {
+    window.localStorage.removeItem(shiftCfg().save_key);
+  } catch (err) {
+    state.saveBroken = true;
+  }
+  state.shift = newShift();
+  state.mentorId = null;
+  state.trustShown = null;
+  window.location.reload();
 }
 
 /* ---- 指導役 ---- */
@@ -117,7 +258,9 @@ function renderSoundButton() {
 }
 
 function openMentorPicker() {
-  $('#mentor-body').innerHTML = renderMentorPicker(state.data, state.mentorId);
+  // 保存された進行があれば「最初から」を出す（無ければ出さない）
+  const saved = state.shift.night > 1 || state.shift.window.length ? state.shift : null;
+  $('#mentor-body').innerHTML = renderMentorPicker(state.data, state.mentorId, saved);
   $('#mentor-dialog').showModal();
 }
 
@@ -125,11 +268,12 @@ function chooseMentor(id) {
   if (!mentorById(state.data, id)) return;
   // スマホは最初のタップまで鳴らせない。ここで音を解錠する
   sound.init();
-  const first = state.mentorId === null;
   state.mentorId = id;
   $('#mentor-dialog').close();
 
-  if (first) {
+  // まだ出勤していなければ、ここで晩を開く（保存から指導役を復元した続きも同じ道）
+  if (!state.started) {
+    state.started = true;
     startShift();
     return;
   }
@@ -139,9 +283,21 @@ function chooseMentor(id) {
 }
 
 function startShift() {
-  pushMessage('msg_shift_start');
-  for (const m of state.data.mentors.mentors) pushMessage(m.greeting);
-  state.phase = 'tutorial';
+  openNight();
+  if (state.shift.night === 1) {
+    pushMessage('msg_shift_start');
+    for (const m of state.data.mentors.mentors) pushMessage(m.greeting);
+  } else {
+    pushNightHandover();
+  }
+  saveNow();
+  // 二晩目以降は研修を挟まない
+  if (state.phase === 'cases') {
+    renderAll();
+    setView('lis');
+    if (state.cases.length) selectCase(state.cases[0].id);
+    return;
+  }
   state.tutorialStep = 0;
   renderAll();
   setView('lis');
@@ -231,6 +387,11 @@ function visibleMessageGroups() {
 function decorate(message) {
   const extra = state.reviewValues[message.id];
   if (!extra) return message;
+  // 集計と申し送りは本文ごと差し替える（数字と指導役の姓を埋めたもの）
+  if (extra.body) return { ...message, body: extra.body };
+  if (extra.from) {
+    return { ...message, from: extra.from, from_mentor: !extra.dropSpeaker && message.from_mentor };
+  }
   const filled = fillMessage(message, extra.values);
   const meta = extra.doctorMeta;
   if (!filled || !meta || message.kind !== 'reply') return filled;
@@ -249,12 +410,19 @@ function selectCase(caseId) {
   clearPoint(); // 前の症例で押した「ここ」の枠を持ち越さない
   state.currentCaseId = caseId;
   const caseDef = currentCase();
-  pushMessage(caseDef.handover);
-  pushMessage(caseDef.nav);
+  pushCaseHandover(caseDef);
+  if (!state.absentNight) pushMessage(caseDef.nav);
   scheduleInterrupt(caseDef);
   renderAll();
   setView('lis');
   sound.play('result');
+}
+
+/** 症例の申し送り。不在の晩は指導役の名義を外して中央検査部から出す（§3-2）。 */
+function pushCaseHandover(caseDef) {
+  const sent = pushMessage(caseDef.handover);
+  if (!state.absentNight) return;
+  for (const key of sent) state.reviewValues[key] = { from: '中央検査部', dropSpeaker: true };
 }
 
 function currentCase() {
@@ -569,6 +737,22 @@ function renderAll() {
   renderMessagePane();
   renderScore();
 
+  if (state.phase === 'summary') {
+    // 退勤。集計は院内メッセージの枡に出してあるので、ここは次の晩への入口だけ
+    $('#case-title').textContent = `${state.shift.night - 1}晩目 退勤`;
+    $('#pane-lis').innerHTML =
+      '<p class="hint">今晩の集計は院内メッセージに出ています。読んだら「次の晩へ」。</p>';
+    $('.lis-actions').hidden = false;
+    $('#btn-report').disabled = true;
+    $('#btn-report').textContent = '報告する';
+    const next = $('#btn-next');
+    next.hidden = false;
+    next.textContent = '次の晩へ';
+    delete next.dataset.case;
+    next.dataset.action = 'next-night';
+    return;
+  }
+
   if (state.phase !== 'cases') {
     // 帯の後ろに骨組みの結果画面を出す。指さしの的になり、欄の位置が覚えられる
     $('#case-title').textContent = `${state.data.tutorial.title}（画面の見方）`;
@@ -627,8 +811,18 @@ function renderAll() {
   const nextBtn = $('#btn-next');
   const idx = state.cases.findIndex((c) => c.id === caseDef.id);
   const next = state.cases[idx + 1];
-  nextBtn.hidden = !(done && next);
-  if (next) nextBtn.dataset.case = next.id;
+  const finished = nightFinished();
+  nextBtn.hidden = !(done && (next || finished));
+  delete nextBtn.dataset.action;
+  delete nextBtn.dataset.case;
+  if (finished) {
+    // その晩の5件が全部閉じた。次は退勤
+    nextBtn.textContent = '退勤する';
+    nextBtn.dataset.action = 'end-night';
+  } else if (next) {
+    nextBtn.textContent = '次の検体へ';
+    nextBtn.dataset.case = next.id;
+  }
 
   $('#case-title').textContent = caseDef.title;
 }
@@ -843,6 +1037,9 @@ function bindEvents() {
     if (action === 'close-mentor') $('#mentor-dialog').close();
     if (action === 'tutorial-next') advanceTutorial();
     if (action === 'ask') ask();
+    if (action === 'end-night') endNight();
+    if (action === 'next-night') nextNight();
+    if (action === 'restart') restart();
     if (action === 'readback') {
       sound.stop('dial');
       sound.play('pickup');
@@ -917,7 +1114,10 @@ function switchGlossaryTab(tab) {
 
 function showGlossary() {
   const sex = currentCase()?.patient.sex || 'F';
-  $('#glossary-body').innerHTML = renderGlossaryPanel(state.data, state.glossary, sex);
+  $('#glossary-body').innerHTML = renderGlossaryPanel(state.data, state.glossary, sex, {
+    // 不在の晩は「項目」の索引を外す。「言葉」と「見る順番」は残す（調べるのが常に損にならない線）
+    tests: !state.absentNight,
+  });
   if (!$('#glossary-dialog').open) $('#glossary-dialog').showModal();
   const current = $('#glossary-body .term-card.is-current');
   if (current) current.scrollIntoView({ block: 'center' });
@@ -1004,7 +1204,14 @@ function finishReport(choice) {
   setTimeout(() => sound.play('close'), CLOSE_DELAY_MS);
   clearInterrupt(caseDef.id);
   // 報告 → 指導役の講評 → 医師の返信、の順に届く。二本で一つの組にする
-  rememberReviewValues(pushGroup([res.messageId, res.doctorId]), res);
+  // 不在の晩は講評を出さない（医師の返事だけ。docs/shift.md §3-2）
+  rememberReviewValues(
+    pushGroup([state.absentNight ? null : res.messageId, res.doctorId]), res,
+  );
+  // 症例が一件閉じた。最終評価を信頼度の窓に入れる（差し戻しは二本で1回）
+  state.nightScores.push(res.score);
+  state.shift = { ...state.shift, window: pushScore(state.shift.window, res.score, shiftCfg()) };
+  saveNow();
 
   if (choice.recheck && caseDef.recollect) {
     state.recollected[caseDef.id] = buildRecollect(caseDef, currentPanel(), state.data);

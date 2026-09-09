@@ -739,6 +739,70 @@
         "{key} {value}？　準備を始めます。",
         "（あとで）検査室、これ別の患者さんの値ではないですか。前回値とまるで合いません。"
       ]
+    },
+    "msg_shift_night_start": {
+      "kind": "handover",
+      "emotion": "normal",
+      "subject": "出勤",
+      "time": "20:00",
+      "repeat": true,
+      "body": [
+        "今晩は5件の予定です。順番はどれからでも。全部閉じたら退勤してください。"
+      ],
+      "from_mentor": true
+    },
+    "msg_shift_night_end": {
+      "kind": "handover",
+      "emotion": "normal",
+      "subject": "退勤",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "お疲れさまでした。集計を出します。"
+      ],
+      "from_mentor": true
+    },
+    "msg_shift_summary": {
+      "kind": "log",
+      "from": "中央検査部",
+      "subject": "本日の集計",
+      "time": "—",
+      "repeat": true,
+      "_note": "body は退勤のたびに src/app.js が差し替える（shift.js の summaryBody）。",
+      "body": [
+        "本日の報告  0件"
+      ]
+    },
+    "msg_shift_absent_start": {
+      "kind": "handover",
+      "from": "中央検査部",
+      "subject": "出勤",
+      "time": "20:00",
+      "repeat": true,
+      "body": [
+        "今日は{mentor}さん休みです。ナビはありません。索引の言葉と見る順番は使えます。5件、一人でお願いします。"
+      ]
+    },
+    "msg_shift_absent_clear": {
+      "kind": "handover",
+      "from": "中央検査部",
+      "subject": "今晩の記録",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "今晩、指導役なしで5件通しました。要改善はありません。明日から、あなたの席は隣ではなく向かいです。"
+      ]
+    },
+    "msg_shift_absent_fail": {
+      "kind": "handover",
+      "from": "中央検査部",
+      "subject": "今晩の記録",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "今晩の分、{mentor}さんが明日読みます。明日は隣に戻ります。"
+      ]
     }
-  }
+  },
+  "_shift_note": "シフトの申し送りと集計（docs/shift.md §1）。`{mentor}` は選んでいる指導役の姓で、src/app.js が埋める（講評の置き場所5つとは別扱い）。`msg_shift_summary` の body は退勤のたびに差し替える。"
 }
