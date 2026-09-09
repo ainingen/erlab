@@ -62,6 +62,9 @@
     "msg_n05b_nav_kanae",
     "msg_n05b_nav_yusuke"
   ],
+  "investigate": {
+    "call": "msg_n05b_call"
+  },
   "recollect": {
     "accession": "26-0907-058R",
     "received_at": "11:12",
@@ -105,6 +108,11 @@
             "real",
             "hemolysis"
           ]
+        },
+        "actions": {
+          "must": [
+            "call"
+          ]
         }
       },
       "score": "best",
@@ -112,6 +120,31 @@
       "reply": [
         "msg_n05b_ok_kanae",
         "msg_n05b_ok_yusuke"
+      ],
+      "doctor": "msg_n05b_emergency_recheck"
+    },
+    {
+      "when": {
+        "report": "emergency",
+        "comment": true,
+        "recheck": true,
+        "marks": {
+          "must": [
+            "K"
+          ]
+        },
+        "suspects": {
+          "K": [
+            "real",
+            "hemolysis"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "判断は適切。ただし点滴側でないことを確かめていません",
+      "reply": [
+        "msg_n05b_nocall_kanae",
+        "msg_n05b_nocall_yusuke"
       ],
       "doctor": "msg_n05b_emergency_recheck"
     },

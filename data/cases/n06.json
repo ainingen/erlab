@@ -66,6 +66,9 @@
     "msg_n06_nav_kanae",
     "msg_n06_nav_yusuke"
   ],
+  "investigate": {
+    "call": "msg_n06_call"
+  },
   "choices": [
     {
       "when": {
@@ -97,6 +100,11 @@
           "Hb": [
             "delta"
           ]
+        },
+        "actions": {
+          "must": [
+            "idcheck"
+          ]
         }
       },
       "score": "best",
@@ -104,6 +112,29 @@
       "reply": [
         "msg_n06_ok_kanae",
         "msg_n06_ok_yusuke"
+      ],
+      "doctor": "msg_n06_doctor_ok"
+    },
+    {
+      "when": {
+        "report": "urgent",
+        "comment": true,
+        "marks": {
+          "must": [
+            "Hb"
+          ]
+        },
+        "suspects": {
+          "Hb": [
+            "delta"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "Δの指摘は適切。ただし同一患者の検体か照合していません",
+      "reply": [
+        "msg_n06_noid_kanae",
+        "msg_n06_noid_yusuke"
       ],
       "doctor": "msg_n06_doctor_ok"
     },

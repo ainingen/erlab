@@ -17,7 +17,7 @@
 </style>
 </head>
 <body>
-<h1>ERLAB — 派生値 ・ 判定 ・ 指導役 ・ 読める画面 ・ 音 のテスト</h1>
+<h1>ERLAB — 派生値 ・ 判定 ・ 指導役 ・ 調べる ・ 読める画面 ・ 音 のテスト</h1>
 <p id="summary">実行中…</p>
 <ul id="list"></ul>
 <script type="module">
@@ -26,6 +26,7 @@
   import { suite as deriveSuite } from './derive.test.js';
   import { suite as reportSuite } from './report.test.js';
   import { suite as mentorSuite } from './mentor.test.js';
+  import { suite as investigateSuite } from './investigate.test.js';
   import { suite as readableSuite } from './readable.test.js';
   import { suite as soundSuite } from './sound.test.js';
 
@@ -39,6 +40,7 @@
     deriveSuite(data);
     reportSuite(data);
     mentorSuite(data);
+    investigateSuite(data);
     readableSuite(data);
     soundSuite(sources);
     const failed = results.filter((r) => !r.ok);

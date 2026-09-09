@@ -33,6 +33,56 @@ export function portraitUrl(speaker, emotion) {
   return new URL(`${speaker}_${emotion}.png`, PORTRAIT_DIR).href;
 }
 
+/* ---- 指導役に聞く（docs/investigate.md §8） ---- */
+
+/** 症例が ask を書いていないとき（生成症例を含む）に出す、既定の台詞のID。 */
+export const DEFAULT_ASK_IDS = ['msg_ask_default_kanae', 'msg_ask_default_yusuke'];
+
+/**
+ * 既定の「見る順番」を指導役の言い方で組む。索引の五行から作るので、
+ * 順番を直せばここも一緒に直る。**生成症例に台詞を書かない**方針はこれで守れる。
+ * 逆引き辞典（roadmap §4）ができたら、ここを一項目の逆引きに差し替える。
+ */
+export function buildDefaultAskMessages(glossary) {
+  const steps = ((glossary && glossary.reading_order) || {}).steps || [];
+  return {
+    msg_ask_default_kanae: {
+      kind: 'nav',
+      speaker: 'kanae',
+      emotion: 'normal',
+      from: '三嶋 かなえ / 主任臨床検査技師',
+      subject: '聞かれたので',
+      time: '—',
+      repeat: true,
+      body: [
+        '答えは言わない。見る順番を上から。',
+        ...steps.map((s) => `${s.term}。${s.hint}。`),
+        'そこまで見れば、だいたい着く。',
+      ],
+    },
+    msg_ask_default_yusuke: {
+      kind: 'nav',
+      speaker: 'yusuke',
+      emotion: 'normal',
+      from: '羽鳥 悠介 / 臨床検査技師（教育担当）',
+      subject: '聞かれたので',
+      time: '—',
+      repeat: true,
+      body: [
+        'まず見る順番を上から確認してください。答えは言いません。',
+        ...steps.map((s) => `${s.term}——${s.hint}。`),
+        'この五つを順に見れば、判断の材料はそろいます。',
+      ],
+    },
+  };
+}
+
+/** その症例で「聞く」を押したときに届くID。書いていなければ既定を出す。 */
+export function askMessageIds(caseDef) {
+  const own = [].concat((caseDef && caseDef.ask) ?? []);
+  return own.length ? own : DEFAULT_ASK_IDS;
+}
+
 export function messageById(data, id) {
   // 同じ文面を症例をまたいでもう一度届けたものは `id#2` の形で持つ（repeat のメッセージ）
   const [baseId] = String(id).split('#');
@@ -72,16 +122,40 @@ export function newestFirst(groups) {
   return [...groups].reverse().flat();
 }
 
-export function renderMessages(list, mentor = null, glossary = null) {
+/**
+ * ask = { navIds, asked, enabled } … ナビ枠の末尾に「聞く」を置く。
+ * いま開いている症例のナビにだけ付ける（前の症例のナビには付けない）。
+ */
+export function renderMessages(list, mentor = null, glossary = null, ask = null) {
   if (!list.length) return '<p class="empty">メッセージはありません。</p>';
-  return list.map((m) => renderMessage(m, mentor, glossary)).join('');
+  return list.map((m) => renderMessage(m, mentor, glossary, ask)).join('');
+}
+
+/**
+ * 「聞く」。1症例1回で、押すと指導役がその症例の見どころを言う（答えは言わない）。
+ * 聞いたことは評価に出る（最終評価が許容どまりになる）ので、押す前にそう書いておく。
+ */
+function renderAskButton(ask) {
+  if (ask.asked) {
+    return `
+      <div class="msg-ask">
+        <button type="button" class="ask-btn" disabled aria-pressed="true">聞いた</button>
+        <span class="ask-note">この症例の評価は許容どまりになります。</span>
+      </div>`;
+  }
+  return `
+    <div class="msg-ask">
+      <button type="button" class="ask-btn" data-action="ask"${ask.enabled ? '' : ' disabled'}
+              aria-pressed="false">聞く</button>
+      <span class="ask-note">1症例1回。聞くと評価は許容どまりになります。</span>
+    </div>`;
 }
 
 // 本文に辞典のリンクを入れるのは、ナビ・講評（nav）と申し送り（handover）だけ。
 // 医師の返信と記録は相手の言葉なので触らない。
 const LINKED_KINDS = new Set(['nav', 'handover']);
 
-function renderMessage(m, mentor, glossary = null) {
+function renderMessage(m, mentor, glossary = null, ask = null) {
   // from_mentor の申し送りは、選択中の指導役の名義と立ち絵で出す
   const speaker = m.speaker || (m.from_mentor && mentor ? mentor.id : null);
   const from = m.from_mentor && mentor ? `${mentor.name} / ${mentor.role}` : m.from;
@@ -104,6 +178,7 @@ function renderMessage(m, mentor, glossary = null) {
           <p class="msg-from">${esc(from)}</p>
         </header>
         ${renderBody(m, glossary)}
+        ${ask && (ask.navIds || []).includes(m.id) ? renderAskButton(ask) : ''}
       </div>
     </article>`;
 }

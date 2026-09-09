@@ -12,10 +12,16 @@ import { buildPanel, buildCommentOptions } from '../src/derive.js';
 
 const FOCUS_IDS = [
   'reception', 'patient', 'results', 'flags', 'sample_state', 'previous', 'messages', 'report',
+  // 「調べる」の行動ボタン。初出の操作なので、症例5だけ例外的に場所を教える
+  'investigate',
 ];
 
-/** 症例4以降は結論を言わない段階なので、指さしを書かない。 */
-const POINTING_CASES = ['n01', 'n02', 'n03'];
+/**
+ * 症例4以降は結論を言わない段階なので、指さしを書かない。
+ * 例外は症例5の行動ボタンだけ（初出の操作は場所を教える。マークのときと同じ扱い。
+ * docs/investigate.md §3-3）。
+ */
+const POINTING_CASES = ['n01', 'n02', 'n03', 'n05'];
 
 export function suite(data) {
   const glossary = data.glossary;
@@ -26,8 +32,8 @@ export function suite(data) {
   });
 
   // ---- 辞典 ----
-  test('辞典: 16語あり、一語は三行以内', () => {
-    eq(Object.keys(terms).length, 18);
+  test('辞典: 31語あり、一語は三行以内', () => {
+    eq(Object.keys(terms).length, 31);
     for (const [id, def] of Object.entries(terms)) {
       eq(typeof def.term, 'string', `${id} の語`);
       eq(Array.isArray(def.lines), true, `${id} の lines`);
@@ -82,7 +88,7 @@ export function suite(data) {
     }
     const html = renderTermPanel(glossary, null);
     eq(html.includes('見る順番'), true);
-    eq((html.match(/class="term-card/g) || []).length, 18, '辞典の語が全部並ぶ');
+    eq((html.match(/class="term-card/g) || []).length, Object.keys(terms).length, '辞典の語が全部並ぶ');
   });
 
   test('索引パネル: 項目と言葉のタブがあり、既存の索引は項目に入る', () => {
@@ -297,9 +303,9 @@ export function suite(data) {
   });
 
   // ---- 症例0の指さし（自動発火） ----
-  test('症例0: 9ステップのまま、各文に指さしを持つ', () => {
+  test('症例0: 10ステップで、各文に指さしを持つ', () => {
     const tutorial = data.tutorial;
-    eq(stepCount(tutorial), 9);
+    eq(stepCount(tutorial), 10);
     for (const step of tutorial.steps) {
       for (const id of data.mentors.mentors.map((m) => m.id)) {
         const line = step.lines[id];
@@ -340,7 +346,7 @@ export function suite(data) {
 
   test('症例0の結果画面: 骨組みに指さしの的があり、検査値は出ない', () => {
     const html = renderTutorialPlaceholder(data);
-    for (const region of ['patient', 'sample_state', 'results', 'flags', 'previous']) {
+    for (const region of ['patient', 'sample_state', 'results', 'flags', 'previous', 'investigate']) {
       eq(html.includes(`data-region="${region}"`), true, `${region} の的がない`);
     }
     // 結果と前回値は「―」のまま。患者の値は一つも出さない

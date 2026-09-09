@@ -17,6 +17,7 @@ function pick(level, opts = {}) {
     readback: level === 'emergency',
     marks: [],
     suspects: {},
+    actions: [],
     ...opts,
   };
 }
@@ -160,6 +161,42 @@ export function suite(data) {
     const caseDef = { choices: [{ when: { report: 'routine' }, score: 'best', headline: 'x' }] };
     eq(evaluate(caseDef, pick('routine')).score, 'best');
     eq(evaluate(caseDef, pick('routine', { marks: ['K', 'Hb', 'CRP'] })).score, 'best');
+  });
+
+  test('evaluate: actions は must / forbid / max だけを見る（marks と同じ形）', () => {
+    const caseDef = {
+      choices: [
+        { when: { actions: { must: ['call'], max: 1 } }, score: 'best', headline: '電話だけ', reply: 'a' },
+        { when: { actions: { must: ['call'] } }, score: 'ok', headline: '電話と他', reply: 'b' },
+        { when: { actions: { forbid: ['smear'] } }, score: 'ok', headline: '塗抹なし', reply: 'c' },
+        { when: {}, score: 'poor', headline: '受け皿', reply: 'd' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('routine', { actions: ['call'] })).headline, '電話だけ');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look', 'call'] })).headline, '電話と他');
+    eq(evaluate(caseDef, pick('routine', { actions: [] })).headline, '塗抹なし');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look'] })).headline, '塗抹なし');
+    eq(evaluate(caseDef, pick('routine', { actions: ['smear'] })).headline, '受け皿');
+  });
+
+  // 向きに注意。「していない人を拾う枝」は forbid ではなく、must を書かない枝で受ける
+  test('evaluate: actions の forbid は「その行動をした人」を弾く', () => {
+    const caseDef = {
+      choices: [
+        { when: { actions: { must: ['idcheck'] } }, score: 'best', headline: '照合した' },
+        { when: { actions: { forbid: ['idcheck'] } }, score: 'ok', headline: '照合していない' },
+        { when: {}, score: 'poor', headline: '受け皿' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('routine', { actions: ['idcheck'] })).headline, '照合した');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look'] })).headline, '照合していない');
+    eq(evaluate(caseDef, pick('routine', { actions: [] })).headline, '照合していない');
+  });
+
+  test('evaluate: actions を書かない枝は行動を不問にする（既存の枝がそのまま動く）', () => {
+    const caseDef = { choices: [{ when: { report: 'routine' }, score: 'best', headline: 'x' }] };
+    eq(evaluate(caseDef, pick('routine')).score, 'best');
+    eq(evaluate(caseDef, pick('routine', { actions: ['look', 'idcheck', 'smear', 'call'] })).score, 'best');
   });
 
   test('evaluate: suspects は指定した疑いが付いていれば一致、指定外は不問', () => {
@@ -372,9 +409,21 @@ export function suite(data) {
     const both = { marks: ['K'], suspects: { K: ['real', 'hemolysis'] } };
     eq(c.choices.filter((b) => b.score === 'best').length, 1, '最善の枝の数');
 
-    const best = evaluate(c, pick('emergency', { recheck: true, comment: note, ...both }));
+    const best = evaluate(c, pick('emergency', {
+      recheck: true, comment: note, actions: ['call'], ...both,
+    }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n05b_ok_kanae,msg_n05b_ok_yusuke');
+
+    // 電話をかけずに同じ判断をしたら許容どまり。点滴側でないことを確かめていない
+    const noCall = evaluate(c, pick('emergency', { recheck: true, comment: note, ...both }));
+    eq(noCall.score, 'ok', '電話なしで最善になっている');
+    eq(noCall.headline, '判断は適切。ただし点滴側でないことを確かめていません');
+    eq(ids(noCall.messageId).join(','), 'msg_n05b_nocall_kanae,msg_n05b_nocall_yusuke');
+    // 目視や塗抹では代わりにならない（確かめたのは検体であって採血の側ではない）
+    eq(evaluate(c, pick('emergency', {
+      recheck: true, comment: note, actions: ['look', 'smear'], ...both,
+    })).score, 'ok', '電話以外の行動で最善になっている');
 
     eq(evaluate(c, pick('emergency', { recheck: true, comment: note })).score,
        'ok', '見立てを残していない');
@@ -410,13 +459,19 @@ export function suite(data) {
     const c = caseById.n06;
     const note = '前回13.5から急激な低下、黒色便あり';
     const delta = { marks: ['Hb'], suspects: { Hb: ['delta'] } };
-    const best = evaluate(c, pick('urgent', { comment: note, ...delta }));
+    const best = evaluate(c, pick('urgent', { comment: note, actions: ['idcheck'], ...delta }));
     eq(best.score, 'best');
     eq(ids(best.messageId).join(','), 'msg_n06_ok_kanae,msg_n06_ok_yusuke');
     eq(best.doctorId, 'msg_n06_doctor_ok');
 
+    // 照合せずに同じ判断をしたら許容どまり。同じ人の検体か確かめていない
+    const noId = evaluate(c, pick('urgent', { comment: note, ...delta }));
+    eq(noId.score, 'ok', '照合なしで最善になっている');
+    eq(noId.headline, 'Δの指摘は適切。ただし同一患者の検体か照合していません');
+    eq(ids(noId.messageId).join(','), 'msg_n06_noid_kanae,msg_n06_noid_yusuke');
+
     eq(evaluate(c, pick('urgent', {
-      comment: note, marks: ['Hb'], suspects: { Hb: ['real', 'delta'] },
+      comment: note, actions: ['idcheck'], marks: ['Hb'], suspects: { Hb: ['real', 'delta'] },
     })).score, 'best', '本物の異常を一緒に付けてもよい');
     eq(evaluate(c, pick('urgent', { comment: note })).score, 'ok', 'マークなし');
     eq(evaluate(c, pick('emergency', { comment: note, ...delta })).score, 'ok', 'HHでない値に緊急回線');
@@ -521,6 +576,65 @@ export function suite(data) {
     }
     // 通常報告は差し戻しに届かないまま poor で閉じる
     eq(evaluate(c, pick('routine')).score, 'poor');
+  });
+
+  // ---- 指導役に聞く（docs/investigate.md §8） ----
+  test('ask: 聞いた症例の最終評価は許容どまり（枝は書き換えない）', () => {
+    const caseDef = {
+      choices: [
+        { when: { report: 'emergency' }, score: 'best', headline: '最善' },
+        { when: { report: 'urgent' }, score: 'ok', headline: '許容' },
+        { when: {}, score: 'poor', headline: '要改善' },
+      ],
+    };
+    eq(evaluate(caseDef, pick('emergency')).score, 'best', '聞かなければ最善のまま');
+    eq(evaluate(caseDef, pick('emergency', { asked: true })).score, 'ok', '聞いたのに最善');
+    // 当たる枝は変わらない。落ちるのは評価だけ
+    eq(evaluate(caseDef, pick('emergency', { asked: true })).headline, '最善');
+    eq(evaluate(caseDef, pick('urgent', { asked: true })).score, 'ok');
+    eq(evaluate(caseDef, pick('routine', { asked: true })).score, 'poor', '許容まで上げてはいけない');
+  });
+
+  test('ask: actions には含めない（別扱い）', () => {
+    const caseDef = {
+      choices: [
+        { when: { actions: { must: ['call'] } }, score: 'best', headline: '電話した' },
+        { when: {}, score: 'poor', headline: '受け皿' },
+      ],
+    };
+    // 聞いても行動を押したことにはならない
+    eq(evaluate(caseDef, pick('routine', { asked: true })).headline, '受け皿');
+    eq(evaluate(caseDef, pick('routine', { asked: true, actions: ['call'] })).headline, '電話した');
+  });
+
+  test('ask: 差し戻しのある症例でも頭打ちになる（一本目で聞いても二本目で聞いても）', () => {
+    const c = caseById.n07;
+    const first = pick('emergency', { marks: ['K'], suspects: { K: ['real'] } });
+    // 一本目で聞くと cap が ok に落ち、二本目の最善が許容どまりになる
+    const asked = evaluate(c, { ...first, asked: true });
+    eq(asked.then, 'followup', '差し戻しの枝に当たっていない');
+    eq(asked.cap, 'ok', '聞いたのに cap が best のまま');
+    const second = pick('emergency', {
+      comment: [{ id: 'recollect_same:K', templateId: 'recollect_same', text: 'K：再採血で同値' }],
+      marks: ['K'], suspects: { K: ['real'] },
+    });
+    eq(evaluateFollowup(c, second, asked.cap).score, 'ok');
+    // 二本目で聞いた場合も同じ
+    eq(evaluateFollowup(c, { ...second, asked: true }, 'best').score, 'ok');
+    eq(evaluateFollowup(c, second, 'best').score, 'best', '聞かなければ最善');
+  });
+
+  test('全症例: 聞いた報告に最善は出ない', () => {
+    for (const c of data.cases) {
+      const suspectIds = data.suspects.suspects.map((x) => x.id);
+      for (const choice of combosFor(c, suspectIds)) {
+        const asked = { ...choice, asked: true, actions: ['look', 'idcheck', 'smear', 'call'] };
+        const res = c.followup
+          ? evaluateFollowup(c, asked, evaluate(c, asked).cap)
+          : evaluate(c, asked);
+        eq(res.score === 'best', false, `${labelOf(c.id, choice)} が聞いても最善`);
+      }
+    }
   });
 
   test('worseScore: 悪いほうを採る', () => {
@@ -749,7 +863,9 @@ export function suite(data) {
     eq(only.score, 'ok');
     eq(only.doctorId, 'msg_n05b_emergency_recheck', '値は伝わっているので医師の返信は best と同じ');
 
-    const written = evaluate(c, pick('emergency', { ...both, comment: [opt('hemolysis'), opt('real')] }));
+    const written = evaluate(c, pick('emergency', {
+      ...both, actions: ['call'], comment: [opt('hemolysis'), opt('real')],
+    }));
     eq(written.score, 'best', '両方書けば最善のまま');
   });
 
@@ -771,6 +887,45 @@ export function suite(data) {
           eq(['must', 'any', 'forbid'].includes(key), true, `${c.id} の comment に知らない条件 ${key}`);
           for (const id of rule[key]) eq(okId(id), true, `${c.id} の comment に知らない候補ID ${id}`);
         }
+      }
+    }
+  });
+
+  test('全症例: actions の条件は must / forbid / max だけ。行動IDは実在する', () => {
+    const actionIds = new Set(['look', 'idcheck', 'smear', 'call']);
+    for (const c of data.cases) {
+      for (const branch of allBranches(c)) {
+        const rule = (branch.when || {}).actions;
+        if (!rule) continue;
+        for (const key of Object.keys(rule)) {
+          eq(['must', 'forbid', 'max'].includes(key), true, `${c.id} の actions に ${key}`);
+        }
+        for (const id of [].concat(rule.must || [], rule.forbid || [])) {
+          eq(actionIds.has(id), true, `${c.id} に知らない行動 ${id}`);
+        }
+        // 新人モードでは行動数の上限を使わない（全部押しても損をさせない）
+        eq(rule.max, undefined, `${c.id} の新人症例に actions.max がある`);
+      }
+    }
+  });
+
+  test('全症例: 塗抹を要求する枝は、その症例に血算の依頼があるときだけ', () => {
+    for (const c of data.cases) {
+      for (const branch of allBranches(c)) {
+        const must = ((branch.when || {}).actions || {}).must || [];
+        if (!must.includes('smear')) continue;
+        eq(c.order.includes('CBC'), true, `${c.id} は血算がないのに塗抹を求めている`);
+      }
+    }
+  });
+
+  test('全症例: ask を書いた症例の台詞は指導役ぶんそろっている', () => {
+    for (const c of data.cases) {
+      if (!c.ask) continue;
+      for (const id of mentorIds) {
+        const group = filterBySpeaker(resolveMessages(data, c.ask), id);
+        eq(group.length, 1, `${c.id} の ask に ${id} の台詞がない`);
+        eq(group[0].kind, 'nav', `${c.id} の ask は nav`);
       }
     }
   });

@@ -215,13 +215,28 @@ export function renderPhone(caseDef, panel, selection = null, accession = caseDe
  *   readback … 読み返し確認をとったか
  *   marks    … マークした項目 { must: [...], max: n, forbid: [...] }
  *   suspects … マーク行に付けた疑い { K: ["hemolysis"], exact: true }
+ *   actions  … 調べるで押した行動 { must: [...], forbid: [...], max: n }
  * 最後の枝は when を空にして、必ずどれかに当たるようにしておく。
  *
  * reply  … 指導役の講評（無い枝もある。その症例で教えたい判断に関わる分岐だけ付ける）
  * doctor … 医師からの返信。どの枝にも必ずある。報告 → 講評 → 医師の返信、の順で流す
  */
 export function evaluate(caseDef, choice) {
-  return pickBranch(caseDef.choices, choice);
+  return applyAskCap(pickBranch(caseDef.choices, choice), choice);
+}
+
+/**
+ * 「指導役に聞く」（docs/investigate.md §8）。聞いた症例の最終評価は上限 ok。
+ * 症例側の枝は書き換えず、エンジンで min を取る。`actions` には含めない別扱い。
+ */
+function applyAskCap(res, choice) {
+  if (!choice || !choice.asked) return res;
+  return {
+    ...res,
+    cap: worseScore(res.cap, 'ok'),
+    // then を持つ枝（差し戻し）は score を持たない。頭打ちは cap のほうに残る
+    score: res.score ? worseScore(res.score, 'ok') : res.score,
+  };
 }
 
 /**
@@ -230,7 +245,7 @@ export function evaluate(caseDef, choice) {
  * followup の枝に then は書けない（入れ子にしない）。
  */
 export function evaluateFollowup(caseDef, choice, cap = 'best') {
-  const res = pickBranch(caseDef.followup && caseDef.followup.choices, choice);
+  const res = applyAskCap(pickBranch(caseDef.followup && caseDef.followup.choices, choice), choice);
   return { ...res, branchScore: res.score, score: worseScore(res.score, cap), then: null, cap };
 }
 
@@ -265,6 +280,7 @@ function matches(when, choice) {
     if (key === 'comment') return matchesComment(expected, choice);
     if (key === 'marks') return matchesMarks(expected, choice.marks || []);
     if (key === 'suspects') return matchesSuspects(expected, choice.suspects || {});
+    if (key === 'actions') return matchesActions(expected, choice.actions || []);
     return Boolean(choice[key]) === expected;
   });
 }
@@ -306,6 +322,22 @@ function matchesMarks(rule, marks) {
 }
 
 /**
+ * 調べるの条件。マークと同じ形で、**書かなければ不問**。
+ *   must   … 押していなければ不一致
+ *   forbid … 押していたら不一致。「その行動をした人を弾く」向きに使う。
+ *            「していない人を拾う枝」は forbid ではなく、その行動を must に書かない枝で受ける
+ *   max    … 行動数の上限。上級で「全部押して時間を使いすぎ」を拾う枝用。新人では使わない
+ * 順番は見ない（docs/investigate.md §2）。`ask` はここに含めない（別扱い）。
+ */
+function matchesActions(rule, actions) {
+  const list = [].concat(actions || []);
+  if (rule.must && !rule.must.every((id) => list.includes(id))) return false;
+  if (rule.forbid && rule.forbid.some((id) => list.includes(id))) return false;
+  if (rule.max !== undefined && list.length > rule.max) return false;
+  return true;
+}
+
+/**
  * 疑いの条件。指定した項目に、指定した疑いがすべて付いていれば一致。
  * 指定外の疑いが付いていても不問。`exact: true` を書いたときだけ厳密一致にする。
  */
@@ -338,6 +370,7 @@ export function renderVerdict(res, choice, data) {
       }</span>
       ${esc(res.headline)}
     </h2>
+    ${choice.asked ? '<p class="verdict-ask">指導役に聞いたため、許容どまりです。</p>' : ''}
     <p class="verdict-choice">${esc(bits.join(' ／ '))}</p>
     ${lines.length ? `<ul class="verdict-comment">${lines.map((l) => `<li>${esc(l.text)}</li>`).join('')}</ul>` : ''}
     <p class="verdict-note">${

@@ -10,6 +10,8 @@ async function readJson(relativePath) {
   return res.json();
 }
 
+import { buildDefaultAskMessages } from './messages.js';
+
 export async function loadData() {
   const [
     tests, hospital, conditions, artifacts, caseIndex, messages, mentors, tutorial, suspects,
@@ -31,6 +33,10 @@ export async function loadData() {
   const cases = await Promise.all(
     caseIndex.rookie.map((id) => readJson(`data/cases/${id}.json`)),
   );
+
+  // 「聞く」の既定の台詞は索引の「見る順番」から組む。症例に書かなくても出せるようにして、
+  // 生成症例に台詞を持たせない（docs/investigate.md §8）
+  Object.assign(messages.messages, buildDefaultAskMessages(glossary));
 
   return {
     tests, hospital, conditions, artifacts, messages, mentors, tutorial, suspects, glossary,

@@ -35,6 +35,10 @@
     "msg_n05_nav_kanae",
     "msg_n05_nav_yusuke"
   ],
+  "ask": [
+    "msg_n05_ask_kanae",
+    "msg_n05_ask_yusuke"
+  ],
   "recollect": {
     "accession": "26-0907-052R",
     "received_at": "10:58",
