@@ -14,7 +14,7 @@ import {
   SCORE_LABEL,
 } from './report.js';
 import { renderMentorPicker, mentorById, mentorForCase, askButtonState } from './mentor.js';
-import { actionStates, runAction, renderActionBar, renderInvestigateLog } from './investigate.js';
+import { actionStates, runAction, renderInvestigatePanel } from './investigate.js';
 import * as sound from './sound.js';
 import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
 
@@ -57,6 +57,8 @@ let heldRegion = null; // いま出したままにしている枠
 const POINT_STEP_MS = 2400;
 const POINT_VIEW = { reception: 'worklist', messages: 'messages' };
 
+// 調べた結果に一行足したとき、その行だけ枠と「新」の札を出す時間。演出だけで判定には効かない。
+const FRESH_MS = 1100;
 // 差し戻しの返信が返ってから二本目が届くまでの間。演出だけで、時間制限は入れない。
 const FOLLOWUP_DELAY_MS = 4000;
 // 送信・判定・返信は同じ一瞬に起きる。音だけ少しずらして、順に起きた出来事として聞かせる
@@ -313,6 +315,25 @@ function investigate(actionId) {
   if (entry.messageId) pushMessage(entry.messageId);
   sound.play(entry.id === 'call' ? 'message' : 'tap');
   renderAll();
+  showFreshEntry();
+}
+
+/**
+ * いま足した一行を目立たせる。枠と行頭の「新」の札を一緒に出して、1秒で消す。
+ * 値の判定ではなく「いま増えた」の合図なので、フラグの黄・赤は使わない。
+ * 描き直しで再生されないよう、クラスは描いたあとの DOM に直接付けて、時間で外す。
+ */
+function showFreshEntry() {
+  const rows = document.querySelectorAll('.investigate-log li');
+  const row = rows[rows.length - 1];
+  if (!row) return;
+  row.classList.add('is-fresh');
+  setTimeout(() => row.classList.remove('is-fresh'), FRESH_MS);
+  // 欄が画面の外にあるときだけ寄せる。見えているなら動かさない（指さしと同じ扱い）
+  const box = $('[data-region="investigate_log"]');
+  if (box && !pointFitsBand(box.getBoundingClientRect(), visibleBand())) {
+    box.scrollIntoView({ block: 'center' });
+  }
 }
 
 /* ---- 指導役に聞く ---- */
@@ -549,8 +570,6 @@ function renderAll() {
     suspectDefs,
     glossary,
     interactive: !done && stage === 'first',
-    // 調べた結果は検体状態欄の下の別欄。何も調べていなければ欄ごと出ない
-    investigateHtml: renderInvestigateLog(investigateEntries(caseDef.id), glossary),
   };
   let html = renderResults(caseDef, currentPanel(), state.data, firstView);
 
@@ -567,8 +586,12 @@ function renderAll() {
   // 自分で依頼した再採血（症例5・5-b）は読むだけ
   const re = state.recollected[caseDef.id];
   if (re) html += renderRecollect(caseDef, re);
-  // 行動ボタンは結果テーブルの下、報告ボタンの上
-  html += renderActionBar(currentActionStates());
+  // 行動ボタンは結果テーブルの下、報告ボタンの上。調べた結果はそのボタンの直下に積む
+  html += renderInvestigatePanel({
+    states: currentActionStates(),
+    entries: investigateEntries(caseDef.id),
+    glossary,
+  });
   $('#pane-lis').innerHTML = html;
 
   const reportBtn = $('#btn-report');

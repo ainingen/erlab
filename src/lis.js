@@ -79,9 +79,9 @@ export function pointFitsBand(rect, band) {
   return rect.bottom <= band.bottom || rect.height > band.bottom - band.top;
 }
 
-/* view = { marks, suspects, suspectDefs, interactive, investigateHtml }
+/* view = { marks, suspects, suspectDefs, interactive }
    view を渡さない表（再採血検体）はマーク欄も疑いタブも出さない読み取り専用になる。
-   investigateHtml は「調べた結果」欄の中身（src/investigate.js が組む）。空なら欄ごと出さない。 */
+   「調べた結果」欄はここではなく行動ボタンの直下に出す（src/investigate.js）。 */
 const COLS_PLAIN = 6;
 const COLS_MARKED = 7;
 
@@ -155,8 +155,6 @@ export function renderResults(caseDef, panel, data, view = null) {
 
   const v = view ? { glossary, ...view } : null;
   const tables = panel.panels.map((pn) => renderPanelTable(pn, v, glossary)).join('');
-  // 調べた結果は検体状態欄に混ぜない。装置が言ったことと、自分で確かめたことを分ける
-  const investigated = Boolean(view && view.investigateHtml);
 
   return `
     <div class="pt-head" data-region="patient">
@@ -175,10 +173,6 @@ export function renderResults(caseDef, panel, data, view = null) {
         ${p.vitals ? `<dt>バイタル</dt><dd>脈拍 ${esc(p.vitals.pulse)} /分　血圧 ${esc(p.vitals.bp)} mmHg</dd>` : ''}
         <dt>${termLink(glossary, 'sample_state', '検体状態')}</dt>
         <dd class="${sample ? 'is-flagged' : ''}" data-region="sample_state">${linkTerms(sampleText, glossary)}</dd>
-        ${investigated
-          ? `<dt>調べた結果</dt>
-        <dd data-region="investigate_log">${view.investigateHtml}</dd>`
-          : ''}
         <dt>前回検査</dt><dd>${esc(prevNote)}</dd>
       </dl>
     </div>

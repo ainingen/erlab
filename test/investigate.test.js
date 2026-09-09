@@ -4,7 +4,7 @@
 import { test, eq } from './harness.js';
 import {
   ACTIONS, actionStates, runAction, addMinutes, actionTime, callMessageId,
-  idCheckLines, sampleLines, renderActionBar, renderInvestigateLog,
+  idCheckLines, sampleLines, renderActionBar, renderInvestigateLog, renderInvestigatePanel,
 } from '../src/investigate.js';
 import { renderResults } from '../src/lis.js';
 import { renderMessages, askMessageIds, DEFAULT_ASK_IDS, NO_MENTOR_ASK_ID } from '../src/messages.js';
@@ -207,33 +207,55 @@ export function suite(data, sources = {}) {
   test('調べた結果欄: 何も調べていなければ欄ごと出さない', () => {
     eq(renderInvestigateLog([]), '');
     eq(renderInvestigateLog(null), '');
-    const caseDef = caseById.n06;
-    const view = {
-      marks: [], suspects: {}, suspectDefs: data.suspects.suspects,
-      glossary: data.glossary, interactive: true, investigateHtml: '',
-    };
-    const html = renderResults(caseDef, buildPanel(caseDef, data), data, view);
-    eq(html.includes('調べた結果'), false, '空の欄が出ている');
-    eq(html.includes('data-region="sample_state"'), true, '検体状態欄は出る');
+    const empty = renderInvestigatePanel({ states: actionStates({ order: CBC }), entries: [] });
+    eq(empty.includes('調べた結果'), false, '空の欄が出ている');
+    eq(empty.includes('data-investigate="look"'), true, 'ボタンは出る');
   });
 
-  test('調べた結果欄: 検体状態欄に追記せず、その下の別欄に出る', () => {
+  test('調べた結果欄: 行動ボタンの直下に出る。検体状態欄には追記しない', () => {
     const caseDef = caseById.n05b;
     const panel = buildPanel(caseDef, data);
     const entry = runAction('look', { caseDef, data, panel, index: 0 });
+    const html = renderInvestigatePanel({
+      states: actionStates({ order: CBC, taken: [{ id: 'look', stage: 'first' }] }),
+      entries: [entry],
+      glossary: data.glossary,
+    });
+    eq(html.includes('data-region="investigate_log"'), true, '調べた結果欄がない');
+    // 並びは 行動ボタン → 調べた結果（押したボタンのすぐ下に結果が出る）
+    eq(html.indexOf('data-region="investigate"') < html.indexOf('data-region="investigate_log"'), true,
+       'ボタンの直下でない');
+    eq(html.includes('<span class="investigate-label">調べた結果</span>'), true, '欄の見出しがない');
+
+    // 結果画面（検体状態欄）には混ざらない。位置はPC・スマホとも同じで、結果表の側は触らない
     const view = {
       marks: [], suspects: {}, suspectDefs: data.suspects.suspects,
       glossary: data.glossary, interactive: true,
-      investigateHtml: renderInvestigateLog([entry], data.glossary),
     };
-    const html = renderResults(caseDef, panel, data, view);
-    eq(html.includes('data-region="investigate_log"'), true, '調べた結果欄がない');
-    // 検体状態欄（装置の言い分）には混ざらない
-    const sample = html.split('data-region="sample_state"')[1].split('</dd>')[0];
+    const results = renderResults(caseDef, panel, data, view);
+    eq(results.includes('data-region="investigate_log"'), false, '結果画面に調べた結果が残っている');
+    eq(results.includes('調べた結果'), false, '検体状態欄の下に欄が残っている');
+    const sample = results.split('data-region="sample_state"')[1].split('</dd>')[0];
     eq(sample.includes('血漿は淡赤'), false, '検体状態欄に追記している');
-    // 欄の並びは 検体状態 → 調べた結果 → 前回検査
-    eq(html.indexOf('data-region="sample_state"') < html.indexOf('data-region="investigate_log"'), true);
-    eq(html.indexOf('data-region="investigate_log"') < html.indexOf('前回検査'), true);
+    eq(results.includes('data-region="sample_state"'), true, '検体状態欄はそのまま');
+  });
+
+  test('調べた結果: 足したばかりの一行に「新」の札を出せる（色だけに頼らない）', () => {
+    const caseDef = caseById.n05b;
+    const panel = buildPanel(caseDef, data);
+    const entry = runAction('look', { caseDef, data, panel, index: 0 });
+    const html = renderInvestigateLog([entry], data.glossary);
+    eq(html.includes('<span class="ia-new">新</span>'), true, '「新」の札がない');
+    // 札は行頭。時刻より前に出す
+    eq(html.indexOf('ia-new') < html.indexOf('ia-time'), true, '札が行頭でない');
+
+    const css = sources.index || '';
+    // 「いま増えた」の合図であって値の判定ではないので、フラグの黄・赤は使わない
+    const fresh = css.slice(css.indexOf('@keyframes ia-fresh'), css.indexOf('@keyframes ia-fresh') + 200);
+    eq(/var\(--warn\)|var\(--panic\)/.test(fresh), false, 'フラグ色と被る色を使っている');
+    eq(fresh.includes('var(--head)'), true, '枠の色が決まっていない');
+    eq(/\.is-fresh \.ia-new \{ display: inline-block/.test(css), true, '札が枠と一緒に出ない');
+    eq(/animation: ia-fresh 1s/.test(css), true, '1秒で消えない');
   });
 
   test('調べた結果: 結果の語は下線で辞典に飛ぶ', () => {
@@ -277,8 +299,8 @@ export function suite(data, sources = {}) {
     for (const a of ACTIONS) eq(html.includes(`data-investigate="${a.id}"`), true, `${a.id} のボタン`);
     eq((html.match(/disabled/g) || []).length, 1, '押せないのは塗抹だけ');
     eq(html.includes('血算の依頼なし'), true);
-    // 指さしの的（症例5のナビが指す）
-    eq(html.includes('data-region="investigate"'), true);
+    // 指さしの的（症例5のナビが指す）はボタンの並びに付く
+    eq(/<div class="investigate-actions"[^>]*data-region="investigate"/.test(html), true);
   });
 
   // ---- 指導役に聞く（§8） ----

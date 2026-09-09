@@ -161,15 +161,35 @@ export function renderActionBar(states) {
     )
     .join('');
   return `
-    <div class="investigate" data-region="investigate">
-      <p class="investigate-lead">調べる：装置が言わないことを自分で確かめます。</p>
-      <div class="investigate-actions" role="group" aria-label="調べる">${buttons}</div>
+    <div class="investigate-actions" role="group" aria-label="調べる" data-region="investigate">
+      ${buttons}
     </div>`;
 }
 
 /**
- * 3-2. 調べた結果欄。検体状態欄の下に置く別欄で、**何も調べていないときは欄ごと出さない**。
- * LIS の記録らしく、時刻と行動名を頭に付けて一行ずつ積む。三行は ／ で繋いで一行に収める。
+ * 3-2. 調べた結果欄。**行動ボタンの直下**（報告ボタンの上）に置く。
+ * 押したボタンのすぐ下に結果が出るので、何が返ったのかを目で追える。
+ * 検体状態欄（装置と受付が言ってくること）には混ぜない。
+ * **何も調べていないときは欄ごと出さない。**
+ */
+export function renderInvestigatePanel({ states = [], entries = [], glossary = null } = {}) {
+  const log = renderInvestigateLog(entries, glossary);
+  return `
+    <div class="investigate">
+      <p class="investigate-lead">調べる：装置が言わないことを自分で確かめます。</p>
+      ${renderActionBar(states)}
+      ${log
+        ? `<div class="investigate-result" data-region="investigate_log">
+        <span class="investigate-label">調べた結果</span>${log}
+      </div>`
+        : ''}
+    </div>`;
+}
+
+/**
+ * 調べた結果の中身。LIS の記録らしく、時刻と行動名を頭に付けて一行ずつ積む。
+ * 三行は ／ で繋いで一行に収める。
+ * 行頭の「新」は、足したばかりの一行に一瞬だけ出す札（`is-fresh` を付けたときだけ見える）。
  */
 export function renderInvestigateLog(entries, glossary = null) {
   if (!entries || !entries.length) return '';
@@ -177,6 +197,7 @@ export function renderInvestigateLog(entries, glossary = null) {
     .map(
       (e) => `
       <li>
+        <span class="ia-new">新</span>
         <span class="ia-time">${esc(e.time)}</span>
         <span class="ia-name">${esc(e.name)}</span>
         <span class="ia-text">${glossary ? linkTerms(e.text, glossary) : esc(e.text)}</span>

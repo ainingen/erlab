@@ -279,14 +279,34 @@
   }
   .ia-btn:disabled .ia-note { color: inherit; }
 
-  /* 調べた結果欄。検体状態欄の**下の別欄**で、装置の言い分と自分で確かめたことを混ぜない。
-     何も調べていないときは欄ごと出さない（描画側で落とす）。
+  /* 調べた結果欄。押したボタンの直下に積む（報告ボタンの上）。装置の言い分（検体状態欄）とは
+     別の欄で、混ぜない。何も調べていないときは欄ごと出さない（描画側で落とす）。
      値の判定ではないので色は塗らない（CLAUDE.md の色ルール） */
+  .investigate-result { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .investigate-label {
+    display: block; font-family: var(--sans); font-size: 13px; color: var(--ink-dim); margin-bottom: 2px;
+  }
   .investigate-log { list-style: none; margin: 0; padding: 0; }
-  .investigate-log li { display: flex; flex-wrap: wrap; gap: 0 6px; margin-bottom: 2px; }
+  .investigate-log li { display: flex; flex-wrap: wrap; gap: 0 6px; margin-bottom: 2px; padding: 1px 3px; }
   .ia-time { font-family: var(--num); color: var(--ink-dim); }
   .ia-name { font-weight: 700; }
   .ia-text { flex: 1 1 14em; min-width: 0; }
+
+  /* 足したばかりの一行。「いま増えた」の合図であって値の判定ではないので、
+     フラグの黄（--warn）・赤（--panic）は使わず、地の濃色の枠だけにする。
+     色だけに頼らないよう、行頭に「新」の札を一緒に出す。どちらも1秒で消える */
+  .ia-new {
+    display: none; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    border: 1px solid currentColor; padding: 0 3px; align-self: center;
+  }
+  .investigate-log li.is-fresh .ia-new { display: inline-block; }
+  .investigate-log li.is-fresh { animation: ia-fresh 1s ease-out 1 both; }
+  @keyframes ia-fresh {
+    from { box-shadow: inset 0 0 0 2px var(--head); }
+    to { box-shadow: inset 0 0 0 2px rgba(43, 54, 70, 0); }
+  }
+  /* 動きを減らす設定では枠を出さない。「新」の札だけで同じことが分かる */
+  @media (prefers-reduced-motion: reduce) { .investigate-log li.is-fresh { animation: none; } }
 
   /* ---- 指さし ---- */
   /* ナビの一文から、画面のどこを見るかを示す。枠が点いて2秒でゆっくり消える。
