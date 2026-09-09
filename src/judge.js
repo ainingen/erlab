@@ -81,6 +81,9 @@ export function deriveFacts(caseDef, panel, data, context = {}) {
   const facts = {
     P, A, A1, A2, D, M, X, R, N,
     key,
+    // O1（コメントが事実に合うか）で使う。フラグの点いた行だけ持つ
+    flagOf: Object.fromEntries(rows.filter((r) => r.flag).map((r) => [r.id, r.flag])),
+    commentRules: rules.comment_rules || {},
     artifactId,
     artifactSuspect: artifact ? artifact.suspect : null,
     panicItems, deltaItems, flagged,
@@ -301,7 +304,8 @@ const DEVIATIONS = [
   {
     id: 'O1', score: 'ok',
     headline: () => 'そのコメントは事実に合いません',
-    hit: (f, op) => contradictingComment(f, op),
+    // 付けたコメントのどれかが、その症例の事実に合わない（data/judge.json の comment_rules）
+    hit: (f, op) => [...commentTemplateIds(op)].some((id) => !commentFits(f, id, op)),
   },
   {
     // 異常のない検体（T1）にコメントを付けた。間違いではないが、書くことが無い
@@ -376,19 +380,37 @@ function touchesArtifact(facts, op) {
   return Boolean(facts.artifactSuspect) && has(facts.artifactSuspect);
 }
 
-/** コメントの種類が事実と食い違っているか（O1）。 */
-function contradictingComment(facts, op) {
-  const picked = commentIds(op);
-  const has = (id) => [...picked].some((x) => x === id || String(x).startsWith(`${id}:`));
-  if (has('delta') && !facts.D) return true;
-  if (has('continued') && facts.D) return true;
-  if (has('mismatch') && !facts.M) return true;
-  for (const id of ['hemolysis', 'clot', 'dilution']) {
-    if (has(id) && !facts.A) return true;
+/** 付けたコメントの候補IDを、項目付き（`delta:Hb`）も素のID（`delta`）にそろえて返す。 */
+function commentTemplateIds(op) {
+  return new Set([...commentIds(op)].map((id) => String(id).split(':')[0]));
+}
+
+/**
+ * そのコメントを、この症例に付けてよいか（O1）。
+ * 条件は data/judge.json の `comment_rules`。**表に無いコメントは条件なし**（減点しない）。
+ *   facts     … §1 の事実を全部満たすこと（`!D` は「D でないこと」）
+ *   facts_any … どれか一つ満たすこと
+ *   flags_any … その項目にそのフラグが点いていること、をどれか一つ
+ *   also_when … その事実のときは、一緒に付ける相手のコメントが要る
+ */
+export function commentFits(facts, templateId, op = null) {
+  const rule = (facts.commentRules || {})[templateId];
+  if (!rule || typeof rule !== 'object') return true;
+  const holds = (name) => (name.startsWith('!')
+    ? !facts[name.slice(1)]
+    : Boolean(facts[name]));
+  if (rule.facts && !rule.facts.every(holds)) return false;
+  if (rule.facts_any && !rule.facts_any.some(holds)) return false;
+  if (rule.flags_any) {
+    const flagOf = facts.flagOf || {};
+    const ok = Object.entries(rule.flags_any)
+      .some(([testId, flags]) => flags.includes(flagOf[testId] || ''));
+    if (!ok) return false;
   }
-  // 検体トラブルがあっても値は患者由来（X）のときは、トラブルだけ書いて終わらせない
-  if (facts.X && ['hemolysis', 'clot', 'dilution'].some(has) && !has('real')) return true;
-  return false;
+  if (rule.also_when && op && holds(rule.also_when.fact)) {
+    if (!commentTemplateIds(op).has(rule.also_when.comment)) return false;
+  }
+  return true;
 }
 
 /** 鍵の項目にマークと疑いが付いているか（O6）。 */
@@ -427,16 +449,25 @@ export function judge(facts, operation) {
   };
 }
 
+/**
+ * ずれの無い操作に添えるコメント。要る種類が決まっていればそれ、
+ * 決まっていなければ**その症例の事実に合う所見**（O1 に当たらないもの）を一つ選ぶ。
+ */
+function bestComment(facts, correct) {
+  if (correct.commentMust.length) return [...correct.commentMust];
+  const order = ['sample_state_clear', 'sample_state', 'real', 'microcytic', 'renal',
+    'inflammation', 'delta', 'continued'];
+  const fit = order.find((id) => commentFits(facts, id, { comment: [{ id, templateId: id }] }));
+  return fit ? [fit] : [];
+}
+
 /** その事実に対する「ずれの無い操作」。テストと、生成症例の見本づくりに使う。 */
 export function bestOperation(facts) {
   const c = correctOperation(facts);
   return {
     level: c.level,
     recheck: c.recheck,
-    comment: c.comment
-      ? (c.commentMust.length ? c.commentMust : ['sample_state_clear'])
-        .map((id) => ({ id, templateId: id }))
-      : [],
+    comment: c.comment ? bestComment(facts, c).map((id) => ({ id, templateId: id })) : [],
     marks: [...c.marks],
     suspects: JSON.parse(JSON.stringify(c.suspects)),
     actions: [...c.actions],

@@ -109,7 +109,12 @@
     {
       "when": {
         "report": "urgent",
-        "comment": true
+        "comment": {
+          "any": [
+            "hemolysis",
+            "sample_state"
+          ]
+        }
       },
       "score": "ok",
       "headline": "溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません",

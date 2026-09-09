@@ -425,7 +425,11 @@ export function suite(data) {
 
     eq(evaluate(c, pick('routine', { recheck: true })).score, 'ok', '疑いを選ばない再採血');
     eq(evaluate(c, pick('emergency', { recheck: true, ...hemolysis })).score, 'ok');
-    eq(evaluate(c, pick('urgent', { comment: '溶血3+のため参考値', ...hemolysis })).score, 'ok');
+    // 至急で出すなら、溶血（か検体状態）を伝えているときだけ許容
+    eq(evaluate(c, pick('urgent', { comment: [cmt('hemolysis', 'K')], ...hemolysis })).score, 'ok');
+    eq(evaluate(c, pick('urgent', { comment: [cmt('sample_state')], ...hemolysis })).score, 'ok');
+    eq(evaluate(c, pick('urgent', { comment: [cmt('microcytic')], ...hemolysis })).score, 'poor',
+       '検体に触れないコメントでは許容にしない');
 
     const real = evaluate(c, pick('emergency', { marks: ['K'], suspects: { K: ['real'] } }));
     eq(real.score, 'poor', '本物の異常と決めて電話をかけた');
@@ -962,42 +966,37 @@ export function suite(data) {
     eq(combos > 10000, true, `一本目 × 二本目 の組み合わせが少なすぎる: ${combos}`);
   });
 
-  test('全症例: comment: true の判定は、自由記述でも候補でも同じ枝に落ちる', () => {
-    // 症例が名指ししている候補IDを使うと、`comment.must` / `any` / `forbid` の枝で
-    // 自由記述と差が出るのは当たり前。ここで見たいのは `comment: true` の枝なので、
-    // その症例がどの条件にも書いていない候補で比べる
-    const namedIn = (c) => {
-      const ids2 = new Set();
-      for (const branch of allBranches(c)) {
-        const cond = (branch.when || {}).comment;
-        if (Array.isArray(cond)) cond.forEach((x) => ids2.add(String(x).split(':')[0]));
-        else if (cond && typeof cond === 'object') {
-          for (const k of ['must', 'any', 'forbid']) {
-            (cond[k] || []).forEach((x) => ids2.add(String(x).split(':')[0]));
-          }
-        }
-      }
-      return ids2;
+  test('comment: true の判定は、自由記述でも候補でも同じ枝に落ちる', () => {
+    // 仕組み：`comment: true` の枝は中身を見ない
+    const caseDef = {
+      choices: [
+        { when: { comment: true }, score: 'ok', headline: '書いた' },
+        { when: {}, score: 'poor', headline: '書いていない' },
+      ],
     };
-    for (const c of data.cases) {
-      const named = namedIn(c);
-      const free = data.commentTemplates.templates.map((t) => t.id).find((id) => !named.has(id));
-      eq(Boolean(free), true, `${c.id} に名指しされていない候補がない`);
-      const line = cmt(free);
+    eq(evaluate(caseDef, pick('routine', { comment: 'コメント' })).headline, '書いた');
+    eq(evaluate(caseDef, pick('routine', { comment: [cmt('real', 'K')] })).headline, '書いた');
+    eq(evaluate(caseDef, pick('routine', { comment: [] })).headline, '書いていない');
+    eq(evaluate(caseDef, pick('routine', { comment: '' })).headline, '書いていない');
+
+    // 症例側：コメントIDを名指ししていない症例なら、自由記述でも候補でも同じ枝に落ちる
+    const usesIds = (c) => allBranches(c).some((b) => {
+      const cond = (b.when || {}).comment;
+      return cond !== undefined && typeof cond !== 'boolean';
+    });
+    const plain = data.cases.filter((c) => !usesIds(c));
+    eq(plain.length > 0, true, 'ID条件を使っていない症例が一つもない');
+    for (const c of plain) {
       const marks = markSetsFor(c)[1] || [];
       const suspects = Object.fromEntries(marks.map((m) => [m, ['real', 'hemolysis', 'delta']]));
       for (const level of ['routine', 'urgent', 'emergency']) {
         for (const recheck of [false, true]) {
           const base = { recheck, marks, suspects };
           const text = evaluate(c, pick(level, { ...base, comment: 'コメント' }));
-          const picked = evaluate(c, pick(level, { ...base, comment: [line] }));
+          const picked = evaluate(c, pick(level, { ...base, comment: [cmt('real', 'K')] }));
           const label = `${c.id} ${level} recheck=${recheck}`;
           eq(picked.headline, text.headline, `${label} の枝`);
           eq(picked.score, text.score, `${label} の評価`);
-          if (!c.followup) continue;
-          const capText = evaluateFollowup(c, pick(level, { ...base, comment: 'コメント' }), 'best');
-          const capPick = evaluateFollowup(c, pick(level, { ...base, comment: [line] }), 'best');
-          eq(capPick.headline, capText.headline, `${label} の二本目`);
         }
       }
     }

@@ -2,7 +2,7 @@
 // 事実の導出・手書き9本との突き合わせ・ずれの優先順・生成症例の代表を見る。
 
 import { test, eq } from './harness.js';
-import { deriveFacts, correctOperation, judge, bestOperation } from '../src/judge.js';
+import { deriveFacts, correctOperation, judge, bestOperation, commentFits } from '../src/judge.js';
 import { buildPanel, buildRecollect } from '../src/derive.js';
 import { evaluate, evaluateFollowup } from '../src/report.js';
 
@@ -34,7 +34,7 @@ const cmt = (id) => ({ id, templateId: String(id).split(':')[0], text: id });
 /** 事実（Δ・検体トラブル・取り違え）に触れない所見。見本のコメントはここから採る。 */
 const NEUTRAL_COMMENTS = ['microcytic', 'macrocytic', 'inflammation', 'renal'];
 
-function candidatesFor(branches, testIds, templateIds) {
+function candidatesFor(branches, testIds, templateIds, facts) {
   const markSets = [[{}, []]];
   const commentIds = new Set();
   const actionSets = [[]];
@@ -72,10 +72,12 @@ function candidatesFor(branches, testIds, templateIds) {
     for (const [s, m] of base) if (m.length) markSets.push([s, [...m, noise[0]]]);
     if (noise[1]) markSets.push([{}, noise.slice(0, 2)]);
   }
-  // 「何か一行書いた」だけの見本。事実と食い違う文（continued・delta・溶血など）を
-  // うっかり選ぶと、コメントの中身を見ない枝に別のずれが乗る。中立な所見から採る
-  const plain = NEUTRAL_COMMENTS.find((t) => templateIds.includes(t) && !commentIds.has(t))
-    || templateIds.find((t) => !commentIds.has(t)) || 'real';
+  // 「何か一行書いた」だけの見本。**その症例の事実に合う所見**から採る
+  // （合わない所見を選ぶと、コメントの中身を見ない枝に O1 が乗ってしまう）
+  const fits = (id) => commentFits(facts, id, { comment: [{ id, templateId: id }] });
+  const plain = NEUTRAL_COMMENTS.find((t) => templateIds.includes(t) && !commentIds.has(t) && fits(t))
+    || templateIds.find((t) => !commentIds.has(t) && fits(t))
+    || templateIds.find(fits) || 'real';
   const comments = [[], [cmt(plain)], ...[...commentIds].map((id) => [cmt(id)])];
   const idList = [...commentIds];
   for (const a of idList) for (const b of idList) if (a < b) comments.push([cmt(a), cmt(b)]);
@@ -107,7 +109,7 @@ export function branchExamples(data) {
     const stages = [{ stage: 'first', branches: c.choices }];
     if (c.followup) stages.push({ stage: 'followup', branches: c.followup.choices });
     for (const st of stages) {
-      const cands = candidatesFor(st.branches, testIds, templateIds);
+      const cands = candidatesFor(st.branches, testIds, templateIds, factsFor(c, data, st.stage));
       st.branches.forEach((br, idx) => {
         const found = cands.find((cand) => {
           const res = st.stage === 'followup'

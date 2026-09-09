@@ -24,7 +24,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 |---|---|---|---|---|
 | 1 | recheck=true | poor | 再検の理由がありません | 通常 ／ 再採血 |
 | 2 | report=routine, marks.max=0, comment=false | best | 適切な報告です | 通常 |
-| 3 | report=routine, comment=true | ok | 異常のない検体にコメントを付けています | 通常 ／ コメント[microcytic] |
+| 3 | report=routine, comment=true | ok | 異常のない検体にコメントを付けています | 通常 ／ コメント[real] |
 | 4 | report=routine | ok | 報告レベルは適切。ただし異常のない項目をマークしています | 通常 ／ マーク WBC |
 | 5 | （なし・受け皿） | poor | 過剰報告です | 至急 |
 
@@ -37,7 +37,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 1 | recheck=true | poor | 再検の理由がありません | 通常 ／ 再採血 |
 | 2 | report=routine, marks.max=0, comment=false | best | 適切な報告です | 通常 |
 | 3 | report=routine, marks.must=[CRP], marks.max=1, comment=false | best | 適切な報告です | 通常 ／ マーク CRP |
-| 4 | report=routine, comment=true | ok | 異常のない検体にコメントを付けています | 通常 ／ コメント[microcytic] |
+| 4 | report=routine, comment=true | ok | 異常のない検体にコメントを付けています | 通常 ／ コメント[inflammation] |
 | 5 | report=routine | ok | 報告レベルは適切。ただし基準範囲内の項目までマークしています | 通常 ／ マーク WBC |
 | 6 | （なし・受け皿） | poor | 過剰報告です | 至急 |
 
@@ -50,8 +50,8 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 1 | recheck=true | poor | 再検の理由がありません | 通常 ／ 再採血 |
 | 2 | report=routine, comment.must=[delta] | ok | 急な変化ではありません | 通常 ／ コメント[delta] |
 | 3 | report=routine, comment.any=[real, microcytic, continued, sample_state_clear], marks.must=[Hb], suspects.Hb=[real] | best | 適切な報告です | 通常 ／ コメント[real] ／ マーク Hb(real) |
-| 4 | report=routine, comment=true, marks.forbid=[Hb] | ok | Hbに印がありません | 通常 ／ コメント[macrocytic] |
-| 5 | report=routine, comment=true, marks.must=[Hb] | ok | Hbに疑いが付いていません | 通常 ／ コメント[macrocytic] ／ マーク Hb |
+| 4 | report=routine, comment=true, marks.forbid=[Hb] | ok | Hbに印がありません | 通常 ／ コメント[recheck] |
+| 5 | report=routine, comment=true, marks.must=[Hb] | ok | Hbに疑いが付いていません | 通常 ／ コメント[recheck] ／ マーク Hb |
 | 6 | report=routine, comment=false | ok | 報告レベルは適切。ただしコメントを付けたい場面でした | 通常 |
 | 7 | （なし・受け皿） | poor | 過剰報告です | 至急 |
 
@@ -79,7 +79,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 1 | report=emergency, recheck=true | ok | 再採血の判断は正しい。ただし信用していない値で電話はかけません | 緊急 ／ 再採血 |
 | 2 | report=routine, comment.forbid=[real, continued, delta, microcytic, macrocytic, inflammation, renal, clot, dilution, mismatch, sample_state_clear, recheck, recollect_same, recollect_normal], recheck=true, marks.must=[K], suspects.K=[hemolysis] | best | 再採血の依頼が最善です | 通常 ／ 再採血 ／ マーク K(hemolysis) |
 | 3 | recheck=true | ok | 再採血の判断は正しい。ただし何を疑ったのかが残っていません | 通常 ／ 再採血 |
-| 4 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません | 至急 ／ コメント[hemolysis] |
+| 4 | report=urgent, comment.any=[hemolysis, sample_state] | ok | 溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません | 至急 ／ コメント[hemolysis] |
 | 5 | report=emergency | poor | 溶血した検体の値で電話をかけています | 緊急 |
 | 6 | （なし・受け皿） | poor | 検体状態に触れないまま報告しています | 通常 |
 
@@ -90,13 +90,13 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | # | when | score | headline | 落ちる操作の例 |
 |---|---|---|---|---|
 | 1 | report=emergency, comment.must=[hemolysis], comment.forbid=[real], recheck=true | ok | 溶血だけでは説明がつきません | 緊急 ／ 再採血 ／ コメント[hemolysis] |
-| 2 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis], actions.must=[call] | best | 溶血を付記したうえで緊急報告し、再採血まで出せています | 緊急 ／ 再採血 ／ コメント[microcytic] ／ マーク K(real+hemolysis) ／ 行動[call] |
-| 3 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis] | ok | 判断は適切。ただし点滴側でないことを確かめていません | 緊急 ／ 再採血 ／ コメント[microcytic] ／ マーク K(real+hemolysis) |
-| 4 | report=emergency, comment=true, recheck=true | ok | 手順は合っています。ただし採血に問題なしか溶血かの見立てが残っていません | 緊急 ／ 再採血 ／ コメント[microcytic] |
-| 5 | report=urgent, comment=true, recheck=true | ok | 至急どまりです。HHは電話で読み返しまで取ります | 至急 ／ 再採血 ／ コメント[microcytic] |
+| 2 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis], actions.must=[call] | best | 溶血を付記したうえで緊急報告し、再採血まで出せています | 緊急 ／ 再採血 ／ コメント[renal] ／ マーク K(real+hemolysis) ／ 行動[call] |
+| 3 | report=emergency, comment=true, recheck=true, marks.must=[K], suspects.K=[real, hemolysis] | ok | 判断は適切。ただし点滴側でないことを確かめていません | 緊急 ／ 再採血 ／ コメント[renal] ／ マーク K(real+hemolysis) |
+| 4 | report=emergency, comment=true, recheck=true | ok | 手順は合っています。ただし採血に問題なしか溶血かの見立てが残っていません | 緊急 ／ 再採血 ／ コメント[renal] |
+| 5 | report=urgent, comment=true, recheck=true | ok | 至急どまりです。HHは電話で読み返しまで取ります | 至急 ／ 再採血 ／ コメント[renal] |
 | 6 | report=routine, recheck=true | poor | 再採血だけで、報告が伴っていません | 通常 ／ 再採血 |
 | 7 | report=emergency | ok | 緊急報告は妥当。ただし溶血の付記がありません | 緊急 |
-| 8 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい。あと一歩、再採血まで出しておきたい場面です | 至急 ／ コメント[microcytic] |
+| 8 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい。あと一歩、再採血まで出しておきたい場面です | 至急 ／ コメント[renal] |
 | 9 | report=urgent | ok | 至急どまりで、溶血の付記もありません | 至急 |
 | 10 | （なし・受け皿） | poor | 溶血を理由に、患者由来のパニック値を流しています | 通常 |
 
@@ -107,10 +107,10 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | # | when | score | headline | 落ちる操作の例 |
 |---|---|---|---|---|
 | 1 | report=urgent, comment.must=[continued] | ok | 継続ではなく変化です | 至急 ／ コメント[continued] |
-| 2 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta], actions.must=[idcheck] | best | 変化の速さを理由に至急報告できています | 至急 ／ コメント[microcytic] ／ マーク Hb(delta) ／ 行動[idcheck] |
-| 3 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta] | ok | Δの指摘は適切。ただし同一患者の検体か照合していません | 至急 ／ コメント[microcytic] ／ マーク Hb(delta) |
-| 4 | report=urgent, comment=true | ok | 至急報告は適切。ただし何が変わったのかが残っていません | 至急 ／ コメント[microcytic] |
-| 5 | report=emergency, comment=true | ok | 向きは正しい。ただしHHでない値に緊急回線を使っています | 緊急 ／ コメント[microcytic] |
+| 2 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta], actions.must=[idcheck] | best | 変化の速さを理由に至急報告できています | 至急 ／ コメント[real] ／ マーク Hb(delta) ／ 行動[idcheck] |
+| 3 | report=urgent, comment=true, marks.must=[Hb], suspects.Hb=[delta] | ok | Δの指摘は適切。ただし同一患者の検体か照合していません | 至急 ／ コメント[real] ／ マーク Hb(delta) |
+| 4 | report=urgent, comment=true | ok | 至急報告は適切。ただし何が変わったのかが残っていません | 至急 ／ コメント[real] |
+| 5 | report=emergency, comment=true | ok | 向きは正しい。ただしHHでない値に緊急回線を使っています | 緊急 ／ コメント[real] |
 | 6 | recheck=true, suspects.Hb=[mismatch] | ok | 取り違えを疑う姿勢は正しい。ただし報告が先です | 通常 ／ 再採血 ／ マーク Hb(mismatch) |
 | 7 | recheck=true | ok | 再採血の判断は分かります。ただし報告が先です | 通常 ／ 再採血 |
 | 8 | report=urgent | ok | 至急報告は適切。ただしコメントがありません | 至急 |
@@ -171,7 +171,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | キー | 使っている症例 | 症例数 | 枝数 | 書かれている値の種類 |
 |---|---|---|---|---|
 | `report` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 55 | 4 |
-| `comment` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 32 | 10 |
+| `comment` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 32 | 11 |
 | `recheck` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 24 | 1 |
 | `marks` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 20 | 7 |
 | `suspects` | n03・n04・n05・n05b・n06・n07b・n07 | 7 | 14 | 7 |
@@ -180,7 +180,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 値の種類の内訳（JSON に書いてあるまま。並べ替えていない）：
 
 - `report`：`"emergency"` ／ `"routine"` ／ `"urgent"` ／ `["urgent","emergency"]`
-- `comment`：`["recollect_same"]` ／ `false` ／ `true` ／ `{"any":["hemolysis","clot","dilution"]}` ／ `{"any":["real","microcytic","continued","sample_state_clear"]}` ／ `{"forbid":["real","continued","delta","microcytic","macrocytic","inflammation","renal","clot","dilution","mismatch","sample_state_clear","recheck","recollect_same","recollect_normal"]}` ／ `{"must":["continued"]}` ／ `{"must":["delta"]}` ／ `{"must":["hemolysis"],"forbid":["real"]}` ／ `{"must":["mismatch"]}`
+- `comment`：`["recollect_same"]` ／ `false` ／ `true` ／ `{"any":["hemolysis","clot","dilution"]}` ／ `{"any":["hemolysis","sample_state"]}` ／ `{"any":["real","microcytic","continued","sample_state_clear"]}` ／ `{"forbid":["real","continued","delta","microcytic","macrocytic","inflammation","renal","clot","dilution","mismatch","sample_state_clear","recheck","recollect_same","recollect_normal"]}` ／ `{"must":["continued"]}` ／ `{"must":["delta"]}` ／ `{"must":["hemolysis"],"forbid":["real"]}` ／ `{"must":["mismatch"]}`
 - `recheck`：`true`
 - `marks`：`{"forbid":["Hb"]}` ／ `{"max":0}` ／ `{"must":["CRP"],"max":1}` ／ `{"must":["Hb"]}` ／ `{"must":["K"],"max":1}` ／ `{"must":["K"]}` ／ `{"must":["MCV"]}`
 - `suspects`：`{"Hb":["delta"]}` ／ `{"Hb":["mismatch"]}` ／ `{"Hb":["real"]}` ／ `{"K":["hemolysis"]}` ／ `{"K":["real","hemolysis"]}` ／ `{"K":["real"]}` ／ `{"MCV":["mismatch"]}`

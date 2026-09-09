@@ -16,17 +16,162 @@
   "_mixed_note": "Δ のある項目が2つ以上あって向きがそろっていなければ M（別人）を疑う。手書き9本ではどれも当たらない（n07b は Hb・Cre とも下向き）。",
   "moderate_flag_count": 2,
   "_moderate_note": "フラグの点いた行がこの数以上なら『中等度』としてコメントを求める（T2）。1行だけの軽いH/Lは通常報告のまま（T1）。n02（CRPのみ）とn03（小球性の5行）を分ける線。",
+  "comment_rules": {
+    "_note": "コメントID → そのコメントを付けてよい条件（O1）。facts は §1 の事実を全部満たすこと（! は否定）、facts_any はどれか一つ、flags_any は『その項目にそのフラグが点いている』のどれか一つ。also_when は『その事実のときは、このコメントだけで終わらせず一緒に付ける相手』。**表に無いコメントは条件なし**（減点しない）。",
+    "real": {
+      "facts_any": [
+        "!A",
+        "X"
+      ],
+      "_why": "検体トラブルが無いか、あっても値は患者由来（X）だと裏が取れているとき"
+    },
+    "continued": {
+      "facts": [
+        "!D"
+      ]
+    },
+    "delta": {
+      "facts": [
+        "D"
+      ]
+    },
+    "microcytic": {
+      "flags_any": {
+        "MCV": [
+          "L",
+          "LL"
+        ]
+      }
+    },
+    "macrocytic": {
+      "flags_any": {
+        "MCV": [
+          "H",
+          "HH"
+        ]
+      }
+    },
+    "inflammation": {
+      "flags_any": {
+        "CRP": [
+          "H",
+          "HH"
+        ]
+      }
+    },
+    "renal": {
+      "flags_any": {
+        "Cre": [
+          "H",
+          "HH"
+        ],
+        "BUN": [
+          "H",
+          "HH"
+        ]
+      }
+    },
+    "hemolysis": {
+      "facts": [
+        "A"
+      ],
+      "also_when": {
+        "fact": "X",
+        "comment": "real"
+      },
+      "_why": "X（検体トラブルがあっても値は患者由来）のとき、溶血だけ書いて終わらせない"
+    },
+    "clot": {
+      "facts": [
+        "A"
+      ],
+      "also_when": {
+        "fact": "X",
+        "comment": "real"
+      }
+    },
+    "dilution": {
+      "facts": [
+        "A"
+      ],
+      "also_when": {
+        "fact": "X",
+        "comment": "real"
+      }
+    },
+    "mismatch": {
+      "facts": [
+        "M"
+      ]
+    },
+    "sample_state": {
+      "facts": [
+        "A"
+      ]
+    },
+    "sample_state_clear": {
+      "facts": [
+        "!A"
+      ]
+    },
+    "recollect_same": {
+      "facts": [
+        "R"
+      ]
+    },
+    "recollect_normal": {
+      "facts": [
+        "R"
+      ]
+    }
+  },
   "artifacts": {
     "_note": "usable＝値はまだ使える（A₁）、broken＝値が使えない（A₂）。suspect は疑いタブのID、key は判断を決めている項目。key が null ならフラグの最も強い行を鍵にする。",
-    "hemolysis_1plus": { "grade": "usable", "suspect": "hemolysis", "key": "K" },
-    "hemolysis_2plus": { "grade": "usable", "suspect": "hemolysis", "key": "K" },
-    "hemolysis_3plus": { "grade": "broken", "suspect": "hemolysis", "key": "K" },
-    "platelet_clump_edta": { "grade": "broken", "suspect": "clot", "key": "PLT" },
-    "fibrin": { "grade": "broken", "suspect": "clot", "key": "PLT" },
-    "iv_line_dilution": { "grade": "broken", "suspect": "dilution", "key": null },
-    "edta_contamination": { "grade": "broken", "suspect": null, "key": "K" },
-    "short_sample": { "grade": "broken", "suspect": null, "key": null }
+    "hemolysis_1plus": {
+      "grade": "usable",
+      "suspect": "hemolysis",
+      "key": "K"
+    },
+    "hemolysis_2plus": {
+      "grade": "usable",
+      "suspect": "hemolysis",
+      "key": "K"
+    },
+    "hemolysis_3plus": {
+      "grade": "broken",
+      "suspect": "hemolysis",
+      "key": "K"
+    },
+    "platelet_clump_edta": {
+      "grade": "broken",
+      "suspect": "clot",
+      "key": "PLT"
+    },
+    "fibrin": {
+      "grade": "broken",
+      "suspect": "clot",
+      "key": "PLT"
+    },
+    "iv_line_dilution": {
+      "grade": "broken",
+      "suspect": "dilution",
+      "key": null
+    },
+    "edta_contamination": {
+      "grade": "broken",
+      "suspect": null,
+      "key": "K"
+    },
+    "short_sample": {
+      "grade": "broken",
+      "suspect": null,
+      "key": null
+    }
   },
   "_suspect_gap": "edta_contamination（採血管間違い）と short_sample（量不足）に当たる疑いの札が data/suspects.json に無い。suspect: null のときは『key に何か疑いを付けていれば足りる』として扱う。札を足すかは §6-5 で決める。",
-  "levels": ["routine", "urgent", "emergency"]
+  "levels": [
+    "routine",
+    "urgent",
+    "emergency"
+  ]
 }
