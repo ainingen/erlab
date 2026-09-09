@@ -1,5 +1,5 @@
 {
-  "_note": "生成症例（`choices` を持たない症例）で使う共通の台詞。仕様は docs/review-common.md。手書き症例の台詞は data/messages/rookie.json のまま。ここには足さない。`{key}` `{value}` `{prev}` `{action}` `{level}` の5つだけを src/review.js が埋める。",
+  "_note": "生成症例（`choices` を持たない症例）で使う共通の台詞。仕様は docs/review-common.md。best は鍵の項目の有無で二本に割る（`best` / `best_nokey`）。手書き症例の台詞は data/messages/rookie.json のまま。ここには足さない。`{key}` `{value}` `{prev}` `{action}` `{level}` の5つだけを src/review.js が埋める。",
   "_doctor_note": "医師の返事は `msg_dr_{正解レベル}_{届き方}`。`from` `subject` `time` は src/review.js が症例と操作から組むので、ここには書かない（書けばそちらが優先）。",
   "_doctor_time": {
     "_note": "受付時刻からの経過（分）。値が正しく届いた列は短く、遅れて気づく列は長い。docs/review-common.md 5-3",
@@ -44,6 +44,30 @@
       "repeat": true,
       "body": [
         "適切です。{key} を鍵にして、報告まで筋が通っています。"
+      ]
+    },
+    "msg_rv_best_nokey_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "praise",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "ん、いいね。異常なし、検体キレイ、そのまま通す。それでいい。"
+      ]
+    },
+    "msg_rv_best_nokey_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "praise",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "正しい判断です。異常のない検体を、余計なものを付けずに通常報告で送れています。"
       ]
     },
     "msg_rv_P1_kanae": {

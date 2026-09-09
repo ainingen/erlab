@@ -9,7 +9,7 @@ import { deriveFacts, judge, bestOperation, correctOperation } from '../src/judg
 import { buildPanel } from '../src/derive.js';
 
 const DEVIATIONS = [
-  'best',
+  'best', 'best_nokey',
   'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8',
   'O1', 'O2', 'O3', 'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'O10', 'O11',
 ];
@@ -24,7 +24,7 @@ const DOCTOR_ROWS = {
 
 /** §3 の表情の対応。危ない向きは serious / alert、呆れ・言いにくい向きは deadpan / troubled。 */
 const EMOTION = {
-  best: ['praise', 'praise'],
+  best: ['praise', 'praise'], best_nokey: ['praise', 'praise'],
   P1: ['serious', 'serious'], P3: ['serious', 'serious'], P7: ['serious', 'serious'],
   P4: ['alert', 'alert'],
   P2: ['deadpan', 'troubled'], P5: ['deadpan', 'troubled'],
@@ -94,7 +94,7 @@ export function suite(data) {
   const review = (operation) => buildReview(judge(g01Facts, operation), g01, operation, ctx);
 
   // ---- 1. 講評40本 ----
-  test('共通の講評: ずれ20種 × 指導役2人 ＝ 40本ある', () => {
+  test('共通の講評: ずれ20種＋鍵なしの best × 指導役2人 ＝ 42本ある', () => {
     let count = 0;
     for (const dev of DEVIATIONS) {
       for (const who of MENTORS) {
@@ -109,7 +109,7 @@ export function suite(data) {
         count += 1;
       }
     }
-    eq(count, 40);
+    eq(count, 42);
   });
 
   test('共通の講評: 表情は §3 の対応どおり。ok は normal', () => {
@@ -211,18 +211,40 @@ export function suite(data) {
     }
   });
 
-  test('埋め残しの残った行は出さない（フラグが一つも無い検体の best だけ当たる）', () => {
-    const normal = makeFacts({ N: true }, data); // 鍵の項目が無い
+  test('best は鍵の項目の有無で二本に分かれる', () => {
+    // フラグが一つも点いていない検体。名指せる項目が無いので `{key}` を含まない側
+    const normal = makeFacts({ N: true }, data);
     eq(normal.key, null);
     const res = buildReview(judge(normal, bestOperation(normal)), g01, bestOperation(normal),
       { facts: normal, panel: { rows: [] }, data });
-    eq(res.reply.join(','), 'msg_rv_best_kanae,msg_rv_best_yusuke', 'IDは返る');
-    eq(fillMessage(messages.msg_rv_best_kanae, res.values), null, '{key} を名指せないので出さない');
-    // 鍵の項目があるときは、そのまま出る
+    eq(res.reply.join(','), 'msg_rv_best_nokey_kanae,msg_rv_best_nokey_yusuke');
+    // 鍵の項目があるときは、今までどおり名指す側
     const withKey = makeFacts({ N: true, key: 'CRP', flagged: ['CRP'], flagOf: { CRP: 'H' } }, data);
     const ok = buildReview(judge(withKey, bestOperation(withKey)), g01, bestOperation(withKey),
       { facts: withKey, panel: { rows: [{ id: 'CRP', display: '0.42', previousDisplay: '—' }] }, data });
+    eq(ok.reply.join(','), 'msg_rv_best_kanae,msg_rv_best_yusuke');
     eq(fillMessage(messages.msg_rv_best_kanae, ok.values).body[0], 'ん、いいね。CRP、ちゃんと見えてた。');
+  });
+
+  test('フラグゼロの検体で best を通すと、講評が両方の指導役に出る', () => {
+    const normal = makeFacts({ N: true }, data);
+    const operation = bestOperation(normal);
+    const res = buildReview(judge(normal, operation), g01, operation,
+      { facts: normal, panel: { rows: [] }, data });
+    eq(judge(normal, operation).score, 'best');
+    eq(res.reply.length, 2);
+    for (const id of res.reply) {
+      const shown = fillMessage(messages[id], res.values);
+      eq(Boolean(shown), true, `${id} が出ていない`);
+      eq(shown.body.length >= 1, true, `${id} の本文が空`);
+      eq(unfilled(shown.body.join('')), false, `${id} に埋め残し`);
+      eq(shown.emotion, 'praise', `${id} の表情`);
+    }
+    // 指導役ごとに1本ずつ出る
+    eq(messages[res.reply[0]].speaker, 'kanae');
+    eq(messages[res.reply[1]].speaker, 'yusuke');
+    // 医師の返事も届く（通常報告で受けた列）
+    eq(res.doctor, 'msg_dr_routine_routine');
   });
 
   // ---- 6. hold_* の列 ----

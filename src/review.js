@@ -62,7 +62,9 @@ export function hasPlaceholder(text) {
 export function buildReview(judged, caseDef, operation, context = {}) {
   const { facts = {}, panel = null, data = null } = context;
   const values = reviewValues(judged, facts, panel, operation);
-  const dev = judged.deviation || 'best';
+  // ずれが無いときの講評は、鍵の項目があるかどうかで二本に分かれる。
+  // フラグが一つも点いていない検体には名指せる項目が無いので `{key}` を含まない側を引く
+  const dev = judged.deviation || (values.key ? 'best' : 'best_nokey');
   const doctor = doctorMessage(judged, caseDef, operation, facts, data, values);
   return {
     headline: fillPlaceholders(judged.headline, values),
