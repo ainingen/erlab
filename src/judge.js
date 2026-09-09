@@ -260,7 +260,10 @@ const DEVIATIONS = [
   {
     id: 'P3', score: 'poor',
     headline: () => '検体状態に触れないまま報告しています',
-    hit: (f, op) => f.A2 && !commented(op) && !op.recheck,
+    // 壊れた検体を採り直しもせず通常報告で流した。コメントの有無は問わない
+    // （何か書いてあっても、値はそのまま医師に届いている）。
+    // 至急・緊急で出したものは O10（再採血まで出したい）で受ける
+    hit: (f, op) => f.A2 && !op.recheck && op.level === 'routine',
   },
   {
     id: 'P4', score: 'poor',
@@ -305,6 +308,14 @@ const DEVIATIONS = [
     hit: (f, op, c) => f.P && c.level === 'emergency' && op.level === 'urgent',
   },
   {
+    // 再採血が要る型（T4・T5・T5b・T7）で再採血が欠けた。
+    // 報告レベルのずれ（O3）より先に見る——採り直していれば値は止まるので、
+    // 「一段上の回線を使った」より「止めていない」ほうが重い
+    id: 'O10', score: 'ok',
+    headline: () => 'あと一歩、再採血まで出しておきたい場面です',
+    hit: (f, op, c) => c.recheck && !op.recheck,
+  },
+  {
     id: 'O3', score: 'ok',
     headline: () => '向きは正しい。ただしHHでない値に緊急回線を使っています',
     hit: (f, op, c) => levelRank(op.level) > levelRank(c.level),
@@ -344,11 +355,6 @@ const DEVIATIONS = [
     id: 'O9', score: 'ok',
     headline: () => '報告は正しい。ただしこの検体に再検の理由はありません',
     hit: (f, op, c) => op.recheck && !c.recheck,
-  },
-  {
-    id: 'O10', score: 'ok',
-    headline: () => 'あと一歩、再採血まで出しておきたい場面です',
-    hit: (f, op, c) => c.recheck && !op.recheck,
   },
 ];
 

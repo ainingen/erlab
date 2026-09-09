@@ -235,11 +235,44 @@
           "urgent",
           "emergency"
         ],
+        "comment": {
+          "must": [
+            "mismatch"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "伝えたのは正しい。ただし再採血まで出していません",
+      "reply": null,
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {
+        "report": [
+          "urgent",
+          "emergency"
+        ],
         "comment": true
       },
       "score": "poor",
       "headline": "急いだのは分かります。ただし報告した値は別人のものです",
       "reply": null,
+      "doctor": "msg_n07b_doctor_delta"
+    },
+    {
+      "when": {
+        "report": [
+          "urgent",
+          "emergency"
+        ],
+        "recheck": true
+      },
+      "score": "poor",
+      "headline": "止めたのは分かる。ただし別人の値が医師に届いています",
+      "reply": [
+        "msg_n07b_leak_kanae",
+        "msg_n07b_leak_yusuke"
+      ],
       "doctor": "msg_n07b_doctor_delta"
     },
     {

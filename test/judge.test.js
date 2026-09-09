@@ -317,7 +317,7 @@ export function suite(data) {
     const agree = rows.filter((r) => r.agree).length;
     eq(rows.length > 15000, true, `総当たりが少なすぎる: ${rows.length}`);
     // 一致率そのものは仕様の判断材料（§5）。ここでは規則を大きく崩したときだけ落とす
-    eq(agree / rows.length > 0.85, true,
+    eq(agree / rows.length >= 0.97, true,
        `一致率が落ちた: ${agree}/${rows.length}（${Math.round(agree / rows.length * 1000) / 10}%）`);
     // 症例ごとにも極端に崩れていないこと
     for (const c of data.cases) {

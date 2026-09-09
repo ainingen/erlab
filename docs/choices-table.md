@@ -23,9 +23,10 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | # | when | score | headline | 落ちる操作の例 |
 |---|---|---|---|---|
 | 1 | recheck=true | poor | 再検の理由がありません | 通常 ／ 再採血 |
-| 2 | report=routine, marks.max=0 | best | 適切な報告です | 通常 |
-| 3 | report=routine | ok | 報告レベルは適切。ただし異常のない項目をマークしています | 通常 ／ マーク WBC |
-| 4 | （なし・受け皿） | poor | 過剰報告です | 至急 |
+| 2 | report=routine, marks.max=0, comment=false | best | 適切な報告です | 通常 |
+| 3 | report=routine, comment=true | ok | 異常のない検体にコメントを付けています | 通常 ／ コメント[microcytic] |
+| 4 | report=routine | ok | 報告レベルは適切。ただし異常のない項目をマークしています | 通常 ／ マーク WBC |
+| 5 | （なし・受け皿） | poor | 過剰報告です | 至急 |
 
 ### n02 — 2. Hがひとつだけ点く
 
@@ -34,10 +35,11 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | # | when | score | headline | 落ちる操作の例 |
 |---|---|---|---|---|
 | 1 | recheck=true | poor | 再検の理由がありません | 通常 ／ 再採血 |
-| 2 | report=routine, marks.max=0 | best | 適切な報告です | 通常 |
-| 3 | report=routine, marks.must=[CRP], marks.max=1 | best | 適切な報告です | 通常 ／ マーク CRP |
-| 4 | report=routine | ok | 報告レベルは適切。ただし基準範囲内の項目までマークしています | 通常 ／ マーク WBC |
-| 5 | （なし・受け皿） | poor | 過剰報告です | 至急 |
+| 2 | report=routine, marks.max=0, comment=false | best | 適切な報告です | 通常 |
+| 3 | report=routine, marks.must=[CRP], marks.max=1, comment=false | best | 適切な報告です | 通常 ／ マーク CRP |
+| 4 | report=routine, comment=true | ok | 異常のない検体にコメントを付けています | 通常 ／ コメント[microcytic] |
+| 5 | report=routine | ok | 報告レベルは適切。ただし基準範囲内の項目までマークしています | 通常 ／ マーク WBC |
+| 6 | （なし・受け皿） | poor | 過剰報告です | 至急 |
 
 ### n03 — 3. 急がないが、黙って送らない
 
@@ -47,9 +49,9 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 |---|---|---|---|---|
 | 1 | recheck=true | poor | 再検の理由がありません | 通常 ／ 再採血 |
 | 2 | report=routine, comment.must=[delta] | ok | 急な変化ではありません | 通常 ／ コメント[delta] |
-| 3 | report=routine, comment=true, marks.must=[Hb], suspects.Hb=[real] | best | 適切な報告です | 通常 ／ コメント[microcytic] ／ マーク Hb(real) |
-| 4 | report=routine, comment=true, marks.forbid=[Hb] | ok | Hbに印がありません | 通常 ／ コメント[microcytic] |
-| 5 | report=routine, comment=true, marks.must=[Hb] | ok | Hbに疑いが付いていません | 通常 ／ コメント[microcytic] ／ マーク Hb |
+| 3 | report=routine, comment.any=[real, microcytic, continued, sample_state_clear], marks.must=[Hb], suspects.Hb=[real] | best | 適切な報告です | 通常 ／ コメント[real] ／ マーク Hb(real) |
+| 4 | report=routine, comment=true, marks.forbid=[Hb] | ok | Hbに印がありません | 通常 ／ コメント[macrocytic] |
+| 5 | report=routine, comment=true, marks.must=[Hb] | ok | Hbに疑いが付いていません | 通常 ／ コメント[macrocytic] ／ マーク Hb |
 | 6 | report=routine, comment=false | ok | 報告レベルは適切。ただしコメントを付けたい場面でした | 通常 |
 | 7 | （なし・受け皿） | poor | 過剰報告です | 至急 |
 
@@ -75,9 +77,9 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | # | when | score | headline | 落ちる操作の例 |
 |---|---|---|---|---|
 | 1 | report=emergency, recheck=true | ok | 再採血の判断は正しい。ただし信用していない値で電話はかけません | 緊急 ／ 再採血 |
-| 2 | recheck=true, marks.must=[K], suspects.K=[hemolysis] | best | 再採血の依頼が最善です | 通常 ／ 再採血 ／ マーク K(hemolysis) |
+| 2 | report=routine, comment.forbid=[real, continued, delta, microcytic, macrocytic, inflammation, renal, clot, dilution, mismatch, sample_state_clear, recheck, recollect_same, recollect_normal], recheck=true, marks.must=[K], suspects.K=[hemolysis] | best | 再採血の依頼が最善です | 通常 ／ 再採血 ／ マーク K(hemolysis) |
 | 3 | recheck=true | ok | 再採血の判断は正しい。ただし何を疑ったのかが残っていません | 通常 ／ 再採血 |
-| 4 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません | 至急 ／ コメント[microcytic] |
+| 4 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい判断です。ただし3+では値そのものが使えません | 至急 ／ コメント[hemolysis] |
 | 5 | report=emergency | poor | 溶血した検体の値で電話をかけています | 緊急 |
 | 6 | （なし・受け皿） | poor | 検体状態に触れないまま報告しています | 通常 |
 
@@ -95,7 +97,8 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 6 | report=routine, recheck=true | poor | 再採血だけで、報告が伴っていません | 通常 ／ 再採血 |
 | 7 | report=emergency | ok | 緊急報告は妥当。ただし溶血の付記がありません | 緊急 |
 | 8 | report=urgent, comment=true | ok | 溶血を伝えたのは正しい。あと一歩、再採血まで出しておきたい場面です | 至急 ／ コメント[microcytic] |
-| 9 | （なし・受け皿） | poor | 溶血を理由に、患者由来のパニック値を流しています | 通常 |
+| 9 | report=urgent | ok | 至急どまりで、溶血の付記もありません | 至急 |
+| 10 | （なし・受け皿） | poor | 溶血を理由に、患者由来のパニック値を流しています | 通常 |
 
 ### n06 — 6. 数字は動いた、検体は正しい
 
@@ -126,9 +129,11 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 4 | comment.must=[mismatch], recheck=true | ok | 取り違えを疑って止めたのは正しい。ただし病棟へは至急で伝えます | 通常 ／ 再採血 ／ コメント[mismatch] |
 | 5 | recheck=true, suspects.MCV=[mismatch] | ok | 疑いは正しい。ただし理由がコメントに残っていません | 通常 ／ 再採血 ／ マーク MCV(mismatch) |
 | 6 | report=[urgent, emergency], suspects.Hb=[delta] | poor | 別人の値を、出血として報告しています | 至急 ／ マーク Hb(delta) |
-| 7 | report=[urgent, emergency], comment=true | poor | 急いだのは分かります。ただし報告した値は別人のものです | 至急 ／ コメント[microcytic] |
-| 8 | recheck=true | ok | 再採血は正しい。ただし理由が伴っていません | 通常 ／ 再採血 |
-| 9 | （なし・受け皿） | poor | 別人の値をそのまま流しています | 通常 |
+| 7 | report=[urgent, emergency], comment.must=[mismatch] | ok | 伝えたのは正しい。ただし再採血まで出していません | 至急 ／ コメント[mismatch] |
+| 8 | report=[urgent, emergency], comment=true | poor | 急いだのは分かります。ただし報告した値は別人のものです | 至急 ／ コメント[microcytic] |
+| 9 | report=[urgent, emergency], recheck=true | poor | 止めたのは分かる。ただし別人の値が医師に届いています | 至急 ／ 再採血 |
+| 10 | recheck=true | ok | 再採血は正しい。ただし理由が伴っていません | 通常 ／ 再採血 |
+| 11 | （なし・受け皿） | poor | 別人の値をそのまま流しています | 通常 |
 
 ### n07 — 7. 否定されても、数字は残る
 
@@ -160,13 +165,13 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 
 ## b. `when` に使われているキー
 
-枝の総数 70（一本目 66 ／ 二本目 4）。
+枝の総数 75（一本目 71 ／ 二本目 4）。
 
 | キー | 使っている症例 | 症例数 | 枝数 | 書かれている値の種類 |
 |---|---|---|---|---|
-| `report` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 49 | 4 |
-| `comment` | n03・n04・n05・n05b・n06・n07b・n07 | 7 | 24 | 8 |
-| `recheck` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 23 | 1 |
+| `report` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 55 | 4 |
+| `comment` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 31 | 10 |
+| `recheck` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 24 | 1 |
 | `marks` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 20 | 7 |
 | `suspects` | n03・n04・n05・n05b・n06・n07b・n07 | 7 | 14 | 7 |
 | `actions` | n05b・n06・n07b | 3 | 3 | 3 |
@@ -174,7 +179,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 値の種類の内訳（JSON に書いてあるまま。並べ替えていない）：
 
 - `report`：`"emergency"` ／ `"routine"` ／ `"urgent"` ／ `["urgent","emergency"]`
-- `comment`：`["recollect_same"]` ／ `false` ／ `true` ／ `{"any":["hemolysis","clot","dilution"]}` ／ `{"must":["continued"]}` ／ `{"must":["delta"]}` ／ `{"must":["hemolysis"],"forbid":["real"]}` ／ `{"must":["mismatch"]}`
+- `comment`：`["recollect_same"]` ／ `false` ／ `true` ／ `{"any":["hemolysis","clot","dilution"]}` ／ `{"any":["real","microcytic","continued","sample_state_clear"]}` ／ `{"forbid":["real","continued","delta","microcytic","macrocytic","inflammation","renal","clot","dilution","mismatch","sample_state_clear","recheck","recollect_same","recollect_normal"]}` ／ `{"must":["continued"]}` ／ `{"must":["delta"]}` ／ `{"must":["hemolysis"],"forbid":["real"]}` ／ `{"must":["mismatch"]}`
 - `recheck`：`true`
 - `marks`：`{"forbid":["Hb"]}` ／ `{"max":0}` ／ `{"must":["CRP"],"max":1}` ／ `{"must":["Hb"]}` ／ `{"must":["K"],"max":1}` ／ `{"must":["K"]}` ／ `{"must":["MCV"]}`
 - `suspects`：`{"Hb":["delta"]}` ／ `{"Hb":["mismatch"]}` ／ `{"Hb":["real"]}` ／ `{"K":["hemolysis"]}` ／ `{"K":["real","hemolysis"]}` ／ `{"K":["real"]}` ／ `{"MCV":["mismatch"]}`
@@ -199,15 +204,15 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | n03 | 一本目 | 1 | poor | 再検の理由がありません |
 | n05 | 一本目 | 3 | ok | 再採血の判断は正しい。ただし何を疑ったのかが残っていません |
 | n06 | 一本目 | 7 | ok | 再採血の判断は分かります。ただし報告が先です |
-| n07b | 一本目 | 8 | ok | 再採血は正しい。ただし理由が伴っていません |
+| n07b | 一本目 | 10 | ok | 再採血は正しい。ただし理由が伴っていません |
 | n07 | 二本目 | 3 | poor | 二本同じなら検体の話ではありません |
 
 ### `{"report":"routine"}`
 
 | 症例 | 段 | # | score | headline |
 |---|---|---|---|---|
-| n01 | 一本目 | 3 | ok | 報告レベルは適切。ただし異常のない項目をマークしています |
-| n02 | 一本目 | 4 | ok | 報告レベルは適切。ただし基準範囲内の項目までマークしています |
+| n01 | 一本目 | 4 | ok | 報告レベルは適切。ただし異常のない項目をマークしています |
+| n02 | 一本目 | 5 | ok | 報告レベルは適切。ただし基準範囲内の項目までマークしています |
 | n07 | 一本目 | 7 | poor | HHを通常報告で流しています |
 
 ### `{"marks":{"max":1,"must":["K"]},"report":"emergency","suspects":{"K":["real"]}}`
@@ -247,6 +252,7 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 症例 | 段 | # | score | headline |
 |---|---|---|---|---|
 | n04 | 一本目 | 7 | ok | 届いてはいます。ただしパニック値は電話で読み返しまで取る決まりです |
+| n05b | 一本目 | 9 | ok | 至急どまりで、溶血の付記もありません |
 | n06 | 一本目 | 8 | ok | 至急報告は適切。ただしコメントがありません |
 | n07 | 一本目 | 5 | — | 向きは正しい。ただしパニック値を至急に落としています |
 
@@ -256,15 +262,15 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 
 | 症例 | 段 | 枝数 | best | ok | poor | score なし（`then`） |
 |---|---|---|---|---|---|---|
-| n01 | 一本目 | 4 | 1 | 1 | 2 | 0 |
-| n02 | 一本目 | 5 | 2 | 1 | 2 | 0 |
+| n01 | 一本目 | 5 | 1 | 2 | 2 | 0 |
+| n02 | 一本目 | 6 | 2 | 2 | 2 | 0 |
 | n03 | 一本目 | 7 | 1 | 4 | 2 | 0 |
 | n04 | 一本目 | 8 | 1 | 6 | 1 | 0 |
 | n05 | 一本目 | 6 | 1 | 3 | 2 | 0 |
-| n05b | 一本目 | 9 | 1 | 6 | 2 | 0 |
+| n05b | 一本目 | 10 | 1 | 7 | 2 | 0 |
 | n06 | 一本目 | 10 | 1 | 8 | 1 | 0 |
-| n07b | 一本目 | 9 | 1 | 5 | 3 | 0 |
+| n07b | 一本目 | 11 | 1 | 6 | 4 | 0 |
 | n07 | 一本目 | 8 | 0 | 0 | 3 | 5 |
 | n07 | 二本目 | 4 | 1 | 1 | 2 | 0 |
-| **合計** | | **70** | **10** | **35** | **20** | **5** |
+| **合計** | | **75** | **10** | **39** | **21** | **5** |
 

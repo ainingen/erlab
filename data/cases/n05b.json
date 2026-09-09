@@ -209,6 +209,15 @@
       "doctor": "msg_n05b_urgent_only"
     },
     {
+      "when": {
+        "report": "urgent"
+      },
+      "score": "ok",
+      "headline": "至急どまりで、溶血の付記もありません",
+      "reply": null,
+      "doctor": "msg_n05b_urgent_only"
+    },
+    {
       "when": {},
       "score": "poor",
       "headline": "溶血を理由に、患者由来のパニック値を流しています",

@@ -47,7 +47,8 @@
         "report": "routine",
         "marks": {
           "max": 0
-        }
+        },
+        "comment": false
       },
       "score": "best",
       "headline": "適切な報告です",
@@ -65,7 +66,8 @@
             "CRP"
           ],
           "max": 1
-        }
+        },
+        "comment": false
       },
       "score": "best",
       "headline": "適切な報告です",
@@ -73,6 +75,16 @@
         "msg_n02_ok_kanae",
         "msg_n02_ok_yusuke"
       ],
+      "doctor": "msg_n02_ok"
+    },
+    {
+      "when": {
+        "report": "routine",
+        "comment": true
+      },
+      "score": "ok",
+      "headline": "異常のない検体にコメントを付けています",
+      "reply": null,
       "doctor": "msg_n02_ok"
     },
     {

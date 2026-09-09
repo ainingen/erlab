@@ -102,7 +102,14 @@
     {
       "when": {
         "report": "routine",
-        "comment": true,
+        "comment": {
+          "any": [
+            "real",
+            "microcytic",
+            "continued",
+            "sample_state_clear"
+          ]
+        },
         "marks": {
           "must": [
             "Hb"

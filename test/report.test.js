@@ -360,7 +360,9 @@ export function suite(data) {
 
   test('症例n03: Hbをマークして本物の異常を付け、コメント付きで通常報告が最善', () => {
     const c = caseById.n03;
-    const full = { comment: '小球性低色素性。', marks: ['Hb'], suspects: { Hb: ['real'] } };
+    // best のコメントは「事実に合う所見」だけ（comment.any）。小球性の像はその一つ
+    const note = [cmt('microcytic')];
+    const full = { comment: note, marks: ['Hb'], suspects: { Hb: ['real'] } };
     eq(evaluate(c, pick('routine', full)).score, 'best');
     eq(ids(evaluate(c, pick('routine', full)).messageId).join(','),
        'msg_n03_ok_kanae,msg_n03_ok_yusuke');
@@ -371,13 +373,13 @@ export function suite(data) {
        'best', 'マークの本数では減点しない');
 
     // コメントは付けたが、どこを見たのかが残っていない二つの形
-    const noMark = evaluate(c, pick('routine', { comment: '小球性低色素性。' }));
+    const noMark = evaluate(c, pick('routine', { comment: note }));
     eq(noMark.score, 'ok');
     eq(noMark.headline, 'Hbに印がありません');
-    const noSuspect = evaluate(c, pick('routine', { comment: '小球性低色素性。', marks: ['Hb'] }));
+    const noSuspect = evaluate(c, pick('routine', { comment: note, marks: ['Hb'] }));
     eq(noSuspect.score, 'ok');
     eq(noSuspect.headline, 'Hbに疑いが付いていません');
-    const otherMark = evaluate(c, pick('routine', { comment: '小球性低色素性。', marks: ['MCV'] }));
+    const otherMark = evaluate(c, pick('routine', { comment: note, marks: ['MCV'] }));
     eq(otherMark.headline, 'Hbに印がありません', 'Hb以外だけをマークした場合');
     // 台詞は増やしていない（この二本は医師の返信だけ）
     for (const res of [noMark, noSuspect, otherMark]) eq(res.messageId, null);
@@ -386,6 +388,11 @@ export function suite(data) {
     eq(thin.score, 'ok');
     eq(ids(thin.messageId).join(','), 'msg_n03_ok_nocomment_kanae,msg_n03_ok_nocomment_yusuke');
     eq(evaluate(c, pick('urgent')).score, 'poor');
+    // 事実に合わない所見（この症例に腎機能の所見はない）では最善にしない
+    const offNote = evaluate(c, pick('routine', {
+      comment: [cmt('renal')], marks: ['Hb'], suspects: { Hb: ['real'] },
+    }));
+    eq(offNote.score, 'ok', '事実に合わない所見で最善になっている');
   });
 
   test('症例n04: Kだけをマークして本物の異常を付け、緊急報告が最善', () => {
@@ -535,9 +542,15 @@ export function suite(data) {
     ['別人の値を、出血として報告しています', 'poor', 'urgent', {
       comment: [cmt('delta', 'Hb')], marks: ['Hb'], suspects: { Hb: ['delta'] },
     }],
+    // 取り違えは伝えたが、採り直しを出していない
+    ['伝えたのは正しい。ただし再採血まで出していません', 'ok', 'urgent', {
+      comment: [cmt('mismatch')],
+    }],
     ['急いだのは分かります。ただし報告した値は別人のものです', 'poor', 'urgent', {
       comment: [cmt('real', 'Hb')],
     }],
+    // 採り直しは出したが、至急で値も出した（別人の値が医師に届く）
+    ['止めたのは分かる。ただし別人の値が医師に届いています', 'poor', 'urgent', { recheck: true }],
     ['再採血は正しい。ただし理由が伴っていません', 'ok', 'routine', { recheck: true }],
     ['別人の値をそのまま流しています', 'poor', 'routine', {}],
   ];
@@ -593,6 +606,24 @@ export function suite(data) {
     })).score, 'best', '症例6の型が壊れている');
     // 通常報告に落とせば「そのまま流した」の受け皿
     eq(evaluate(c, pick('routine', reflex)).headline, '別人の値をそのまま流しています');
+  });
+
+  test('症例n07b: 至急で出したら、再採血を付けても別人の値は医師に届く', () => {
+    const c = caseById.n07b;
+    for (const level of ['urgent', 'emergency']) {
+      const res = evaluate(c, pick(level, { recheck: true }));
+      eq(res.score, 'poor', `${level}＋再採血が要改善になっていない`);
+      eq(res.headline, '止めたのは分かる。ただし別人の値が医師に届いています');
+      eq(ids(res.messageId).join(','), 'msg_n07b_leak_kanae,msg_n07b_leak_yusuke');
+      eq(res.doctorId, 'msg_n07b_doctor_delta');
+    }
+    // 通常報告なら値を出していないので、採り直しで止めたことになる
+    eq(evaluate(c, pick('routine', { recheck: true })).score, 'ok');
+    // 取り違えを伝えたが採り直しを出していない形は、許容で受ける
+    const told = evaluate(c, pick('urgent', { comment: [cmt('mismatch')] }));
+    eq(told.score, 'ok');
+    eq(told.headline, '伝えたのは正しい。ただし再採血まで出していません');
+    eq(told.doctorId, 'msg_n07b_doctor_ok');
   });
 
   test('症例n07b: 取り違えを疑って止めれば、報告レベルが違っても許容で受ける', () => {
@@ -924,8 +955,27 @@ export function suite(data) {
   });
 
   test('全症例: comment: true の判定は、自由記述でも候補でも同じ枝に落ちる', () => {
-    const line = { id: 'real:K', templateId: 'real', text: 'K：本物の異常と判断' };
+    // 症例が名指ししている候補IDを使うと、`comment.must` / `any` / `forbid` の枝で
+    // 自由記述と差が出るのは当たり前。ここで見たいのは `comment: true` の枝なので、
+    // その症例がどの条件にも書いていない候補で比べる
+    const namedIn = (c) => {
+      const ids2 = new Set();
+      for (const branch of allBranches(c)) {
+        const cond = (branch.when || {}).comment;
+        if (Array.isArray(cond)) cond.forEach((x) => ids2.add(String(x).split(':')[0]));
+        else if (cond && typeof cond === 'object') {
+          for (const k of ['must', 'any', 'forbid']) {
+            (cond[k] || []).forEach((x) => ids2.add(String(x).split(':')[0]));
+          }
+        }
+      }
+      return ids2;
+    };
     for (const c of data.cases) {
+      const named = namedIn(c);
+      const free = data.commentTemplates.templates.map((t) => t.id).find((id) => !named.has(id));
+      eq(Boolean(free), true, `${c.id} に名指しされていない候補がない`);
+      const line = cmt(free);
       const marks = markSetsFor(c)[1] || [];
       const suspects = Object.fromEntries(marks.map((m) => [m, ['real', 'hemolysis', 'delta']]));
       for (const level of ['routine', 'urgent', 'emergency']) {

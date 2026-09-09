@@ -58,6 +58,25 @@
     },
     {
       "when": {
+        "report": "routine",
+        "comment": {
+          "forbid": [
+            "real",
+            "continued",
+            "delta",
+            "microcytic",
+            "macrocytic",
+            "inflammation",
+            "renal",
+            "clot",
+            "dilution",
+            "mismatch",
+            "sample_state_clear",
+            "recheck",
+            "recollect_same",
+            "recollect_normal"
+          ]
+        },
         "recheck": true,
         "marks": {
           "must": [
