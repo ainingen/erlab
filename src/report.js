@@ -3,6 +3,7 @@
 
 import { esc, termLink } from './lis.js';
 import { judge } from './judge.js';
+import { buildReview } from './review.js';
 
 export const SCORE_LABEL = { best: '最善', ok: '許容', poor: '要改善' };
 
@@ -226,27 +227,31 @@ export function evaluate(caseDef, choice, ctx = null) {
   // 手書き症例は今までどおり choices で判定する。judge に渡すのは choices の無い
   // 症例（生成症例）だけで、手書きの挙動は変えない（docs/judge-rules.md §6）
   if (!(caseDef.choices || []).length && ctx && ctx.facts) {
-    return applyAskCap(judgedBranch(ctx.facts, choice), choice);
+    return applyAskCap(judgedBranch(ctx, caseDef, choice), choice);
   }
   return applyAskCap(pickBranch(caseDef.choices, choice), choice);
 }
 
 /**
  * 規則で判定した結果を、choices の枝と同じ形に包む（docs/judge-rules.md）。
- * 講評（reply）と医師の返信（doctor）の共通化は §6-5 の仕事なので、ここでは付けない。
+ * 講評（reply）と医師の返信（doctor）は共通の台詞から引く（docs/review-common.md）。
  */
-function judgedBranch(facts, choice) {
-  const res = judge(facts, choice);
+function judgedBranch(ctx, caseDef, choice) {
+  const res = judge(ctx.facts, choice);
+  const review = buildReview(res, caseDef, choice, ctx);
   return {
     score: res.score,
-    headline: res.headline,
-    messageId: null,
-    doctorId: null,
+    headline: review.headline,
+    messageId: review.reply,
+    doctorId: review.doctor,
     matched: null,
     then: null,
     cap: 'best',
     deviation: res.deviation,
     key: res.key,
+    // 台詞に埋める値と、医師の差出人・件名・時刻。描画側で使う
+    values: review.values,
+    doctorMeta: review.doctorMeta,
   };
 }
 

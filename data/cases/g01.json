@@ -1,0 +1,58 @@
+{
+  "id": "g01",
+  "mode": "rookie",
+  "title": "8. 規則で判定する一件",
+  "goal": "検体が正しいときの前回値との乖離を、自分で見つけて報告する",
+  "_note": "生成症例の一本目。**choices を持たない**ので、判定も講評も医師の返事も規則から組む（docs/review-common.md）。台詞は症例ごとに書かない。",
+  "accession": "26-0907-118",
+  "received_at": "15:10",
+  "patient": {
+    "id": "P-0011",
+    "label": "患者K",
+    "age": 68,
+    "sex": "F",
+    "from": "呼吸器内科病棟",
+    "vitals": {
+      "pulse": 96,
+      "bp": "118/70"
+    },
+    "note": "発熱、入院2日目"
+  },
+  "handover": "msg_g_intro",
+  "order": [
+    "CBC",
+    "CHEM_BASIC"
+  ],
+  "seed": {
+    "condition": "mild_inflammation",
+    "severity": 2
+  },
+  "artifact": null,
+  "previous": {
+    "date": "2026-09-06",
+    "note": "1日前・同病棟",
+    "values": {
+      "WBC": 6.2,
+      "RBC": 4.3,
+      "Hb": 13.1,
+      "Ht": 38.7,
+      "MCV": 90.0,
+      "MCH": 30.4,
+      "MCHC": 33.8,
+      "PLT": 245,
+      "Na": 140,
+      "K": 4.1,
+      "Cl": 104,
+      "HCO3": 24.0,
+      "BUN": 13,
+      "Cre": 0.62,
+      "Glu": 92,
+      "AST": 21,
+      "ALT": 16,
+      "LD": 178,
+      "CRP": 0.42,
+      "Ca": 9.3,
+      "AG": 12.0
+    }
+  }
+}

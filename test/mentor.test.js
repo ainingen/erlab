@@ -80,17 +80,31 @@ export function suite(data) {
     }
   });
 
-  test('全症例: どの指導役を選んでも申し送りとナビが必ず届く', () => {
+  test('全症例: どの指導役を選んでも申し送りが必ず届く。ナビは書いた症例だけ', () => {
     for (const c of data.cases) {
       for (const id of mentorIds) {
         eq(filterBySpeaker(resolveMessages(data, c.handover), id).length > 0, true, `${c.id} の申し送り (${id})`);
+        if (!c.nav) continue; // 生成症例はナビを書かない（docs/review-common.md §6）
         eq(filterBySpeaker(resolveMessages(data, c.nav), id).length > 0, true, `${c.id} のナビ (${id})`);
       }
     }
   });
 
+  test('生成症例（choices の無い症例）には症例ごとの台詞を書かない', () => {
+    const generated = data.cases.filter((c) => !(c.choices || []).length);
+    eq(generated.length > 0, true, '生成症例が一本もない');
+    for (const c of generated) {
+      eq(c.nav, undefined, `${c.id} にナビが書いてある`);
+      eq(c.ask, undefined, `${c.id} に「聞く」の台詞が書いてある`);
+      eq(c.investigate, undefined, `${c.id} に調べるの上書きが書いてある`);
+      // 申し送りは共通文を1本だけ持つ
+      eq(typeof c.handover, 'string', `${c.id} の申し送り`);
+      eq(messageById(data, c.handover).repeat, true, `${c.id} の申し送りは症例をまたぐ共通文`);
+    }
+  });
+
   test('症例1〜5b: ナビは指導役ごとに1本ずつ、立ち絵つきで出る', () => {
-    for (const c of data.cases) {
+    for (const c of data.cases.filter((x) => x.nav)) {
       const navs = resolveMessages(data, c.nav);
       eq(navs.length, mentorIds.length, `${c.id} のナビの本数`);
       for (const id of mentorIds) {

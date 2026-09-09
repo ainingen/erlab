@@ -10,8 +10,6 @@
 const LEVELS = ['routine', 'urgent', 'emergency'];
 const levelRank = (id) => Math.max(0, LEVELS.indexOf(id));
 
-const ACTION_NAME = { look: '目視', idcheck: 'ID照合', smear: '塗抹', call: '電話' };
-
 /* ---- 操作の読み取り（report.js と同じ形の choice を受ける） ---- */
 
 /** 選んだコメントの候補ID。素のID（`delta`）と項目付きのID（`delta:Hb`）の両方を入れる。 */
@@ -333,10 +331,7 @@ const DEVIATIONS = [
   },
   {
     id: 'O4', score: 'ok',
-    headline: (f, op, c) => {
-      const missing = c.actions.filter((a) => !actionsOf(op).includes(a));
-      return `判断は適切。ただし${missing.map((a) => ACTION_NAME[a] || a).join('と')}で裏を取っていません`;
-    },
+    headline: () => '判断は適切。ただし{action}で裏を取っていません',
     hit: (f, op, c) => c.actions.some((a) => !actionsOf(op).includes(a)),
   },
   {
@@ -346,7 +341,7 @@ const DEVIATIONS = [
   },
   {
     id: 'O6', score: 'ok',
-    headline: (f) => `${f.key || '鍵の項目'}に疑いが付いていません`,
+    headline: () => '{key}に疑いが付いていません',
     hit: (f, op, c) => missesKey(op, c),
   },
   {
@@ -430,6 +425,8 @@ function missesKey(op, correct) {
 /**
  * 判定（§3）。事実と操作から評価・ずれの記号・見出しを返す。
  * `choices` を持たない症例（生成症例）だけがここを通る。
+ * **見出しは `{key}` `{action}` を置き場所のまま返す。**埋めるのは src/review.js の一か所
+ * （docs/review-common.md §2・§7）。
  */
 export function judge(facts, operation) {
   const correct = correctOperation(facts);

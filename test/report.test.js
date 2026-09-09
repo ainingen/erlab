@@ -33,8 +33,14 @@ function cmt(templateId, testId = null) {
 
 /** 一本目と二本目、両方の枝。二本立てでない症例では choices だけ。 */
 function allBranches(caseDef) {
-  return [...caseDef.choices, ...((caseDef.followup && caseDef.followup.choices) || [])];
+  return [...(caseDef.choices || []), ...((caseDef.followup && caseDef.followup.choices) || [])];
 }
+
+/**
+ * 手書き症例（`choices` を持つ症例）。枝の形を見るテストはこちらだけを回す。
+ * `choices` の無い生成症例は規則で判定するので、枝が無いのが正しい（docs/review-common.md）。
+ */
+const handwritten = (cases) => cases.filter((c) => (c.choices || []).length);
 
 /**
  * その症例で試すマークの組み合わせ。
@@ -106,6 +112,7 @@ function suspectSetsFor(marks, suspectIds) {
 
 export function suite(data) {
   const caseById = Object.fromEntries(data.cases.map((c) => [c.id, c]));
+  const written = handwritten(data.cases);
   const messageIds = new Set(Object.keys(data.messages.messages));
   const mentorIds = data.mentors.mentors.map((m) => m.id);
 
@@ -785,7 +792,7 @@ export function suite(data) {
   });
 
   test('全症例: 聞いた報告に最善は出ない', () => {
-    for (const c of data.cases) {
+    for (const c of written) {
       const suspectIds = data.suspects.suspects.map((x) => x.id);
       for (const choice of combosFor(c, suspectIds)) {
         const asked = { ...choice, asked: true, actions: ['look', 'idcheck', 'smear', 'call'] };
@@ -814,7 +821,7 @@ export function suite(data) {
 
   // ---- 症例JSONの形 ----
   test('全症例: choices の最後は when が空の受け皿になっている', () => {
-    for (const c of data.cases) {
+    for (const c of written) {
       eq(Array.isArray(c.choices), true, `${c.id} に choices がない`);
       const last = c.choices[c.choices.length - 1];
       eq(Object.keys(last.when || {}).length, 0, `${c.id} の最後の枝が受け皿になっていない`);
@@ -822,7 +829,7 @@ export function suite(data) {
   });
 
   test('全症例: score・headline・医師の返信がそろっている', () => {
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of allBranches(c)) {
         // then を持つ枝は症例を閉じないので score を持たない（判定は二本目でする）
         eq(branch.then ? branch.score === undefined : SCORES.includes(branch.score), true,
@@ -837,7 +844,7 @@ export function suite(data) {
   });
 
   test('全症例: 医師の返信は speaker なしの共通文', () => {
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of allBranches(c)) {
         const doctor = data.messages.messages[branch.doctor];
         eq(doctor.speaker, undefined, `${c.id} の ${branch.doctor} に speaker がある`);
@@ -855,7 +862,7 @@ export function suite(data) {
   });
 
   test('全症例: best の枝が必ずある（二本立ての症例は二本目に）', () => {
-    for (const c of data.cases) {
+    for (const c of written) {
       eq(allBranches(c).some((b) => b.score === 'best'), true, `${c.id} に best がない`);
     }
   });
@@ -877,7 +884,7 @@ export function suite(data) {
   });
 
   test('全症例: then を持つ枝は followup を持つ症例にだけあり、cap が正しい', () => {
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of c.choices) {
         if (!branch.then) continue;
         eq(branch.then, 'followup', `${c.id} の then`);
@@ -906,7 +913,7 @@ export function suite(data) {
     const suspectIds = data.suspects.suspects.map((s) => s.id);
     const seen = new Set();
     let combos = 0;
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const choice of combosFor(c, suspectIds)) {
         combos += 1;
         const res = evaluate(c, choice);
@@ -984,7 +991,7 @@ export function suite(data) {
       const cond = (b.when || {}).comment;
       return cond !== undefined && typeof cond !== 'boolean';
     });
-    const plain = data.cases.filter((c) => !usesIds(c));
+    const plain = written.filter((c) => !usesIds(c));
     eq(plain.length > 0, true, 'ID条件を使っていない症例が一つもない');
     for (const c of plain) {
       const marks = markSetsFor(c)[1] || [];
@@ -1050,7 +1057,7 @@ export function suite(data) {
       const [templateId, testId] = String(id).split(':');
       return templateIds.has(templateId) && (testId === undefined || testIds.has(testId));
     };
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of allBranches(c)) {
         const expected = (branch.when || {}).comment;
         if (expected === undefined) continue;
@@ -1067,7 +1074,7 @@ export function suite(data) {
 
   test('全症例: when.report は文字列か、報告レベルの配列', () => {
     const levels = new Set(data.hospital.report_levels.map((l) => l.id));
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of allBranches(c)) {
         const expected = (branch.when || {}).report;
         if (expected === undefined) continue;
@@ -1083,7 +1090,7 @@ export function suite(data) {
 
   test('全症例: actions の条件は must / forbid / max だけ。行動IDは実在する', () => {
     const actionIds = new Set(['look', 'idcheck', 'smear', 'call']);
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of allBranches(c)) {
         const rule = (branch.when || {}).actions;
         if (!rule) continue;
@@ -1100,7 +1107,7 @@ export function suite(data) {
   });
 
   test('全症例: 塗抹を要求する枝は、その症例に血算の依頼があるときだけ', () => {
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of allBranches(c)) {
         const must = ((branch.when || {}).actions || {}).must || [];
         if (!must.includes('smear')) continue;
@@ -1123,7 +1130,7 @@ export function suite(data) {
   test('全症例: choices が参照する項目IDと疑いIDが実在する', () => {
     const testIds = new Set(data.tests.tests.map((t) => t.id));
     const suspectIds = new Set(data.suspects.suspects.map((s) => s.id));
-    for (const c of data.cases) {
+    for (const c of written) {
       for (const branch of c.choices) {
         const marks = (branch.when || {}).marks || {};
         for (const id of [].concat(marks.must || [], marks.forbid || [])) {

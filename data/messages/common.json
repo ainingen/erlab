@@ -1,0 +1,720 @@
+{
+  "_note": "生成症例（`choices` を持たない症例）で使う共通の台詞。仕様は docs/review-common.md。手書き症例の台詞は data/messages/rookie.json のまま。ここには足さない。`{key}` `{value}` `{prev}` `{action}` `{level}` の5つだけを src/review.js が埋める。",
+  "_doctor_note": "医師の返事は `msg_dr_{正解レベル}_{届き方}`。`from` `subject` `time` は src/review.js が症例と操作から組むので、ここには書かない（書けばそちらが優先）。",
+  "_doctor_time": {
+    "_note": "受付時刻からの経過（分）。値が正しく届いた列は短く、遅れて気づく列は長い。docs/review-common.md 5-3",
+    "emergency": 6,
+    "urgent": 15,
+    "routine": 30,
+    "recheck": 12,
+    "late": 75,
+    "next_day": "翌 09:10"
+  },
+  "messages": {
+    "msg_g_intro": {
+      "kind": "handover",
+      "emotion": "normal",
+      "subject": "【研修】ここからは自分で判断してください",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "ここからは、講評も返事も症例ごとに書いていません。判断の型だけを見ます。"
+      ],
+      "from_mentor": true
+    },
+    "msg_rv_best_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "praise",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "ん、いいね。{key}、ちゃんと見えてた。"
+      ]
+    },
+    "msg_rv_best_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "praise",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "適切です。{key} を鍵にして、報告まで筋が通っています。"
+      ]
+    },
+    "msg_rv_P1_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "serious",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "……止まって。{key} {value}、それHH。",
+        "通常報告は、誰かがカルテを開くまで誰も気づかない。パニック値は電話。"
+      ]
+    },
+    "msg_rv_P1_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "serious",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "一度確認させてください。{key} {value} はパニック値です。",
+        "通常報告は、電子カルテを開いた人が気づくまで動きません。この値はそれを待てません。緊急報告にしてください。"
+      ]
+    },
+    "msg_rv_P2_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "deadpan",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "……検体状態、見た？　その{key}、壊れた検体の値よ。",
+        "測れてはいる。でも患者の中の数字じゃない。電話の前に止める。"
+      ]
+    },
+    "msg_rv_P2_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "troubled",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "検体状態欄に所見があります。この {key} は検体側の要因で動いた値です。",
+        "測定は正確でも、患者の状態を映していません。壊れた検体は、電話の前に検査室で止めてください。"
+      ]
+    },
+    "msg_rv_P3_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "serious",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "検体状態、空じゃないでしょ。{key}、そのまま送った？",
+        "何も言わずに出すと、向こうは数字を信じる。付けるか、採り直すか。黙って流すのが一番まずい。"
+      ]
+    },
+    "msg_rv_P3_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "serious",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "検体状態に所見があるまま、それに触れずに報告しています。",
+        "付記が無ければ、医師はその値をそのまま使います。検体トラブルは付記するか、再採血で止めてください。"
+      ]
+    },
+    "msg_rv_P4_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "alert",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "待った。それ、誰の{key}？",
+        "前回値の列、変わらないはずの数字まで動いてる。それは変化じゃない、別人。出しちゃだめなやつ。"
+      ]
+    },
+    "msg_rv_P4_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "alert",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "止まってください。その {key} は、この患者の値ではない可能性があります。",
+        "前回値と比べて、数日では動かないはずの項目が動いています。患者の変化として報告する前に、取り違えを疑ってください。"
+      ]
+    },
+    "msg_rv_P5_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "deadpan",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "採り直した理由、言える？　検体状態は空、前回とも合ってる。",
+        "理由のない再採血は、患者にもう一回針を刺すってこと。疑うなら、材料を持ってから。"
+      ]
+    },
+    "msg_rv_P5_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "troubled",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "再採血の根拠がありません。検体状態に所見がなく、前回値とも矛盾していません。",
+        "再採血は患者にもう一度負担をかける行為です。疑う材料を確かめてから依頼してください。"
+      ]
+    },
+    "msg_rv_P6_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "deadpan",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "……これで{level}？　全部基準内よ。",
+        "急ぎの回線は、鳴った瞬間に向こうが手を止める。異常なしは通常で。"
+      ]
+    },
+    "msg_rv_P6_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "troubled",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "異常のない結果に{level}報告を使っています。",
+        "急ぎの回線を使うと、受け手は手を止めて画面を開きます。本当に急ぐ報告が埋もれないよう、通常報告にしてください。"
+      ]
+    },
+    "msg_rv_P7_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "serious",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "……Δ、見えてた？　{key}、前回{prev}が{value}。",
+        "検体は正しい。患者が変わってる。それがΔ。通常で流したら、誰かがカルテを開くまで止まったまま。"
+      ]
+    },
+    "msg_rv_P7_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "serious",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "Δチェックに該当しています。{key} は前回 {prev} から {value} です。",
+        "検体に問題がなく、患者の状態が変わっている。それがΔの示すものです。通常報告では、この変化が届くまで時間がかかります。"
+      ]
+    },
+    "msg_rv_P8_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "deadpan",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "……下げた？　値、変わってないよね。",
+        "向こうが違うって言ったのは一本目の話。二本目はまだ誰も知らない。同じ強さで。"
+      ]
+    },
+    "msg_rv_P8_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "troubled",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告レベルを下げていますが、二本目の値は一本目と同じ向きです。",
+        "医師が否定したのは一度目の値です。二度目は同じ強さで報告してください。"
+      ]
+    },
+    "msg_rv_O1_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告は合ってる。でもその付記、表と合ってる？",
+        "疑う材料がないのに書くと、向こうが迷う。付記は、表にあることだけ。"
+      ]
+    },
+    "msg_rv_O1_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告レベルは適切です。ただし付記のうち、この検体の事実と合わないものがあります。",
+        "根拠のない所見は、受け手の判断を誤らせます。表と前回値で確かめてから選んでください。"
+      ]
+    },
+    "msg_rv_O11_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "異常なしに付記？　書くことないでしょ。",
+        "付記は、数字だけだと伝わらないときのもの。無いなら無いでいい。"
+      ]
+    },
+    "msg_rv_O11_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "異常のない検体に付記を付けています。",
+        "付記は、数値だけでは伝わらないことを補うためのものです。伝えることが無ければ、付けなくて構いません。"
+      ]
+    },
+    "msg_rv_O2_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "{key}に気づいたのは合ってる。届いてもいる。",
+        "ただ、HHは電話。至急は「見といて」、緊急は「今すぐ止めて」。届く速さが違う。"
+      ]
+    },
+    "msg_rv_O2_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "{key} に着目した点は正しく、担当医にも伝わります。",
+        "ただしパニック値は緊急報告の対象です。至急と緊急では、相手が手を止めるまでの時間が変わります。"
+      ]
+    },
+    "msg_rv_O3_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "気づいたのは合ってる。急いだのも分かる。",
+        "ただ{key} {value}はHHじゃない。緊急回線はHHのために取っておく。至急で届く。"
+      ]
+    },
+    "msg_rv_O3_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "向きは正しいです。ただし {key} {value} はパニック値ではありません。",
+        "緊急報告は HH/LL のために確保しておく回線です。この場合は至急報告で十分に伝わります。"
+      ]
+    },
+    "msg_rv_O4_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "判断は合ってる。でも、{action}した？",
+        "{action}一つで消える疑いは、消してから報告。"
+      ]
+    },
+    "msg_rv_O4_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "判断は適切です。ただし{action}で裏を取っていません。",
+        "{action}で除外できる疑いは、報告の前に除外してください。"
+      ]
+    },
+    "msg_rv_O5_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "……まあ、間違いじゃない。数字は届いてる。",
+        "ただ、一行あるかないかで、医者が気づくまでの時間が変わる。次から付けて。"
+      ]
+    },
+    "msg_rv_O5_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "誤りではありません。結果は正しく送られています。",
+        "ただし理由が付記に残っていません。一行あれば読み取りが早くなります。次回は添えてください。"
+      ]
+    },
+    "msg_rv_O6_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告は合ってる。でも{key}、印は？",
+        "何を見て決めたのか、報告に残ってない。決め手の項目にマークして、疑いを付ける。"
+      ]
+    },
+    "msg_rv_O6_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告は適切です。ただし {key} にマークと疑いが付いていません。",
+        "判断の根拠が報告に残りません。決め手になった項目に印を付け、疑いを選んでください。"
+      ]
+    },
+    "msg_rv_O7_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "印、多くない？　動いてない項目まで付いてる。",
+        "並べると、向こうは「どれが急ぎ？」ってなる。印は決め手だけ。"
+      ]
+    },
+    "msg_rv_O7_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "マークが多すぎます。フラグの無い項目にも付いています。",
+        "項目が並ぶと、受け手は重要なものを探すことになります。決め手の項目だけに絞ってください。"
+      ]
+    },
+    "msg_rv_O8_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "採り直したのね。それ自体は悪くない。",
+        "でも数字と患者の状態が噛み合ってるなら、疑うより先に報告。採り直しは報告してからでもできる。"
+      ]
+    },
+    "msg_rv_O8_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "再採血の判断自体は誤りではありません。ただし報告が伴っていません。",
+        "再検査を待つ間も、患者の状態は進みえます。報告を先に、再採血は並行で依頼してください。"
+      ]
+    },
+    "msg_rv_O9_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告は合ってる。で、採り直しは何のため？",
+        "検体状態は空、前回とも合ってる。疑う材料がないなら、針は一本で済ませる。"
+      ]
+    },
+    "msg_rv_O9_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告は正しいです。ただしこの検体に再採血の理由がありません。",
+        "検体状態に所見がなく、前回値とも矛盾していません。根拠のない再採血は患者の負担です。"
+      ]
+    },
+    "msg_rv_O10_kanae": {
+      "kind": "nav",
+      "speaker": "kanae",
+      "emotion": "normal",
+      "from": "三嶋 かなえ / 主任臨床検査技師",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "伝えたのは合ってる。あと一歩、採り直しまで出しとく。",
+        "疑いのある検体は、確かめるところまでが仕事。向こうから頼まれる前に。"
+      ]
+    },
+    "msg_rv_O10_yusuke": {
+      "kind": "nav",
+      "speaker": "yusuke",
+      "emotion": "normal",
+      "from": "羽鳥 悠介 / 臨床検査技師（教育担当）",
+      "subject": "報告のあとで",
+      "time": "—",
+      "repeat": true,
+      "body": [
+        "報告は適切です。ただし再採血まで出していません。",
+        "疑いのある検体は、確かめるところまでが検査室の仕事です。依頼される前に出してください。"
+      ]
+    },
+    "msg_dr_routine_routine": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "受け取りました。報告レベルはこれで構いません。",
+        "ありがとうございました。"
+      ]
+    },
+    "msg_dr_routine_urgent": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "呼ばれたので何事かと思いました。{key} {value}ですよね。",
+        "この程度なら通常報告で十分です。至急・緊急は、こちらの手が止まっても構わない値のときにお願いします。"
+      ]
+    },
+    "msg_dr_routine_emergency": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "……{key} {value}、ですよね？",
+        "緊急で連絡をもらうと、こちらは手を止めて画面を開きます。本当に急ぐ連絡が埋もれてしまうので、そこは切り分けてもらえると助かります。"
+      ]
+    },
+    "msg_dr_routine_recheck": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "再採血の依頼が来ていましたが、理由が書いていません。",
+        "こちらで見るかぎり値は落ち着いています。取り直す理由があれば教えてください。"
+      ]
+    },
+    "msg_dr_urgent_routine": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "{key} {value}が、通常の結果送信で上がってきていました。あとから見て手が止まりました。",
+        "この動きは一報ください。気づくのが遅れるところでした。"
+      ]
+    },
+    "msg_dr_urgent_urgent": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "{key}の件、ありがとうございます。",
+        "すぐ見ます。対応に入ります。"
+      ]
+    },
+    "msg_dr_urgent_emergency": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "電話、受けました。{key} {value}ですね。",
+        "対応はします。ただ、パニック値ではないので、この動きなら至急のメッセージで届きます。緊急回線はそちらに取っておいてください。"
+      ]
+    },
+    "msg_dr_urgent_recheck": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "取り直しの依頼だけが来ていたので、待っていました。",
+        "{key} {value}なら、先に一報ください。取り直しを待つ間にできることがあります。"
+      ]
+    },
+    "msg_dr_emergency_routine": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "{key} {value}が、通常の結果送信で上がってきていました。気づくのが遅れるところでした。",
+        "今回はこちらで画面を開いたので拾えましたが、この値は見つけた人がその場で電話をかけないと止まりません。次からお願いします。"
+      ]
+    },
+    "msg_dr_emergency_urgent": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "メッセージ見ました。{key} {value}ですね。……これは電話をください。",
+        "メッセージは、こちらが画面を開くまで届きません。パニック値だけは、口頭で受けて復唱するところまでが当院の決まりです。"
+      ]
+    },
+    "msg_dr_emergency_emergency": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "「復唱します、{key} {value}」——はい、確かに受けました。すぐ対応します。",
+        "ありがとうございました。"
+      ]
+    },
+    "msg_dr_emergency_recheck": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "取り直しの依頼だけが来ていました。{key} {value}なら先に電話をください。",
+        "取り直しを待つ間にできることがあります。"
+      ]
+    },
+    "msg_dr_hold_sample_stopped": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "再採血の依頼、受けました。検体の問題だったんですね。",
+        "電話が来なかったので、こちらはそのまま診察を続けられました。取り直して出します。"
+      ]
+    },
+    "msg_dr_hold_sample_note_only": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "検体のこと、書いてもらえたので分かりました。ありがとうございます。",
+        "ただこの状態だと、{key}は参考にもならないですよね。付記して送るより、取り直してもらったほうが早いです。次はそうしてください。"
+      ]
+    },
+    "msg_dr_hold_sample_leak_recheck": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "{key} {value}と聞いて動き始めたところに、再採血の依頼が来ました。どちらですか。",
+        "値が使えないなら、最初から出さないでください。"
+      ]
+    },
+    "msg_dr_hold_sample_leak_silent": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "結果は受け取りましたが、検体状態の欄を見て手が止まりました。",
+        "検体の問題が分かっているなら、ひとこと付けるか、取り直すかしてください。何も言わずに送られると、こちらは数字を信じてしまいます。"
+      ]
+    },
+    "msg_dr_hold_sample_leak_loud": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "復唱します、{key} {value}……と言いかけて画面を見たら、検体状態に所見が出ていました。",
+        "この値では治療を始められません。使えない検体は、電話の前に検査室で止めてください。"
+      ]
+    },
+    "msg_dr_hold_mismatch_stopped": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "助かりました。採血の順番を確認します。",
+        "再採血の結果を待ちます。"
+      ]
+    },
+    "msg_dr_hold_mismatch_note_only": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "取り違えの件、読みました。採血の状況を確認します。",
+        "取り直しも一緒に出しておいてもらえると、こちらから頼む手間が省けます。"
+      ]
+    },
+    "msg_dr_hold_mismatch_leak_recheck": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "{key} {value}と聞いて準備を始めたところに、再採血の依頼が来ました。",
+        "（あとで）……これ、別の患者さんの値ではないですか。止めるなら、値を出す前に止めてください。"
+      ]
+    },
+    "msg_dr_hold_mismatch_leak_silent": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "（翌日）昨日の結果、{key}が前回と別人のように違うのですが。",
+        "採血が入れ違っていませんか。"
+      ]
+    },
+    "msg_dr_hold_mismatch_leak_loud": {
+      "kind": "reply",
+      "repeat": true,
+      "body": [
+        "{key} {value}？　準備を始めます。",
+        "（あとで）検査室、これ別の患者さんの値ではないですか。前回値とまるで合いません。"
+      ]
+    }
+  }
+}

@@ -14,7 +14,9 @@ import {
   SCORE_LABEL,
 } from './report.js';
 import { renderMentorPicker, mentorById, mentorForCase, askButtonState } from './mentor.js';
+import { fillMessage } from './review.js';
 import { actionStates, runAction, renderInvestigatePanel } from './investigate.js';
+import { deriveFacts } from './judge.js';
 import * as sound from './sound.js';
 import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
 
@@ -35,6 +37,7 @@ const state = {
   stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
   caps: {},      // 症例ID → 一本目の cap。最終評価の上限になる
   followups: {}, // 症例ID → 二本目のパネル
+  reviewValues: {}, // 届いたIDごとの、共通の台詞に埋める値（生成症例だけ。docs/review-common.md §2）
   messageIds: [],   // 届いた順のID（重複を弾くためだけに持つ）
   messageGroups: [], // 届いた順の「組」。同時に届いたものを一つにまとめる
   mentorId: null,
@@ -183,7 +186,9 @@ function advanceTutorial() {
 
 /** 別々の便として積む。ひとつずつ独立した組になる。 */
 function pushMessage(ids) {
-  for (const id of [].concat(ids ?? [])) pushGroup(id);
+  const sent = [];
+  for (const id of [].concat(ids ?? [])) sent.push(...pushGroup(id));
+  return sent;
 }
 
 /**
@@ -193,9 +198,10 @@ function pushMessage(ids) {
  */
 function pushGroup(ids) {
   const fresh = freshGroup(ids, []).map(deliveryKey).filter((id) => !state.messageIds.includes(id));
-  if (!fresh.length) return;
+  if (!fresh.length) return [];
   state.messageIds.push(...fresh);
   state.messageGroups.push(fresh);
+  return fresh;
 }
 
 /**
@@ -212,8 +218,28 @@ function deliveryKey(id) {
 /** 選んでいる指導役に出すものだけ残した、組の配列（古い順）。 */
 function visibleMessageGroups() {
   return state.messageGroups
-    .map((group) => filterBySpeaker(resolveMessages(state.data, group), state.mentorId))
+    .map((group) => filterBySpeaker(resolveMessages(state.data, group), state.mentorId)
+      .map((m) => decorate(m))
+      .filter(Boolean)) // 埋め残しで本文が無くなった便は出さない（docs/review-common.md §2）
     .filter((group) => group.length);
+}
+
+/**
+ * 共通の台詞（生成症例）に、その症例の値を埋める。埋めるのはここ一か所だけ。
+ * 医師の差出人・件名・時刻も、台詞側に書いていなければここで足す（docs/review-common.md 5-3）。
+ */
+function decorate(message) {
+  const extra = state.reviewValues[message.id];
+  if (!extra) return message;
+  const filled = fillMessage(message, extra.values);
+  const meta = extra.doctorMeta;
+  if (!filled || !meta || message.kind !== 'reply') return filled;
+  return {
+    ...filled,
+    from: filled.from || meta.from,
+    subject: filled.subject || meta.subject,
+    time: filled.time && filled.time !== '—' ? filled.time : meta.time,
+  };
 }
 
 /* ---- 症例 ---- */
@@ -912,6 +938,30 @@ function closeReport() {
   $('#report-dialog').close();
 }
 
+/**
+ * 規則で判定するとき（`choices` の無い症例）に渡す材料。
+ * 手書き症例では使われない——`evaluate()` が `choices` を先に見る。
+ */
+function judgeContext(caseDef) {
+  const panel = activePanel();
+  if (!panel || (caseDef.choices || []).length) return null;
+  return {
+    data: state.data,
+    panel,
+    facts: deriveFacts(caseDef, panel, state.data, {
+      stage: stageOf(caseDef.id) === 'followup' ? 'followup' : 'first',
+    }),
+  };
+}
+
+/** 共通の台詞に埋める値を、届いた便ごとに控える（生成症例だけ。手書きは values を持たない）。 */
+function rememberReviewValues(delivered, res) {
+  if (!res.values) return;
+  for (const id of delivered) {
+    state.reviewValues[id] = { values: res.values, doctorMeta: res.doctorMeta };
+  }
+}
+
 /** 差し戻しのあと、二本目が届く。指導役の一言と受付の記録もここで流す。 */
 function deliverFollowup(caseId) {
   const caseDef = state.cases.find((c) => c.id === caseId);
@@ -931,7 +981,7 @@ function finishReport(choice) {
   const followupStage = stageOf(caseDef.id) === 'followup';
   const res = followupStage
     ? evaluateFollowup(caseDef, choice, state.caps[caseDef.id])
-    : evaluate(caseDef, choice);
+    : evaluate(caseDef, choice, judgeContext(caseDef));
 
   // 差し戻し。症例は閉じず、医師の返信だけ届いて二本目を待つ
   if (res.then === 'followup' && caseDef.followup) {
@@ -939,7 +989,7 @@ function finishReport(choice) {
     state.stage[caseDef.id] = 'waiting';
     state.status[caseDef.id] = 'waiting';
     // 講評と医師の返信は同時に届く。一つの組にして、上下が入れ替わらないようにする
-    pushGroup([res.messageId, res.doctorId]);
+    rememberReviewValues(pushGroup([res.messageId, res.doctorId]), res);
     sound.play('message');
     state.pendingChoice = null;
     $('#report-body').innerHTML = renderVerdict(res, choice, state.data);
@@ -954,7 +1004,7 @@ function finishReport(choice) {
   setTimeout(() => sound.play('close'), CLOSE_DELAY_MS);
   clearInterrupt(caseDef.id);
   // 報告 → 指導役の講評 → 医師の返信、の順に届く。二本で一つの組にする
-  pushGroup([res.messageId, res.doctorId]);
+  rememberReviewValues(pushGroup([res.messageId, res.doctorId]), res);
 
   if (choice.recheck && caseDef.recollect) {
     state.recollected[caseDef.id] = buildRecollect(caseDef, currentPanel(), state.data);

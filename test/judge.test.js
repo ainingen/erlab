@@ -19,6 +19,9 @@ const EXPECTED_FACTS = {
   n07: { type: 'T3', key: 'K', P: true, A: false, D: true, M: false, X: false, N: false },
 };
 
+/** 手書き症例（`choices` を持つ症例）。突き合わせはこちらだけを回す。 */
+const handwritten = (cases) => cases.filter((c) => (c.choices || []).length);
+
 /** 症例の事実。二本目（`followup`）は stage を渡す。 */
 function factsFor(caseDef, data, stage = 'first') {
   const first = buildPanel(caseDef, data);
@@ -105,7 +108,7 @@ export function branchExamples(data) {
   const testIds = data.tests.tests.map((t) => t.id);
   const templateIds = data.commentTemplates.templates.map((t) => t.id);
   const out = [];
-  for (const c of data.cases) {
+  for (const c of handwritten(data.cases)) {
     const stages = [{ stage: 'first', branches: c.choices }];
     if (c.followup) stages.push({ stage: 'followup', branches: c.followup.choices });
     for (const st of stages) {
@@ -152,7 +155,7 @@ export function broadCheck(data) {
   const cmt = (id) => ({ id, templateId: id, text: id });
   const suspectIds = data.suspects.suspects.map((s) => s.id);
   const rows = [];
-  for (const c of data.cases) {
+  for (const c of handwritten(data.cases)) {
     const facts = deriveFacts(c, buildPanel(c, data), data);
     const markSets = [[], [facts.key].filter(Boolean), [facts.key, 'WBC'].filter(Boolean)];
     for (const marks of markSets) {
@@ -322,7 +325,7 @@ export function suite(data) {
     eq(agree / rows.length >= 0.97, true,
        `一致率が落ちた: ${agree}/${rows.length}（${Math.round(agree / rows.length * 1000) / 10}%）`);
     // 症例ごとにも極端に崩れていないこと
-    for (const c of data.cases) {
+    for (const c of handwritten(data.cases)) {
       const mine = rows.filter((r) => r.caseId === c.id);
       const hit = mine.filter((r) => r.agree).length;
       eq(hit / mine.length > 0.6, true,

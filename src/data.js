@@ -15,7 +15,7 @@ import { buildDefaultAskMessages } from './messages.js';
 export async function loadData() {
   const [
     tests, hospital, conditions, artifacts, caseIndex, messages, mentors, tutorial, suspects,
-    glossary, commentTemplates, judge,
+    glossary, commentTemplates, judge, common,
   ] = await Promise.all([
       readJson('data/tests.json'),
       readJson('data/hospital.json'),
@@ -29,6 +29,7 @@ export async function loadData() {
       readJson('data/glossary.json'),
       readJson('data/comment_templates.json'),
       readJson('data/judge.json'),
+      readJson('data/messages/common.json'),
     ]);
 
   const cases = await Promise.all(
@@ -38,6 +39,10 @@ export async function loadData() {
   // 「聞く」の既定の台詞は索引の「見る順番」から組む。症例に書かなくても出せるようにして、
   // 生成症例に台詞を持たせない（docs/investigate.md §8）
   Object.assign(messages.messages, buildDefaultAskMessages(glossary));
+  // 生成症例の共通の台詞（講評・医師の返事）。手書きの rookie.json とは分けて持ち、
+  // 引くときだけ同じ辞書に合流させる（docs/review-common.md §7）
+  Object.assign(messages.messages, common.messages);
+  messages._doctor_time = common._doctor_time;
 
   return {
     tests, hospital, conditions, artifacts, messages, mentors, tutorial, suspects, glossary,

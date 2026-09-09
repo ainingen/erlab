@@ -126,8 +126,10 @@
 - 「聞く」（上のバー右端。1症例1回。聞いた症例は許容どまり）と、書いていない症例むけの既定の台詞
 - 症例7-b（取り違え：ID照合は一致、中身が別人）。一覧の順番は 6 → 7-b → 7。
   `when.report` に配列を書けるようにした（docs/case07b.md）
-- 判定ルールの言語化（`src/judge.js`・`data/judge.json`）。事実7つ → 正解の型9つ → ずれ18種。
+- 判定ルールの言語化（`src/judge.js`・`data/judge.json`）。事実7つ → 正解の型9つ → ずれ19種。
   `choices` を持たない症例だけが通る（docs/judge-rules.md）
+- 講評の共通化（`src/review.js`・`data/messages/common.json`）。講評40本と医師の返事22本を
+  ずれの種類と「正解レベル×届き方」で引く。生成症例の一本目 `g01` を足した（docs/review-common.md）
 
 ### 未着手
 
