@@ -103,8 +103,8 @@ export function suite(data) {
   });
 
   test('症例4以降のナビは結論を言わない（段階設計）', () => {
-    // 症例4〜5bのナビは、症例1〜3より短く、報告レベルを名指ししない
-    for (const cid of ['n04', 'n05', 'n05b', 'n06']) {
+    // 症例4以降のナビは、症例1〜3より短く、報告レベルを名指ししない
+    for (const cid of ['n04', 'n05', 'n05b', 'n06', 'n07b']) {
       for (const m of resolveMessages(data, caseById[cid].nav)) {
         const text = m.body.join('');
         eq(/通常報告|至急報告|緊急報告|再採血して/.test(text), false,
