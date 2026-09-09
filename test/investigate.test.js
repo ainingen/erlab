@@ -7,7 +7,8 @@ import {
   idCheckLines, sampleLines, renderActionBar, renderInvestigateLog,
 } from '../src/investigate.js';
 import { renderResults } from '../src/lis.js';
-import { renderMessages, askMessageIds, DEFAULT_ASK_IDS } from '../src/messages.js';
+import { renderMessages, askMessageIds, DEFAULT_ASK_IDS, NO_MENTOR_ASK_ID } from '../src/messages.js';
+import { askButtonState, mentorForCase } from '../src/mentor.js';
 import { renderVerdict } from '../src/report.js';
 import { buildPanel } from '../src/derive.js';
 
@@ -15,7 +16,7 @@ const ids = (states) => states.map((s) => s.id).join(',');
 const enabled = (states) => states.filter((s) => s.enabled).map((s) => s.id).join(',');
 const noteOf = (states, id) => states.find((s) => s.id === id).note;
 
-export function suite(data) {
+export function suite(data, sources = {}) {
   const caseById = Object.fromEntries(data.cases.map((c) => [c.id, c]));
   const CBC = ['CBC', 'CHEM_BASIC'];
 
@@ -307,23 +308,57 @@ export function suite(data) {
     }
   });
 
-  test('聞く: ナビ枠の末尾に出る。押したら「聞いた」になる', () => {
+  test('聞く: 上のバー右端にあり、ナビ枠には出さない', () => {
+    const html = sources.index || '';
+    eq(typeof sources.index, 'string', 'index.html のソース');
+    // ヘッダーの中。指導役ボタンの隣で、位置は症例・モードによらず固定
+    const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+    eq(header.includes('id="ask-btn"'), true, '「聞く」がヘッダーにない');
+    eq(header.indexOf('id="mentor-btn"') < header.indexOf('id="ask-btn"'), true, '指導役ボタンの隣でない');
+    eq(header.includes('data-action="ask"'), true, '押せない');
+    eq(header.includes('data-region="ask"'), true, '指さしの的がない');
+    // ナビ枠からは消えている
     const mentor = data.mentors.mentors[0];
     const nav = { id: 'msg_n05_nav_kanae', ...data.messages.messages.msg_n05_nav_kanae };
-    const ask = { navIds: ['msg_n05_nav_kanae'], asked: false, enabled: true };
-    const html = renderMessages([nav], mentor, data.glossary, ask);
-    eq(html.includes('data-action="ask"'), true, '「聞く」が出ていない');
-    eq(html.includes('許容どまり'), true, '押す前に評価に出ることを言っていない');
-    eq(html.indexOf('msg-ask') > html.indexOf('msg-main'), true, 'ナビ枠の末尾でない');
+    eq(renderMessages([nav], mentor, data.glossary).includes('data-action="ask"'), false,
+       'ナビ枠に「聞く」が残っている');
+  });
 
-    const done = renderMessages([nav], mentor, data.glossary, { ...ask, asked: true });
-    eq(done.includes('data-action="ask"'), false, '二度押せる');
-    eq(done.includes('聞いた'), true);
+  test('聞く: 押す前に「許容どまりになる」と言い、押したら「聞いた」になる', () => {
+    const mentor = data.mentors.mentors[0];
+    const ready = askButtonState({ mentor });
+    eq(ready.label, '聞く');
+    eq(ready.enabled, true);
+    eq(ready.note.includes('許容どまり'), true, '押す前に評価に出ることを言っていない');
+    eq(ready.note.includes('1症例1回'), true);
 
-    // 他の症例のナビや、ナビ以外の枠には出さない
-    eq(renderMessages([nav], mentor, data.glossary, { ...ask, navIds: ['msg_n06_nav_kanae'] })
-      .includes('data-action="ask"'), false);
-    eq(renderMessages([nav], mentor, data.glossary).includes('data-action="ask"'), false);
+    const used = askButtonState({ mentor, used: 'answered' });
+    eq(used.label, '聞いた', '色だけで済ませず文字を変える');
+    eq(used.enabled, false, '二度押せる');
+    // 報告して閉じた症例・症例を開いていないときは押せない
+    eq(askButtonState({ mentor, open: false }).enabled, false);
+  });
+
+  test('聞く: 指導役がいない日は、押しても評価の上限を落とさない', () => {
+    const caseDef = { ...caseById.n05, mentor: false };
+    eq(mentorForCase(data, 'kanae', caseDef), null, '指導役なしの症例に指導役が付いている');
+    eq(Boolean(mentorForCase(data, 'kanae', caseById.n05)), true, 'ふだんの症例に指導役が付かない');
+    eq(mentorForCase(data, null, caseById.n05), null, '指導役を選んでいなければいない');
+
+    const absent = askButtonState({ mentor: null });
+    eq(absent.enabled, true, '押せること自体は変えない（位置も文字も固定）');
+    eq(absent.note.includes('今日は指導役がいません'), true);
+    eq(absent.note.includes('許容どまり'), false, '聞けないのに減点を予告している');
+
+    // 押したときに出る一文。共通メッセージとして持つ
+    const msg = data.messages.messages[NO_MENTOR_ASK_ID];
+    eq(Boolean(msg), true, `${NO_MENTOR_ASK_ID} がない`);
+    eq(msg.repeat, true, '症例をまたいで届くので repeat が要る');
+    eq(msg.body.length, 1, '一文だけ');
+    eq(msg.body[0].includes('指導役がいません'), true);
+    eq(Boolean(msg.speaker), false, '指導役がいないのに指導役名義で出している');
+    // 評価側は「答えが返ったか」だけを見る（report.test.js の asked）
+    eq(askButtonState({ mentor: null, used: 'absent' }).label, '聞いた');
   });
 
   test('聞く: 判定画面の見出しの下に一行出る', () => {

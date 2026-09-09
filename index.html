@@ -61,6 +61,9 @@
   /* 二つ目からは右端に寄せ直さない（音のON/OFFと指導役が並ぶ） */
   .header-btn + .header-btn { margin-left: 6px; }
   #sound-btn[aria-pressed="false"] { color: #b9c0cb; }
+  /* 「聞く」は上のバー右端に固定。症例・モードやナビ枠の有無で場所を動かさない。
+     押すと評価が許容どまりになることは、押す前に title / aria-label で言っておく */
+  .header-btn:disabled { opacity: .5; cursor: default; }
   /* 割り込み中。赤は「ERから至急が入っている」画面状態の合図で、値の判定ではない。
      色を消しても分かるよう、ヘッダーには必ず文字の札を出す */
   body[data-state="interrupt"] .app-header { background: var(--alert); border-bottom-color: #40090b; }
@@ -308,16 +311,6 @@
   /* 指導役の台詞は立ち絵を左、台詞を右に置く。
      大きさは高さで決める。絵の幅（かなえ306px・悠介928px）が変わっても人物の大きさは変えない。
      左の列は絵の幅なりに広がる（auto）ので、幅の違う絵が混ざっても崩れない */
-  /* 「聞く」。ナビ枠の末尾に置く。押すと指導役が見どころを言い、最終評価は許容どまりになる。
-     押す前にそう書いておく（隠して減点しない） */
-  .msg-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; }
-  .ask-btn {
-    font: inherit; font-size: 14px; padding: 5px 14px; min-height: 36px;
-    background: #f0efeb; border: 1px solid var(--line-strong); cursor: pointer;
-  }
-  .ask-btn:disabled { opacity: .5; cursor: default; }
-  .ask-note { font-family: var(--sans); font-size: 12px; color: var(--ink-dim); }
-
   .msg.has-portrait { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; }
   .msg-portrait { height: 112px; width: auto; display: block; background: #fff; border: 1px solid var(--line); }
   .msg-main { min-width: 0; }
@@ -541,6 +534,8 @@
   <button class="header-btn" id="sound-btn" type="button" data-action="toggle-sound"
           aria-pressed="true">🔊 音 入</button>
   <button class="header-btn" id="mentor-btn" type="button" data-action="open-mentor">指導役 —</button>
+  <button class="header-btn" id="ask-btn" type="button" data-action="ask" data-region="ask"
+          aria-pressed="false">聞く</button>
   <div class="score" id="score">報告 0件</div>
 </header>
 

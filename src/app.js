@@ -5,12 +5,13 @@ import { buildPanel, buildRecollect, buildCommentOptions, toggleCommentSelection
 import { renderWorklist, renderResults, renderRecollect, renderGlossaryPanel, esc } from './lis.js';
 import {
   renderMessages, newestFirst, freshGroup, resolveMessages, filterBySpeaker, askMessageIds,
+  NO_MENTOR_ASK_ID,
 } from './messages.js';
 import {
   renderReportDialog, renderCommentPicker, renderPhone, evaluate, evaluateFollowup, renderVerdict,
   SCORE_LABEL,
 } from './report.js';
-import { renderMentorPicker, mentorById } from './mentor.js';
+import { renderMentorPicker, mentorById, mentorForCase, askButtonState } from './mentor.js';
 import { actionStates, runAction, renderActionBar, renderInvestigateLog } from './investigate.js';
 import * as sound from './sound.js';
 import { renderTutorialStep, renderTutorialPlaceholder, stepCount } from './tutorial.js';
@@ -25,7 +26,8 @@ const state = {
   marks: {},
   suspects: {},
   actions: {},  // 症例ID → 押した行動（調べる）。押した順に積む。取り消しはない
-  asked: {},    // 症例ID → 指導役に聞いたか。聞いた症例は最終評価が許容どまりになる
+  ask: {},      // 症例ID → 'answered'（指導役が答えた）／'absent'（指導役がいなかった）
+                // answered の症例だけ最終評価が許容どまりになる
   comments: {}, // 選択キー → 選んだコメント候補のID（打つものはゼロ）
   commentGroups: {}, // 選択キー → 開いている所見の群。既定は comment_templates.json の open
   stage: {},     // 症例ID → first / waiting / followup（差し戻しのある症例だけ動く）
@@ -82,6 +84,7 @@ async function main() {
 
   bindEvents();
   renderSoundButton();
+  renderAskButton(); // 指導役を選ぶ前は押せない状態で出しておく（位置は最初から固定）
   openMentorPicker();
 }
 
@@ -312,23 +315,44 @@ function investigate(actionId) {
 
 /* ---- 指導役に聞く ---- */
 
-/** ナビ枠に「聞く」を置く。1症例1回で、押すと最終評価が許容どまりになる。 */
+/**
+ * 上のバー右端の「聞く」。**位置は症例・モードによらず固定**で、ナビ枠が出ていなくても出る。
+ * 1症例1回。指導役が答えた症例だけ、最終評価が許容どまりになる。
+ */
 function askState() {
   const caseDef = currentCase();
-  if (!caseDef) return null;
-  return {
-    navIds: [].concat(caseDef.nav ?? []),
-    asked: Boolean(state.asked[caseDef.id]),
-    enabled: canMark(),
-  };
+  return askButtonState({
+    mentor: mentorForCase(state.data, state.mentorId, caseDef),
+    used: caseDef ? state.ask[caseDef.id] || null : null,
+    open: state.phase === 'cases' && Boolean(caseDef) && canMark(),
+  });
+}
+
+/** ヘッダーの「聞く」を状態に合わせて描き直す。文字を必ず変える（色だけにしない）。 */
+function renderAskButton() {
+  const btn = $('#ask-btn');
+  if (!btn) return;
+  const st = askState();
+  btn.textContent = st.label;
+  btn.disabled = !st.enabled;
+  btn.title = st.note;
+  btn.setAttribute('aria-label', `${st.label}：${st.note}`);
+  btn.setAttribute('aria-pressed', String(Boolean(st.used)));
 }
 
 function ask() {
   const caseDef = currentCase();
-  if (!caseDef || state.asked[caseDef.id] || !canMark()) return;
-  state.asked[caseDef.id] = true;
-  // 症例が台詞を書いていなければ既定の「見る順番」が出る（生成症例でも動く）
-  pushMessage(askMessageIds(caseDef));
+  if (!caseDef || !askState().enabled) return;
+  const mentor = mentorForCase(state.data, state.mentorId, caseDef);
+  if (!mentor) {
+    // 聞ける相手がいない。答えは返らないので、評価の頭打ちもしない
+    state.ask[caseDef.id] = 'absent';
+    pushMessage(NO_MENTOR_ASK_ID);
+  } else {
+    state.ask[caseDef.id] = 'answered';
+    // 症例が台詞を書いていなければ既定の「見る順番」が出る（生成症例でも動く）
+    pushMessage(askMessageIds(caseDef));
+  }
   sound.play('message');
   renderAll();
 }
@@ -491,6 +515,7 @@ function renderInterruptState() {
 
 function renderAll() {
   renderInterruptState();
+  renderAskButton();
   renderWorklistPane();
   renderMessagePane();
   renderScore();
@@ -577,7 +602,6 @@ function renderMessagePane() {
     newestFirst(visibleMessageGroups()),
     currentMentor(),
     state.data.glossary,
-    askState(),
   );
 }
 
@@ -782,7 +806,7 @@ function bindEvents() {
       marks: sel.marks,
       suspects: sel.suspects,
       actions: takenActionIds(currentCase().id),
-      asked: Boolean(state.asked[currentCase().id]),
+      asked: state.ask[currentCase().id] === 'answered',
     };
     if (choice.level === 'emergency') {
       state.pendingChoice = choice;

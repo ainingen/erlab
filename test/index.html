@@ -36,11 +36,14 @@
   try {
     const data = await loadData();
     // 音のテストは「どこから鳴らしているか」をソースの字面で見る
-    const sources = { app: await (await fetch('../src/app.js')).text() };
+    const sources = {
+      app: await (await fetch('../src/app.js')).text(),
+      index: await (await fetch('../index.html')).text(),
+    };
     deriveSuite(data);
     reportSuite(data);
     mentorSuite(data);
-    investigateSuite(data);
+    investigateSuite(data, sources);
     readableSuite(data);
     soundSuite(sources);
     const failed = results.filter((r) => !r.ok);

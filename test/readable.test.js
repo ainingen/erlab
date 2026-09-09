@@ -14,6 +14,8 @@ const FOCUS_IDS = [
   'reception', 'patient', 'results', 'flags', 'sample_state', 'previous', 'messages', 'report',
   // 「調べる」の行動ボタン。初出の操作なので、症例5だけ例外的に場所を教える
   'investigate',
+  // 上のバー右端の「聞く」。症例0で場所を教える
+  'ask',
 ];
 
 /**
@@ -365,7 +367,8 @@ export function suite(data) {
     }
     for (const region of used) {
       const inPlaceholder = html.includes(`data-region="${region}"`);
-      const inShell = ['reception', 'messages', 'report'].includes(region);
+      // 骨組みの外（画面の枠）にある的。上のバーの「聞く」もここ
+      const inShell = ['reception', 'messages', 'report', 'ask'].includes(region);
       eq(inPlaceholder || inShell, true, `${region} を指す先がどこにもない`);
     }
   });

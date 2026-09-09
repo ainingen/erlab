@@ -252,7 +252,7 @@
           "focus": [
             "investigate",
             null,
-            "messages"
+            "ask"
           ]
         },
         "yusuke": {
@@ -265,7 +265,7 @@
           "focus": [
             "investigate",
             null,
-            "messages"
+            "ask"
           ]
         }
       }

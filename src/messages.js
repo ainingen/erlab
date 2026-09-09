@@ -38,6 +38,9 @@ export function portraitUrl(speaker, emotion) {
 /** 症例が ask を書いていないとき（生成症例を含む）に出す、既定の台詞のID。 */
 export const DEFAULT_ASK_IDS = ['msg_ask_default_kanae', 'msg_ask_default_yusuke'];
 
+/** 指導役がいない日に「聞く」を押したときの一文。答えは返らないので評価も落とさない。 */
+export const NO_MENTOR_ASK_ID = 'msg_ask_no_mentor';
+
 /**
  * 既定の「見る順番」を指導役の言い方で組む。索引の五行から作るので、
  * 順番を直せばここも一緒に直る。**生成症例に台詞を書かない**方針はこれで守れる。
@@ -122,40 +125,16 @@ export function newestFirst(groups) {
   return [...groups].reverse().flat();
 }
 
-/**
- * ask = { navIds, asked, enabled } … ナビ枠の末尾に「聞く」を置く。
- * いま開いている症例のナビにだけ付ける（前の症例のナビには付けない）。
- */
-export function renderMessages(list, mentor = null, glossary = null, ask = null) {
+export function renderMessages(list, mentor = null, glossary = null) {
   if (!list.length) return '<p class="empty">メッセージはありません。</p>';
-  return list.map((m) => renderMessage(m, mentor, glossary, ask)).join('');
-}
-
-/**
- * 「聞く」。1症例1回で、押すと指導役がその症例の見どころを言う（答えは言わない）。
- * 聞いたことは評価に出る（最終評価が許容どまりになる）ので、押す前にそう書いておく。
- */
-function renderAskButton(ask) {
-  if (ask.asked) {
-    return `
-      <div class="msg-ask">
-        <button type="button" class="ask-btn" disabled aria-pressed="true">聞いた</button>
-        <span class="ask-note">この症例の評価は許容どまりになります。</span>
-      </div>`;
-  }
-  return `
-    <div class="msg-ask">
-      <button type="button" class="ask-btn" data-action="ask"${ask.enabled ? '' : ' disabled'}
-              aria-pressed="false">聞く</button>
-      <span class="ask-note">1症例1回。聞くと評価は許容どまりになります。</span>
-    </div>`;
+  return list.map((m) => renderMessage(m, mentor, glossary)).join('');
 }
 
 // 本文に辞典のリンクを入れるのは、ナビ・講評（nav）と申し送り（handover）だけ。
 // 医師の返信と記録は相手の言葉なので触らない。
 const LINKED_KINDS = new Set(['nav', 'handover']);
 
-function renderMessage(m, mentor, glossary = null, ask = null) {
+function renderMessage(m, mentor, glossary = null) {
   // from_mentor の申し送りは、選択中の指導役の名義と立ち絵で出す
   const speaker = m.speaker || (m.from_mentor && mentor ? mentor.id : null);
   const from = m.from_mentor && mentor ? `${mentor.name} / ${mentor.role}` : m.from;
@@ -178,7 +157,6 @@ function renderMessage(m, mentor, glossary = null, ask = null) {
           <p class="msg-from">${esc(from)}</p>
         </header>
         ${renderBody(m, glossary)}
-        ${ask && (ask.navIds || []).includes(m.id) ? renderAskButton(ask) : ''}
       </div>
     </article>`;
 }
