@@ -21,7 +21,8 @@
     --alert: #7f1d21;
     /* 症例0の指さし。説明の指し示しであって値の判定ではない。割り込みの赤とぶつからない黄色 */
     --point: #dd9b00;
-    /* 貼り付いた上のバーの高さ。指さしを寄せるとき、この帯の裏に的を送らないために使う */
+    /* 貼り付いた上のバー（＋スマホではタブ）の高さ。指さしを寄せるとき、
+       この帯の裏に的を送らないために使う */
     --headbar: 52px;
     /* 数字と画面まわり。BIZ UDGothic は数字の幅がそろうので、桁が縦に並ぶ。
        Osaka-Mono は mac、Consolas は Windows、MS Gothic は古い環境向けの控え。Webフォントは使わない */
@@ -45,12 +46,12 @@
   }
 
   /* ---- header ---- */
-  /* 上のバーは貼り付ける。「聞く」は困ったときに押すものなので、どこまで下に読んでいても
-     見えているようにする。ダイアログは top layer なので、この z-index とはぶつからない */
+  /* 上のバーとタブは一枚として貼り付ける。「聞く」は困ったときに押すものなので、どこまで
+     下に読んでいても見えているようにする。画面切替のタブも同じ理由でいつでも押せるようにする。
+     二枚を別々に貼ると、字の大きさが変わったときにバーとタブの間に隙間ができる。まとめて貼る。
+     ダイアログは top layer なので、この z-index とはぶつからない */
+  .topbar { position: sticky; top: 0; z-index: 5; }
   .app-header {
-    position: sticky;
-    top: 0;
-    z-index: 5;
     background: var(--head);
     color: var(--head-ink);
     padding: 7px 10px;
@@ -99,7 +100,7 @@
   /* ---- tabs (narrow only) ---- */
   .tabs { display: none; background: #dcdad4; border-bottom: 1px solid var(--line-strong); }
   .tab {
-    flex: 1; padding: 10px 4px; font: inherit; font-size: 15px;
+    flex: 1; padding: 6px 4px; font: inherit; font-size: 14px;
     background: transparent; border: 0; border-bottom: 3px solid transparent;
     color: var(--ink-dim); cursor: pointer;
   }
@@ -484,6 +485,8 @@
 
   /* ---- narrow screens: tabs + stacked table rows ---- */
   @media (max-width: 899px) {
+    /* スマホではタブも貼り付くので、逃げ幅はバー＋タブぶん取る */
+    :root { --headbar: 90px; }
     /* 貼り付くぶん、上のバーは一段に詰める（390pxで48px以内）。
        削るのは病院名・副題・指導役の名前・報告の内訳——どれも読み返せる場所が他にある。
        残すのは ERLAB・至急の札・音・指導役・聞く・報告件数 */
@@ -555,6 +558,7 @@
 </head>
 <body data-view="lis">
 
+<div class="topbar">
 <header class="app-header">
   <div class="brand">ERLAB<span class="sub">―その数値を見逃すな―</span></div>
   <div class="meta"><span id="hospital-name">読み込み中…</span> ／ 新人研修モード（時間無制限）</div>
@@ -572,6 +576,7 @@
   <button class="tab" type="button" data-view-target="lis" aria-selected="true">検査結果</button>
   <button class="tab" type="button" data-view-target="messages" aria-selected="false">メッセージ</button>
 </nav>
+</div>
 
 <main class="cols">
   <section class="col col-worklist">

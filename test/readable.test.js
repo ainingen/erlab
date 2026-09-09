@@ -455,32 +455,45 @@ export function suite(data, sources = {}) {
   });
 
   test('指さし: 画面の外にある的だけ寄せる。見えているものは動かさない', () => {
-    // 帯の上は貼り付いた上のバーの下、下は症例0の帯の上
-    const band = { top: 46, bottom: 456 };
+    // 帯の上は貼り付いた上のバー＋タブの下（スマホ縦で46+38=84px）、下は症例0の帯の上
+    const band = { top: 84, bottom: 456 };
     const rect = (top, height) => ({ top, height, bottom: top + height });
     eq(pointFitsBand(rect(100, 100), band), true, '帯の中なのに寄せている');
-    eq(pointFitsBand(rect(46, 10), band), true, '帯のいちばん上も中');
+    eq(pointFitsBand(rect(84, 10), band), true, '帯のいちばん上も中');
+    eq(pointFitsBand(rect(50, 20), band), false, 'タブの裏に入っている');
     eq(pointFitsBand(rect(10, 50), band), false, '上のバーの裏に入っている');
     eq(pointFitsBand(rect(500, 60), band), false, '帯の下に隠れている');
     eq(pointFitsBand(rect(400, 100), band), false, '下がはみ出している');
     // 帯より背の高い的（結果テーブル全体など）は、寄せてもはみ出すので動かさない
-    eq(pointFitsBand(rect(50, 850), band), true, '入りきらない的を寄せ続けている');
+    eq(pointFitsBand(rect(90, 850), band), true, '入りきらない的を寄せ続けている');
     eq(pointFitsBand(null, band), true, '的がなければ何もしない');
     eq(pointFitsBand(rect(0, 10), null), true, '帯が取れなければ何もしない');
+    // タブが出ない幅（PC）は、バーの下だけが帯の上端になる
+    const wide = { top: 47, bottom: 800 };
+    eq(pointFitsBand(rect(50, 100), wide), true);
+    eq(pointFitsBand(rect(40, 100), wide), false);
   });
 
-  test('上のバー: 貼り付いていて、スマホ縦では一段に詰める', () => {
+  test('上のバー: タブごと貼り付いていて、スマホ縦では一段に詰める', () => {
     const css = sources.index || '';
     eq(typeof sources.index, 'string', 'index.html のソース');
-    const header = css.slice(css.indexOf('.app-header {'), css.indexOf('.brand {'));
-    eq(/position:\s*sticky/.test(header), true, '上のバーが貼り付いていない');
-    eq(/top:\s*0/.test(header), true, '貼り付く先が上端でない');
+    // バーとタブは一枚の包みで貼り付ける（別々に貼ると間に隙間ができる）
+    const bar = css.slice(css.indexOf('.topbar {'), css.indexOf('.brand {'));
+    eq(/\.topbar \{[^}]*position:\s*sticky/.test(bar), true, '上のバーが貼り付いていない');
+    eq(/\.topbar \{[^}]*top:\s*0/.test(bar), true, '貼り付く先が上端でない');
+    eq(/\.app-header \{[^}]*position:\s*sticky/.test(bar), false, 'バーを二重に貼り付けている');
+    // 包みの中はバー → タブの順（タブがバーの直下に付く）
+    const body = css.slice(css.indexOf('<div class="topbar">'));
+    eq(body.indexOf('class="app-header"') < body.indexOf('class="tabs"'), true, 'タブがバーの上にある');
+    eq(/<\/nav>\s*<\/div>/.test(body), true, 'タブの直後で包みが閉じていない（タブが外に出ている）');
     // 寄せた先が貼り付いたバーの裏に入らないよう、逃げを取ってある
     eq(/scroll-padding-top:\s*var\(--headbar\)/.test(css), true, 'scroll-padding-top がない');
     eq(/--headbar:\s*\d+px/.test(css), true, '--headbar が決まっていない');
     // スマホ縦では折り返さず一段。削るのは病院名・副題・指導役の名前・報告の内訳
     const mobile = css.slice(css.indexOf('@media (max-width: 899px)'), css.indexOf('@media (max-width: 700px)'));
     eq(/\.app-header \{[^}]*flex-wrap:\s*nowrap/.test(mobile), true, 'スマホで折り返している');
+    eq(/--headbar:\s*\d+px/.test(mobile), true, 'スマホの逃げ幅がタブぶん広がっていない');
+    eq(/\.tab \{[^}]*padding:\s*6px/.test(css), true, 'タブを40px以内に詰めていない');
     for (const hidden of ['.brand .sub', '.app-header .meta', '.btn-sub, .score-detail']) {
       eq(mobile.includes(`${hidden} { display: none;`), true, `${hidden} を詰めていない`);
     }

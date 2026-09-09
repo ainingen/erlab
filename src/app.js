@@ -675,21 +675,24 @@ function pointAt(region) {
   for (const el of targets) el.classList.add('is-pointed');
   // 画面の外にある的は、見える位置まで寄せてから光らせる。すでに見えているものは動かさない
   // （読んでいる途中で画面が動くほうが分かりにくい）。
-  // 貼り付いた上のバーの中の的（「聞く」）は、どこまで送っても見えているので寄せない。
+  // 貼り付いた上のバー・タブの中の的（「聞く」）は、どこまで送っても見えているので寄せない。
   // 症例0は下に帯があるので上へ寄せる。ナビの「ここ」は画面の真ん中に置く
   const target = targets[0];
-  if ($('.app-header')?.contains(target)) return;
+  if ($('.topbar')?.contains(target)) return;
   if (pointFitsBand(target.getBoundingClientRect(), visibleBand())) return;
   const banded = document.documentElement.dataset.tutorial === 'open';
   target.scrollIntoView({ block: banded ? 'start' : 'center' });
 }
 
-/** いま見えている帯。上は貼り付いたヘッダーの下、下は症例0の帯の上まで。 */
+/**
+ * いま見えている帯。上は貼り付いた上のバー（スマホではタブも含む）の下、
+ * 下は症例0の帯の上まで。
+ */
 function visibleBand() {
-  const header = $('.app-header');
+  const topbar = $('.topbar');
   const banner = $('#tutorial-dialog[open]');
   return {
-    top: header ? header.getBoundingClientRect().bottom : 0,
+    top: topbar ? topbar.getBoundingClientRect().bottom : 0,
     bottom: banner ? banner.getBoundingClientRect().top : window.innerHeight,
   };
 }
