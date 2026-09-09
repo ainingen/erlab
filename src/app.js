@@ -2,7 +2,9 @@
 
 import { loadData } from './data.js';
 import { buildPanel, buildRecollect, buildCommentOptions, toggleCommentSelection } from './derive.js';
-import { renderWorklist, renderResults, renderRecollect, renderGlossaryPanel, esc } from './lis.js';
+import {
+  renderWorklist, renderResults, renderRecollect, renderGlossaryPanel, pointFitsBand, esc,
+} from './lis.js';
 import {
   renderMessages, newestFirst, freshGroup, resolveMessages, filterBySpeaker, askMessageIds,
   NO_MENTOR_ASK_ID,
@@ -607,13 +609,18 @@ function renderMessagePane() {
 
 function renderScore() {
   const mentor = currentMentor();
-  $('#mentor-btn').textContent = `指導役 ${mentor ? mentor.name : '—'}`;
+  // スマホ縦では上のバーを一段に詰めるので、名前と内訳は span で括って引っ込められるようにする
+  const btn = $('#mentor-btn');
+  const name = mentor ? mentor.name : '—';
+  btn.innerHTML = `指導役<span class="btn-sub"> ${esc(name)}</span>`;
+  btn.setAttribute('aria-label', `指導役 ${name}（変更する）`);
+  btn.title = `指導役 ${name}`;
 
   const tally = { best: 0, ok: 0, poor: 0 };
   for (const r of Object.values(state.results)) tally[r.score] = (tally[r.score] || 0) + 1;
   const total = Object.keys(state.results).length;
-  $('#score').textContent = total
-    ? `報告 ${total}件 ／ 最善 ${tally.best}・許容 ${tally.ok}・要改善 ${tally.poor}`
+  $('#score').innerHTML = total
+    ? `報告 ${total}件<span class="score-detail"> ／ 最善 ${tally.best}・許容 ${tally.ok}・要改善 ${tally.poor}</span>`
     : '報告 0件';
 }
 
@@ -666,9 +673,25 @@ function pointAt(region) {
   const targets = [...document.querySelectorAll(`[data-region="${region}"]`)];
   if (!targets.length) return;
   for (const el of targets) el.classList.add('is-pointed');
+  // 画面の外にある的は、見える位置まで寄せてから光らせる。すでに見えているものは動かさない
+  // （読んでいる途中で画面が動くほうが分かりにくい）。
+  // 貼り付いた上のバーの中の的（「聞く」）は、どこまで送っても見えているので寄せない。
   // 症例0は下に帯があるので上へ寄せる。ナビの「ここ」は画面の真ん中に置く
+  const target = targets[0];
+  if ($('.app-header')?.contains(target)) return;
+  if (pointFitsBand(target.getBoundingClientRect(), visibleBand())) return;
   const banded = document.documentElement.dataset.tutorial === 'open';
-  targets[0].scrollIntoView({ block: banded ? 'start' : 'center' });
+  target.scrollIntoView({ block: banded ? 'start' : 'center' });
+}
+
+/** いま見えている帯。上は貼り付いたヘッダーの下、下は症例0の帯の上まで。 */
+function visibleBand() {
+  const header = $('.app-header');
+  const banner = $('#tutorial-dialog[open]');
+  return {
+    top: header ? header.getBoundingClientRect().bottom : 0,
+    bottom: banner ? banner.getBoundingClientRect().top : window.innerHeight,
+  };
 }
 
 /* ---- イベント ---- */

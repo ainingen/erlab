@@ -21,6 +21,8 @@
     --alert: #7f1d21;
     /* 症例0の指さし。説明の指し示しであって値の判定ではない。割り込みの赤とぶつからない黄色 */
     --point: #dd9b00;
+    /* 貼り付いた上のバーの高さ。指さしを寄せるとき、この帯の裏に的を送らないために使う */
+    --headbar: 52px;
     /* 数字と画面まわり。BIZ UDGothic は数字の幅がそろうので、桁が縦に並ぶ。
        Osaka-Mono は mac、Consolas は Windows、MS Gothic は古い環境向けの控え。Webフォントは使わない */
     --num: "BIZ UDGothic", "Osaka-Mono", Consolas, "Courier New", "MS Gothic", monospace;
@@ -29,6 +31,9 @@
   }
 
   * { box-sizing: border-box; }
+
+  /* 上のバーは貼り付くので、寄せた先がその裏に入らないよう逃げを取る */
+  html { scroll-padding-top: var(--headbar); }
 
   body {
     margin: 0;
@@ -40,7 +45,12 @@
   }
 
   /* ---- header ---- */
+  /* 上のバーは貼り付ける。「聞く」は困ったときに押すものなので、どこまで下に読んでいても
+     見えているようにする。ダイアログは top layer なので、この z-index とはぶつからない */
   .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
     background: var(--head);
     color: var(--head-ink);
     padding: 7px 10px;
@@ -337,7 +347,7 @@
     border-width: 3px 0 0; box-shadow: 0 -6px 18px rgba(20, 24, 32, .22);
   }
   #tutorial-dialog::backdrop { background: transparent; }
-  html[data-tutorial="open"] { scroll-padding: 12px 0 52vh; }
+  html[data-tutorial="open"] { scroll-padding: var(--headbar) 0 52vh; }
   /* 帯のぶんの逃げを作る。これがないと、画面の下にあるもの（報告ボタン）を
      上へ送れず、帯の裏に入ったままになる */
   html[data-tutorial="open"] .cols { padding-bottom: 52vh; }
@@ -474,6 +484,24 @@
 
   /* ---- narrow screens: tabs + stacked table rows ---- */
   @media (max-width: 899px) {
+    /* 貼り付くぶん、上のバーは一段に詰める（390pxで48px以内）。
+       削るのは病院名・副題・指導役の名前・報告の内訳——どれも読み返せる場所が他にある。
+       残すのは ERLAB・至急の札・音・指導役・聞く・報告件数 */
+    .app-header { flex-wrap: nowrap; align-items: center; padding: 5px 8px; gap: 0 6px; }
+    .brand { font-size: 14px; letter-spacing: .06em; }
+    .brand .sub { display: none; }
+    .app-header .meta { display: none; }
+    .btn-sub, .score-detail { display: none; }
+    .app-header .score { font-size: 12px; padding: 3px 6px; white-space: nowrap; }
+    .header-btn { padding: 6px 8px; white-space: nowrap; }
+    .alert-badge { font-size: 12px; padding: 3px 6px; white-space: nowrap; }
+    /* 割り込み中は「至急対応中」の札が入るぶん、後回しでよいものから引っ込める。
+       集計と題字を落とせば、狭い画面でも一段に収まる（横あふれを出さない） */
+    body[data-state="interrupt"] .app-header .score,
+    body[data-state="interrupt"] .brand { display: none; }
+    /* それでも足りない幅では題字が縮む。押すものを押し出さない */
+    .brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     .tabs { display: flex; }
     .cols { grid-template-columns: 1fr; padding: 6px; }
     body[data-view="worklist"] .col-lis,

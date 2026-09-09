@@ -66,6 +66,19 @@ export function linkTerms(text, glossary) {
   return out;
 }
 
+/**
+ * 指さしの的が、いま見えている帯に収まっているか（docs/readable.md 3章）。
+ * 帯の上は貼り付いたヘッダーの下、下は症例0の帯（説明モーダル）の上。
+ * 収まっていない的だけ、光らせる前に寄せる——読んでいる途中で画面が動くほうが分かりにくい。
+ * 帯より背の高い的（結果テーブル全体など）は、寄せてもはみ出すのでそのままにする。
+ */
+export function pointFitsBand(rect, band) {
+  if (!rect || !band) return true;
+  if (rect.top < band.top) return false; // ヘッダーの裏に入っている
+  if (rect.top >= band.bottom) return false; // 帯の下に隠れている
+  return rect.bottom <= band.bottom || rect.height > band.bottom - band.top;
+}
+
 /* view = { marks, suspects, suspectDefs, interactive, investigateHtml }
    view を渡さない表（再採血検体）はマーク欄も疑いタブも出さない読み取り専用になる。
    investigateHtml は「調べた結果」欄の中身（src/investigate.js が組む）。空なら欄ごと出さない。 */

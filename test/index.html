@@ -44,7 +44,7 @@
     reportSuite(data);
     mentorSuite(data);
     investigateSuite(data, sources);
-    readableSuite(data);
+    readableSuite(data, sources);
     soundSuite(sources);
     const failed = results.filter((r) => !r.ok);
     summary.textContent = `${results.length} 件中 ${results.length - failed.length} 件 PASS / ${failed.length} 件 FAIL`;

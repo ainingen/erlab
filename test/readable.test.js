@@ -4,6 +4,7 @@
 import { test, eq } from './harness.js';
 import {
   renderResults, renderGlossaryPanel, renderTermPanel, linkTerms, termLink, renderWorklist,
+  pointFitsBand,
 } from '../src/lis.js';
 import { renderReportDialog, renderCommentPicker, markSummary } from '../src/report.js';
 import { renderMessages } from '../src/messages.js';
@@ -25,7 +26,7 @@ const FOCUS_IDS = [
  */
 const POINTING_CASES = ['n01', 'n02', 'n03', 'n05'];
 
-export function suite(data) {
+export function suite(data, sources = {}) {
   const glossary = data.glossary;
   const terms = glossary.terms;
   const caseById = Object.fromEntries(data.cases.map((c) => [c.id, c]));
@@ -451,6 +452,38 @@ export function suite(data) {
     const html = renderResults(c, buildPanel(c, data), data, view());
     const badge = html.match(/<span class="panic-note">([^<]*)<\/span>/);
     eq(badge && badge[1], 'パニック値');
+  });
+
+  test('指さし: 画面の外にある的だけ寄せる。見えているものは動かさない', () => {
+    // 帯の上は貼り付いた上のバーの下、下は症例0の帯の上
+    const band = { top: 46, bottom: 456 };
+    const rect = (top, height) => ({ top, height, bottom: top + height });
+    eq(pointFitsBand(rect(100, 100), band), true, '帯の中なのに寄せている');
+    eq(pointFitsBand(rect(46, 10), band), true, '帯のいちばん上も中');
+    eq(pointFitsBand(rect(10, 50), band), false, '上のバーの裏に入っている');
+    eq(pointFitsBand(rect(500, 60), band), false, '帯の下に隠れている');
+    eq(pointFitsBand(rect(400, 100), band), false, '下がはみ出している');
+    // 帯より背の高い的（結果テーブル全体など）は、寄せてもはみ出すので動かさない
+    eq(pointFitsBand(rect(50, 850), band), true, '入りきらない的を寄せ続けている');
+    eq(pointFitsBand(null, band), true, '的がなければ何もしない');
+    eq(pointFitsBand(rect(0, 10), null), true, '帯が取れなければ何もしない');
+  });
+
+  test('上のバー: 貼り付いていて、スマホ縦では一段に詰める', () => {
+    const css = sources.index || '';
+    eq(typeof sources.index, 'string', 'index.html のソース');
+    const header = css.slice(css.indexOf('.app-header {'), css.indexOf('.brand {'));
+    eq(/position:\s*sticky/.test(header), true, '上のバーが貼り付いていない');
+    eq(/top:\s*0/.test(header), true, '貼り付く先が上端でない');
+    // 寄せた先が貼り付いたバーの裏に入らないよう、逃げを取ってある
+    eq(/scroll-padding-top:\s*var\(--headbar\)/.test(css), true, 'scroll-padding-top がない');
+    eq(/--headbar:\s*\d+px/.test(css), true, '--headbar が決まっていない');
+    // スマホ縦では折り返さず一段。削るのは病院名・副題・指導役の名前・報告の内訳
+    const mobile = css.slice(css.indexOf('@media (max-width: 899px)'), css.indexOf('@media (max-width: 700px)'));
+    eq(/\.app-header \{[^}]*flex-wrap:\s*nowrap/.test(mobile), true, 'スマホで折り返している');
+    for (const hidden of ['.brand .sub', '.app-header .meta', '.btn-sub, .score-detail']) {
+      eq(mobile.includes(`${hidden} { display: none;`), true, `${hidden} を詰めていない`);
+    }
   });
 
   test('指さし: 光らせる先が画面にある', () => {
