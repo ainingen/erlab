@@ -260,10 +260,11 @@ const DEVIATIONS = [
   {
     id: 'P3', score: 'poor',
     headline: () => '検体状態に触れないまま報告しています',
-    // 壊れた検体を採り直しもせず通常報告で流した。コメントの有無は問わない
-    // （何か書いてあっても、値はそのまま医師に届いている）。
-    // 至急・緊急で出したものは O10（再採血まで出したい）で受ける
-    hit: (f, op) => f.A2 && !op.recheck && op.level === 'routine',
+    // 壊れた検体を採り直しもせず、(1) 通常報告で流した か
+    // (2) 検体トラブルに触れるコメントも付けなかった。
+    // 至急・緊急で「溶血（凝集・希釈）」を伝えたものは O10（再採血まで出したい）で受ける
+    hit: (f, op) => f.A2 && !op.recheck
+      && (op.level === 'routine' || !touchesArtifact(f, op)),
   },
   {
     id: 'P4', score: 'poor',
@@ -301,6 +302,12 @@ const DEVIATIONS = [
     id: 'O1', score: 'ok',
     headline: () => 'そのコメントは事実に合いません',
     hit: (f, op) => contradictingComment(f, op),
+  },
+  {
+    // 異常のない検体（T1）にコメントを付けた。間違いではないが、書くことが無い
+    id: 'O11', score: 'ok',
+    headline: () => '異常のない検体にコメントを付けています',
+    hit: (f, op, c) => f.N && !c.comment && commented(op),
   },
   {
     id: 'O2', score: 'ok',
@@ -357,6 +364,17 @@ const DEVIATIONS = [
     hit: (f, op, c) => op.recheck && !c.recheck,
   },
 ];
+
+/**
+ * 検体トラブルに触れるコメントを付けたか（P3）。
+ * そのトラブルの疑い（溶血・凝集・希釈）か、検体状態の事実を書いていれば触れたことになる。
+ */
+function touchesArtifact(facts, op) {
+  const picked = commentIds(op);
+  const has = (id) => [...picked].some((x) => x === id || String(x).startsWith(`${id}:`));
+  if (has('sample_state')) return true;
+  return Boolean(facts.artifactSuspect) && has(facts.artifactSuspect);
+}
 
 /** コメントの種類が事実と食い違っているか（O1）。 */
 function contradictingComment(facts, op) {

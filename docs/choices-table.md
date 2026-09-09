@@ -127,13 +127,14 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | 2 | report=urgent, comment.must=[mismatch], recheck=true, marks.must=[MCV], suspects.MCV=[mismatch] | ok | 見立ては正しい。ただし照合と電話で裏を取っていません | 至急 ／ 再採血 ／ コメント[mismatch] ／ マーク MCV(mismatch) |
 | 3 | report=emergency, comment.must=[mismatch], recheck=true | ok | 止めたのは正しい。ただしHHでない場面に緊急回線を使っています | 緊急 ／ 再採血 ／ コメント[mismatch] |
 | 4 | comment.must=[mismatch], recheck=true | ok | 取り違えを疑って止めたのは正しい。ただし病棟へは至急で伝えます | 通常 ／ 再採血 ／ コメント[mismatch] |
-| 5 | recheck=true, suspects.MCV=[mismatch] | ok | 疑いは正しい。ただし理由がコメントに残っていません | 通常 ／ 再採血 ／ マーク MCV(mismatch) |
-| 6 | report=[urgent, emergency], suspects.Hb=[delta] | poor | 別人の値を、出血として報告しています | 至急 ／ マーク Hb(delta) |
-| 7 | report=[urgent, emergency], comment.must=[mismatch] | ok | 伝えたのは正しい。ただし再採血まで出していません | 至急 ／ コメント[mismatch] |
-| 8 | report=[urgent, emergency], comment=true | poor | 急いだのは分かります。ただし報告した値は別人のものです | 至急 ／ コメント[microcytic] |
-| 9 | report=[urgent, emergency], recheck=true | poor | 止めたのは分かる。ただし別人の値が医師に届いています | 至急 ／ 再採血 |
+| 5 | report=[urgent, emergency], recheck=true | poor | 止めたのは分かる。ただし別人の値が医師に届いています | 至急 ／ 再採血 |
+| 6 | recheck=true, suspects.MCV=[mismatch] | ok | 疑いは正しい。ただし理由がコメントに残っていません | 通常 ／ 再採血 ／ マーク MCV(mismatch) |
+| 7 | report=[urgent, emergency], suspects.Hb=[delta] | poor | 別人の値を、出血として報告しています | 至急 ／ マーク Hb(delta) |
+| 8 | report=[urgent, emergency], comment.must=[mismatch] | ok | 伝えたのは正しい。ただし再採血まで出していません | 至急 ／ コメント[mismatch] |
+| 9 | report=[urgent, emergency], comment=true | poor | 急いだのは分かります。ただし報告した値は別人のものです | 至急 ／ コメント[microcytic] |
 | 10 | recheck=true | ok | 再採血は正しい。ただし理由が伴っていません | 通常 ／ 再採血 |
-| 11 | （なし・受け皿） | poor | 別人の値をそのまま流しています | 通常 |
+| 11 | comment.must=[mismatch] | ok | 取り違えを伝えたのは正しい。ただし至急で、再採血まで出します | 通常 ／ コメント[mismatch] |
+| 12 | （なし・受け皿） | poor | 別人の値をそのまま流しています | 通常 |
 
 ### n07 — 7. 否定されても、数字は残る
 
@@ -165,12 +166,12 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 
 ## b. `when` に使われているキー
 
-枝の総数 75（一本目 71 ／ 二本目 4）。
+枝の総数 76（一本目 72 ／ 二本目 4）。
 
 | キー | 使っている症例 | 症例数 | 枝数 | 書かれている値の種類 |
 |---|---|---|---|---|
 | `report` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 55 | 4 |
-| `comment` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 31 | 10 |
+| `comment` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 32 | 10 |
 | `recheck` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 24 | 1 |
 | `marks` | n01・n02・n03・n04・n05・n05b・n06・n07b・n07 | 9 | 20 | 7 |
 | `suspects` | n03・n04・n05・n05b・n06・n07b・n07 | 7 | 14 | 7 |
@@ -269,8 +270,8 @@ roadmap §6-4「手書き症例から判定ルールを言語化する」の材�
 | n05 | 一本目 | 6 | 1 | 3 | 2 | 0 |
 | n05b | 一本目 | 10 | 1 | 7 | 2 | 0 |
 | n06 | 一本目 | 10 | 1 | 8 | 1 | 0 |
-| n07b | 一本目 | 11 | 1 | 6 | 4 | 0 |
+| n07b | 一本目 | 12 | 1 | 7 | 4 | 0 |
 | n07 | 一本目 | 8 | 0 | 0 | 3 | 5 |
 | n07 | 二本目 | 4 | 1 | 1 | 2 | 0 |
-| **合計** | | **75** | **10** | **39** | **21** | **5** |
+| **合計** | | **76** | **10** | **40** | **21** | **5** |
 

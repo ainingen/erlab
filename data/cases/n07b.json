@@ -197,6 +197,22 @@
     },
     {
       "when": {
+        "report": [
+          "urgent",
+          "emergency"
+        ],
+        "recheck": true
+      },
+      "score": "poor",
+      "headline": "止めたのは分かる。ただし別人の値が医師に届いています",
+      "reply": [
+        "msg_n07b_leak_kanae",
+        "msg_n07b_leak_yusuke"
+      ],
+      "doctor": "msg_n07b_doctor_delta"
+    },
+    {
+      "when": {
         "recheck": true,
         "suspects": {
           "MCV": [
@@ -261,26 +277,23 @@
     },
     {
       "when": {
-        "report": [
-          "urgent",
-          "emergency"
-        ],
-        "recheck": true
-      },
-      "score": "poor",
-      "headline": "止めたのは分かる。ただし別人の値が医師に届いています",
-      "reply": [
-        "msg_n07b_leak_kanae",
-        "msg_n07b_leak_yusuke"
-      ],
-      "doctor": "msg_n07b_doctor_delta"
-    },
-    {
-      "when": {
         "recheck": true
       },
       "score": "ok",
       "headline": "再採血は正しい。ただし理由が伴っていません",
+      "reply": null,
+      "doctor": "msg_n07b_doctor_ok"
+    },
+    {
+      "when": {
+        "comment": {
+          "must": [
+            "mismatch"
+          ]
+        }
+      },
+      "score": "ok",
+      "headline": "取り違えを伝えたのは正しい。ただし至急で、再採血まで出します",
       "reply": null,
       "doctor": "msg_n07b_doctor_ok"
     },

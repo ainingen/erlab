@@ -536,6 +536,8 @@ export function suite(data) {
     ['取り違えを疑って止めたのは正しい。ただし病棟へは至急で伝えます', 'ok', 'routine', {
       comment: [cmt('mismatch')], recheck: true,
     }],
+    // 採り直しは出したが、至急で値も出した（別人の値が医師に届く）
+    ['止めたのは分かる。ただし別人の値が医師に届いています', 'poor', 'urgent', { recheck: true }],
     ['疑いは正しい。ただし理由がコメントに残っていません', 'ok', 'routine', {
       recheck: true, marks: ['MCV'], suspects: { MCV: ['mismatch'] },
     }],
@@ -549,9 +551,11 @@ export function suite(data) {
     ['急いだのは分かります。ただし報告した値は別人のものです', 'poor', 'urgent', {
       comment: [cmt('real', 'Hb')],
     }],
-    // 採り直しは出したが、至急で値も出した（別人の値が医師に届く）
-    ['止めたのは分かる。ただし別人の値が医師に届いています', 'poor', 'urgent', { recheck: true }],
     ['再採血は正しい。ただし理由が伴っていません', 'ok', 'routine', { recheck: true }],
+    // 取り違えは伝えたが、通常報告のまま採り直しも出していない
+    ['取り違えを伝えたのは正しい。ただし至急で、再採血まで出します', 'ok', 'routine', {
+      comment: [cmt('mismatch')],
+    }],
     ['別人の値をそのまま流しています', 'poor', 'routine', {}],
   ];
 
@@ -619,6 +623,10 @@ export function suite(data) {
     }
     // 通常報告なら値を出していないので、採り直しで止めたことになる
     eq(evaluate(c, pick('routine', { recheck: true })).score, 'ok');
+    // 取り違えは伝えたが、通常報告のまま採り直しも出していない
+    const toldOnly = evaluate(c, pick('routine', { comment: [cmt('mismatch')] }));
+    eq(toldOnly.score, 'ok');
+    eq(toldOnly.headline, '取り違えを伝えたのは正しい。ただし至急で、再採血まで出します');
     // 取り違えを伝えたが採り直しを出していない形は、許容で受ける
     const told = evaluate(c, pick('urgent', { comment: [cmt('mismatch')] }));
     eq(told.score, 'ok');
