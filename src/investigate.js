@@ -58,8 +58,9 @@ export function callMessageId(caseDef) {
  *   stage … 'first'（最初の検体）／'recollect'（再採血検体が届いたあと）
  *   taken … [{ id, stage }] 押した順
  *
- * 各行動は1症例1回。再採血検体が来たら目視だけもう一度できる（§2）。
- * 塗抹・ID照合・電話は再採血検体には行わない（§12）ので、二本目では押せない。
+ * 各行動は1症例1回。押したら「済」で、検体が変わっても再度はできない（§2・§12）。
+ * `look` だけは**検体ごとに1回**で、再採血検体が来たらもう一度できる。
+ * まだ押していない行動は、再採血検体が届いたあとでも押せる（潰すのは再実行だけ）。
  */
 export function actionStates({ order = [], done = false, stage = 'first', taken = [] } = {}) {
   return ACTIONS.map((a) => {
@@ -67,16 +68,14 @@ export function actionStates({ order = [], done = false, stage = 'first', taken 
       ? taken.some((t) => t.id === a.id && t.stage === stage)
       : taken.some((t) => t.id === a.id);
     const noOrder = Boolean(a.needs) && !order.includes(a.needs);
-    const firstOnly = stage !== 'first' && a.id !== 'look';
     let note = '';
     if (spent) note = '済';
     else if (noOrder) note = '血算の依頼なし';
-    else if (firstOnly) note = '一本目だけ';
     return {
       ...a,
       spent,
       note,
-      enabled: !done && !spent && !noOrder && !firstOnly,
+      enabled: !done && !spent && !noOrder,
     };
   });
 }

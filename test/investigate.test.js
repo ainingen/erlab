@@ -49,13 +49,14 @@ export function suite(data) {
     eq(enabled(without), 'look,idcheck,call');
   });
 
-  test('調べる: 再採血検体が届いたら目視だけもう一度できる', () => {
+  test('調べる: 目視だけ検体ごとに1回。再採血検体が届いたらもう一度できる', () => {
     const taken = ACTIONS.map((a) => ({ id: a.id, stage: 'first' }));
     // 一本目で四つとも押し切った状態から、二本目が届く
     eq(enabled(actionStates({ order: CBC, stage: 'first', taken })), '');
     const second = actionStates({ order: CBC, stage: 'recollect', taken });
     eq(enabled(second), 'look', '二本目で押せるのは目視だけ');
     eq(noteOf(second, 'look'), '', '目視は二本目ぶんがまだ');
+    // 済んだ行動は検体が変わっても再度はできない
     eq(noteOf(second, 'idcheck'), '済');
     eq(noteOf(second, 'smear'), '済');
     eq(noteOf(second, 'call'), '済');
@@ -68,12 +69,30 @@ export function suite(data) {
     eq(noteOf(done, 'look'), '済');
   });
 
-  test('調べる: 一本目で押していない行動も、二本目では押せない（§12）', () => {
-    const second = actionStates({ order: CBC, stage: 'recollect', taken: [] });
-    eq(enabled(second), 'look');
-    eq(noteOf(second, 'idcheck'), '一本目だけ');
-    eq(noteOf(second, 'smear'), '一本目だけ');
-    eq(noteOf(second, 'call'), '一本目だけ');
+  test('調べる: 一本目で押していない行動は、再採血検体が届いたあとでも押せる（§2）', () => {
+    // 何も押さずに二本目が届いた
+    const none = actionStates({ order: CBC, stage: 'recollect', taken: [] });
+    eq(enabled(none), 'look,idcheck,smear,call', '未実行なのに押せなくなっている');
+    for (const a of ACTIONS) eq(noteOf(none, a.id), '', `${a.id} に余計な札が付いている`);
+
+    // 一本目で電話だけ押していた場合。済んだ電話は再度できず、残りは押せる
+    const called = actionStates({
+      order: CBC, stage: 'recollect', taken: [{ id: 'call', stage: 'first' }],
+    });
+    eq(enabled(called), 'look,idcheck,smear');
+    eq(noteOf(called, 'call'), '済');
+  });
+
+  test('調べる: 押せない札は「済」と「血算の依頼なし」だけ', () => {
+    const notes = new Set();
+    for (const stage of ['first', 'recollect']) {
+      for (const taken of [[], ACTIONS.map((a) => ({ id: a.id, stage: 'first' }))]) {
+        for (const order of [CBC, ['CHEM_BASIC']]) {
+          for (const s of actionStates({ order, stage, taken })) notes.add(s.note);
+        }
+      }
+    }
+    eq([...notes].sort().join(','), ',済,血算の依頼なし');
   });
 
   test('調べる: 報告して閉じた検体では押せない', () => {
