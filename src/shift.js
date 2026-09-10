@@ -147,14 +147,18 @@ export function summaryBody(tally, before, after) {
 
 /* ---- 保存（§5。読み書きの入口だけ。実際の localStorage は app.js） ---- */
 
-/** 保存する形。窓と晩の番号と、クリア済みの印と、選んだ指導役だけ。 */
-export function toSave(shift, mentorId) {
+/**
+ * 保存する形。窓と晩の番号と、クリア済みの印と、選んだ指導役と、
+ * 前の退勤で見せた信頼度（集計の「45 → 60」の左側）。
+ */
+export function toSave(shift, mentorId, trustShown = null) {
   return {
     night: shift.night || 1,
     window: [...(shift.window || [])],
     cleared: Boolean(shift.cleared),
     forceMentorNight: Boolean(shift.forceMentorNight),
     mentor: mentorId || null,
+    trustShown: Number.isFinite(trustShown) ? trustShown : null,
   };
 }
 
@@ -171,6 +175,8 @@ export function fromSave(raw, cfg) {
       forceMentorNight: Boolean(save.forceMentorNight),
     },
     mentorId: typeof save.mentor === 'string' ? save.mentor : null,
+    // まだ一度も退勤していない保存（と、壊れている保存）は null。集計は「— → 45」になる
+    trustShown: Number.isFinite(save.trustShown) ? save.trustShown : null,
   };
 }
 

@@ -7,6 +7,7 @@ import {
   pickNightCases, nightReceivedAt, summaryBody, toSave, fromSave, newShift, rngFrom,
 } from '../src/shift.js';
 import { renderGlossaryPanel } from '../src/lis.js';
+import { renderMessages } from '../src/messages.js';
 import { mentorForCase, askButtonState } from '../src/mentor.js';
 
 export function suite(data, sources = {}) {
@@ -200,6 +201,34 @@ export function suite(data, sources = {}) {
        '不在の晩にナビを出している');
   });
 
+  test('不在の晩: 退勤の一行が中央検査部の名義で出る（文面は変えない）', () => {
+    const mentor = data.mentors.mentors[0];
+    const end = data.messages.messages.msg_shift_night_end;
+    eq(end.from_mentor, true, '通常の晩は指導役の名義で出す');
+    const text = end.body.join('');
+
+    // 通常の晩は指導役の名前と立ち絵
+    const normal = renderMessages([{ id: 'a', ...end }], mentor, data.glossary);
+    eq(normal.includes(mentor.name), true, '通常の晩に指導役の名前が出ていない');
+    eq(normal.includes('msg-portrait'), true, '通常の晩に立ち絵が出ていない');
+
+    // 不在の晩は症例の申し送りと同じ差し替え（from を中央検査部に、speaker を落とす）
+    const absent = renderMessages(
+      [{ id: 'a', ...end, from: '中央検査部', from_mentor: false }], mentor, data.glossary,
+    );
+    eq(absent.includes('中央検査部'), true, '不在の晩に中央検査部の名義で出ていない');
+    eq(absent.includes(mentor.name), false, '不在の晩に指導役の名前が混ざっている');
+    eq(absent.includes('msg-portrait'), false, '不在の晩に立ち絵が出ている');
+    eq(absent.includes(text), true, '文面が変わっている');
+
+    // 差し替えは app.js の退勤で、症例の申し送りと同じ形で入れる
+    const app = sources.app || '';
+    eq(/const end = pushMessage\('msg_shift_night_end'\);/.test(app), true,
+       '退勤の便を掴んでいない');
+    eq(/if \(state\.absentNight\) \{[\s\S]{0,200}from: '中央検査部', dropSpeaker: true/.test(app), true,
+       '不在の晩に退勤の名義を差し替えていない');
+  });
+
   // ---- 6. 保存 ----
   test('保存: 書いた形をそのまま読み戻せる', () => {
     const shift = { night: 4, window: ['best', 'ok', 'poor'], cleared: true, forceMentorNight: true };
@@ -214,6 +243,25 @@ export function suite(data, sources = {}) {
     eq(back.shift.cleared, true);
     eq(back.shift.forceMentorNight, true);
     eq(back.mentorId, 'yusuke');
+  });
+
+  test('保存: 前の晩に見せた信頼度（trustShown）も持ち越す', () => {
+    const shift = { night: 3, window: ['best', 'best'], cleared: false, forceMentorNight: false };
+    const saved = toSave(shift, 'kanae', 45);
+    eq(saved.trustShown, 45, '保存に信頼度が入っていない');
+    eq(fromSave(saved, cfg).trustShown, 45, '読み戻せていない');
+
+    // 読み込み直後の最初の退勤で、前の晩の数字が左に出る
+    const tally = summarize(['best', 'ok', 'poor', 'best', 'ok']);
+    const line = summaryBody(tally, fromSave(saved, cfg).trustShown, 60).at(-1);
+    eq(line, '医師からの信頼度  45 → 60');
+
+    // まだ一度も退勤していない保存と、壊れている保存は null（「— → 45」のまま）
+    eq(toSave(shift, 'kanae').trustShown, null);
+    for (const raw of [{}, { trustShown: 'x' }, { trustShown: null }, null]) {
+      eq(fromSave(raw, cfg).trustShown, null, `${JSON.stringify(raw)} で null にならない`);
+    }
+    eq(summaryBody(tally, fromSave({}, cfg).trustShown, 45).at(-1), '医師からの信頼度  — → 45');
   });
 
   test('保存: 読めない・壊れていても最初から始められる（例外を投げない）', () => {

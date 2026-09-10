@@ -164,7 +164,11 @@ function endNight() {
   const after = trust(state.shift.window, cfg);
   const closed = closeNight(state.shift, { absent: state.absentNight, scores: state.nightScores }, cfg);
 
-  pushMessage('msg_shift_night_end');
+  // 退勤の一行。不在の晩は症例の申し送りと同じ扱いで、中央検査部の名義に差し替える（§3-2）
+  const end = pushMessage('msg_shift_night_end');
+  if (state.absentNight) {
+    for (const key of end) state.reviewValues[key] = { from: '中央検査部', dropSpeaker: true };
+  }
   const sent = pushMessage('msg_shift_summary');
   for (const key of sent) {
     state.reviewValues[key] = { body: summaryBody(closed.tally, before, after) };
@@ -199,7 +203,10 @@ function nextNight() {
 function saveNow() {
   if (state.saveBroken) return;
   try {
-    window.localStorage.setItem(shiftCfg().save_key, JSON.stringify(toSave(state.shift, state.mentorId)));
+    window.localStorage.setItem(
+      shiftCfg().save_key,
+      JSON.stringify(toSave(state.shift, state.mentorId, state.trustShown)),
+    );
   } catch (err) {
     state.saveBroken = true; // 塞がれている環境ではメモリだけで動く
   }
@@ -213,8 +220,10 @@ function loadSave() {
   } catch (err) {
     state.saveBroken = true;
   }
-  const { shift, mentorId } = fromSave(raw, cfg);
+  const { shift, mentorId, trustShown } = fromSave(raw, cfg);
   state.shift = shift;
+  // 前の晩に見せた信頼度。続きの晩の集計で「45 → xx」の左に入る（§5）
+  state.trustShown = trustShown;
   if (mentorId && mentorById(state.data, mentorId)) state.mentorId = mentorId;
 }
 
